@@ -1,0 +1,13 @@
+PHYSICS NOTES
+
+Newton's Laws of Motion
+The first law states that an object at rest stays at rest and an object in motion stays in motion unless acted on by a net external force. The second law states that force equals mass times acceleration, written F = ma. The third law states that for every action there is an equal and opposite reaction.
+
+Conservation of Energy
+Energy cannot be created or destroyed, only transformed from one form to another. The total energy of an isolated system remains constant. Kinetic energy is the energy of motion, given by KE = 1/2 m v^2. Potential energy depends on position, such as gravitational potential energy PE = m g h.
+
+Waves
+The speed of a wave is the product of its wavelength and frequency: v = lambda * f. If the speed of a wave is held constant and its frequency increases, its wavelength must decrease. Light, sound, and water waves all obey this relationship.
+
+Thermodynamics
+The first law of thermodynamics is another statement of energy conservation applied to heat: the change in internal energy equals heat added minus work done by the system. Entropy tends to increase in an isolated system.

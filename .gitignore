@@ -1,0 +1,45 @@
+# --- Secrets ---
+backend/.env
+.claude
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# --- App data (gitignored per spec) ---
+backend/storage/
+backend/chroma_db/
+
+# --- Local data dirs ---
+data/
+storage/
+
+# Keep the backend test fixture required by tests/retrieval_metrics.py
+# (overrides the broad `data/` rule above).
+!backend/tests/data/
+!backend/tests/data/retrieval_eval.jsonl
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+
+# --- Build, test & report artifacts ---
+frontend/dist/
+frontend/dist-lh/
+frontend/lighthouse-reports/
+frontend/test-results/
+backend/test-results/
+backend/pytest_baseline.txt
+backend/pytest_clean.txt
+frontend/repro.html

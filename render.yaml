@@ -1,0 +1,52 @@
+# Render deploy for the Synapse API.
+# Assumes the Git repo is connected and the project root is the repo.
+# Render build context = ./backend (set "Root Directory" to backend/ in the dashboard,
+# or rely on the explicit paths below).
+services:
+  - type: web
+    name: synapse-api
+    runtime: python
+    plan: starter
+    region: oregon
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    # Run migrations before each deploy.
+    preDeployCommand: "alembic upgrade head"
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: synapse-db
+          property: connectionString
+      - key: CHROMA_PERSIST_PATH
+        value: /app/chroma_db
+      - key: STORAGE_PATH
+        value: /app/storage
+      # Peristent disks (Render wipes the local FS on each deploy).
+      # NOTE: disks require a paid instance plan.
+      - key: JWT_SECRET_KEY
+        sync: false          # set once in the dashboard, never committed
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://synapse.vercel.app,http://localhost:5173,http://localhost:8000,http://127.0.0.1:8000   # first origin = your real Vercel domain
+      - key: CHROMA_TELEMETRY_OPTOUT
+        value: "true"
+    disks:
+      - name: chroma
+        mountPath: /app/chroma_db
+        sizeGB: 10
+      - name: storage
+        mountPath: /app/storage
+        sizeGB: 10
+
+databases:
+  - name: synapse-db
+    databaseName: synapse
+    plan: free
+    postgresMajorVersion: "16"

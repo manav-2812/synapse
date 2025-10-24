@@ -1,0 +1,44 @@
+# Local full-stack: Postgres + Synapse API (serves API + UI)
+# Usage:  docker compose up --build
+#        API+UI → http://localhost:8000   Postgres → localhost:5432
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: synapse
+      POSTGRES_PASSWORD: synapse
+      POSTGRES_DB: synapse
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synapse"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: development          # serves frontend from FastAPI (zero CORS)
+      DATABASE_URL: postgresql+asyncpg://synapse:synapse@db:5432/synapse
+      CHROMA_PERSIST_PATH: /app/chroma_db
+      STORAGE_PATH: /app/storage
+      ALLOWED_ORIGINS: http://localhost:8000
+      # --- fill these with real values (or use an env_file) ---
+      JWT_SECRET_KEY: change_me_in_production_at_least_32_chars
+      GROQ_API_KEY: ""
+      GEMINI_API_KEY: ""
+    volumes:
+      - ./backend/chroma_db:/app/chroma_db
+      - ./backend/storage:/app/storage
+
+volumes:
+  pgdata:

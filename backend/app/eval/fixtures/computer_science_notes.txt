@@ -1,0 +1,16 @@
+COMPUTER SCIENCE NOTES
+
+Big O Notation
+Big O notation describes the upper bound of an algorithm's running time or space as a function of input size. Common complexities are O(1), O(log n), O(n), O(n log n), and O(n^2).
+
+Binary Search
+Binary search finds a target in a sorted array by repeatedly halving the search interval. Its time complexity is O(log n). It requires the input to be sorted.
+
+Data Structures
+Arrays store elements contiguously and allow O(1) random access. Linked lists allow efficient insertion and deletion. Hash tables provide average O(1) lookup by key. Trees and graphs model hierarchical and networked relationships.
+
+Databases and SQL
+SQL stands for Structured Query Language. It is used to query and manipulate relational databases. A primary key uniquely identifies a row, and a join combines rows from two tables.
+
+Networking: TCP vs UDP
+TCP is connection-oriented and guarantees reliable, ordered delivery of packets. UDP is connectionless, faster, but does not guarantee delivery or order. TCP is used for web and email; UDP is used for streaming and games.

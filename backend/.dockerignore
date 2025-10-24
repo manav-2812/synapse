@@ -1,0 +1,26 @@
+# Mirrors the excludes the repo-root .dockerignore applies for a backend
+# build context (docker-compose sets `context: ./backend`, so paths here are
+# relative to backend/). Keeps the image free of venvs, local data, secrets,
+# and test/tooling cruft.
+
+# Python caches / venvs
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Local runtime data (mounted as volumes at runtime)
+chroma_db/
+storage/
+
+# Secrets & logs
+.env
+*.log
+
+# Tests / tooling (not needed at runtime)
+tests/
+scripts/
+.python-version

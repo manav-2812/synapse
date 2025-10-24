@@ -1,0 +1,18 @@
+{
+  "ci": {
+    "assert": {
+      "categories": {
+        "performance": ">=90",
+        "accessibility": ">=90",
+        "best-practices": ">=90",
+        "seo": ">=90"
+      }
+    }
+  },
+  "collect": {
+    "staticDistDir": "./dist"
+  },
+  "settings": {
+    "preset": "desktop"
+  }
+}
