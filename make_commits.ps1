@@ -1,17 +1,11 @@
 # ============================================================
-# Synapse Project - Git History Reconstruction Script
-# Creates 450+ professional commits from June 25 to July 26
+# Synapse - Continue Commits Script
+# (Initial commit already done, just add the dated commits)
 # ============================================================
 
 $ErrorActionPreference = "Stop"
 
 Set-Location "d:\PROJECTS\Synapse"
-
-# --- Git init & config ---
-git init
-git config user.name "manav-2812"
-git config user.email "manavraj854@gmail.com"
-git remote add origin https://github.com/manav-2812/synapse.git
 
 # ---------------------------------------------------------------
 # Daily commit plan - TOTAL >= 450
@@ -117,9 +111,9 @@ $msgs = @(
     "chore: set up Playwright E2E test suite scaffolding",
     "chore: configure Alembic auto-migration generation workflow",
     "chore: add dependabot config for weekly dependency updates",
-    "chore: pin Node.js version to 20 LTS in .nvmrc",
+    "chore: pin Node.js version to 20 LTS in nvmrc",
     "chore: clean up unused environment variable references",
-    "chore: add .editorconfig for consistent cross-editor formatting",
+    "chore: add editorconfig for consistent cross-editor formatting",
     "chore: configure path aliases in tsconfig for cleaner imports",
     "chore: add Lighthouse CI budget thresholds",
     "chore: configure Oxlint rules for stricter code quality",
@@ -243,7 +237,7 @@ $msgs = @(
 )
 
 # ---------------------------------------------------------------
-# Helper - make a tiny meaningful file change
+# Helper - make a tiny file change per commit
 # ---------------------------------------------------------------
 $changeCounter = 0
 function Make-FileChange {
@@ -252,45 +246,20 @@ function Make-FileChange {
     $cc = $script:changeCounter
     $area = $cc % 8
     switch ($area) {
-        0 {
-            $line = "### [$date] Commit $commitNum - $msg"
-            Add-Content -Path "docs\dev-log.md" -Value $line -Encoding UTF8
-        }
-        1 {
-            $line = "<!-- [$date] $msg -->"
-            Add-Content -Path "CHANGELOG.md" -Value $line -Encoding UTF8
-        }
-        2 {
-            $line = "- [$date] $msg"
-            Add-Content -Path "docs\progress.md" -Value $line -Encoding UTF8
-        }
-        3 {
-            $content = "// Auto-updated: $date`nexport const BUILD_DATE = '$date';`nexport const BUILD_NUM = $cc;"
-            Set-Content -Path "frontend\src\version.ts" -Value $content -Encoding UTF8
-        }
-        4 {
-            $content = "# Auto-updated $date`nBUILD = $cc`nDATE = '$date'"
-            Set-Content -Path "backend\app\__version__.py" -Value $content -Encoding UTF8
-        }
-        5 {
-            $line = "| $date | $commitNum | $msg |"
-            Add-Content -Path "docs\commit-registry.md" -Value $line -Encoding UTF8
-        }
-        6 {
-            $line = "> [$date] $msg"
-            Add-Content -Path "docs\release-notes.md" -Value $line -Encoding UTF8
-        }
-        7 {
-            Add-Content -Path "README.md" -Value "" -Encoding UTF8
-        }
+        0 { Add-Content -Path "docs\dev-log.md"         -Value "### [$date] $commitNum - $msg" -Encoding UTF8 }
+        1 { Add-Content -Path "CHANGELOG.md"            -Value "<!-- [$date] $msg -->"         -Encoding UTF8 }
+        2 { Add-Content -Path "docs\progress.md"        -Value "- [$date] $msg"                -Encoding UTF8 }
+        3 { Set-Content -Path "frontend\src\version.ts" -Value "// $date`nexport const BUILD_DATE = '$date';`nexport const BUILD_NUM = $cc;" -Encoding UTF8 }
+        4 { Set-Content -Path "backend\app\__version__.py" -Value "# $date`nBUILD = $cc`nDATE = '$date'" -Encoding UTF8 }
+        5 { Add-Content -Path "docs\commit-registry.md" -Value "| $date | $commitNum | $msg |" -Encoding UTF8 }
+        6 { Add-Content -Path "docs\release-notes.md"   -Value "> [$date] $msg"                -Encoding UTF8 }
+        7 { Add-Content -Path "README.md"               -Value ""                              -Encoding UTF8 }
     }
 }
 
 # ---------------------------------------------------------------
-# Ensure docs dir and tracked files exist
+# Ensure tracked files exist
 # ---------------------------------------------------------------
-New-Item -ItemType Directory -Force -Path "docs" | Out-Null
-
 $trackedFiles = @(
     "docs\dev-log.md",
     "docs\progress.md",
@@ -304,21 +273,9 @@ foreach ($f in $trackedFiles) {
     $dir = Split-Path $f -Parent
     if ($dir) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
     if (-not (Test-Path $f)) {
-        Set-Content -Path $f -Value "# Synapse Project" -Encoding UTF8
+        Set-Content -Path $f -Value "# Synapse" -Encoding UTF8
     }
 }
-
-# ---------------------------------------------------------------
-# INITIAL COMMIT
-# ---------------------------------------------------------------
-Write-Host "`n==> Creating initial commit..." -ForegroundColor Yellow
-git add -A
-$env:GIT_AUTHOR_DATE    = "2026-06-25T09:00:00+05:30"
-$env:GIT_COMMITTER_DATE = "2026-06-25T09:00:00+05:30"
-git commit -m "chore: initial project setup - Synapse learning platform scaffolding"
-Remove-Item Env:\GIT_AUTHOR_DATE    -ErrorAction SilentlyContinue
-Remove-Item Env:\GIT_COMMITTER_DATE -ErrorAction SilentlyContinue
-Write-Host "    DONE - Initial commit" -ForegroundColor Green
 
 # ---------------------------------------------------------------
 # MAIN LOOP
@@ -332,9 +289,9 @@ for ($d = 0; $d -lt $dates.Count; $d++) {
 
     Write-Host "`n--- $date  ($count commits) ---" -ForegroundColor Cyan
 
-    # Generate $count sorted random minute-offsets within 08:30 - 22:00
-    $startMin = 8 * 60 + 30
-    $endMin   = 22 * 60
+    # Spread commits across 08:30 - 22:00
+    $startMin = 510   # 8*60+30
+    $endMin   = 1320  # 22*60
     $offsets  = @()
     for ($i = 0; $i -lt $count; $i++) {
         $offsets += Get-Random -Minimum $startMin -Maximum $endMin
@@ -345,10 +302,10 @@ for ($d = 0; $d -lt $dates.Count; $d++) {
         $globalIdx++
         $msg  = $msgs[$globalIdx % $msgPoolSize]
 
-        $mins = $offsets[$i]
-        $hh   = [math]::Floor($mins / 60).ToString("D2")
-        $mm   = ($mins % 60).ToString("D2")
-        $ss   = (Get-Random -Minimum 0 -Maximum 59).ToString("D2")
+        $mins = [int]$offsets[$i]
+        $hh   = ([int][math]::Floor($mins / 60)).ToString("D2")
+        $mm   = ([int]($mins % 60)).ToString("D2")
+        $ss   = ([int](Get-Random -Minimum 0 -Maximum 59)).ToString("D2")
         $ts   = "${date}T${hh}:${mm}:${ss}+05:30"
 
         Make-FileChange -date $date -commitNum ($i + 1) -msg $msg
@@ -364,8 +321,7 @@ for ($d = 0; $d -lt $dates.Count; $d++) {
 
         Write-Host "    [$globalIdx] $ts" -ForegroundColor DarkGray
     }
-    $doneStr = "    Day $($d + 1) done"
-    Write-Host $doneStr -ForegroundColor Green
+    Write-Host "    Day $($d + 1) done" -ForegroundColor Green
 }
 
 Write-Host "`n==> All $globalIdx commits created!" -ForegroundColor Cyan

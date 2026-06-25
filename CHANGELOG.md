@@ -63,3 +63,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
   ingestion pipeline (PDF/DOCX/TXT), hand-rolled RAG chat, study tools
   (notes/quiz/flashcards), analytics, and Alembic migrations.
 - Vanilla-JS SPA (superseded by the React rebuild).
+<!-- [2026-06-25] feat(quiz): add adaptive difficulty scoring algorithm -->
