@@ -1,1 +1,2 @@
 ﻿# Synapse Project
+- [2026-06-25] feat(dashboard): introduce real-time progress analytics widget
