@@ -1,0 +1,114 @@
+name: CI
+
+# Runs on every push to main and every pull request targeting main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-tests:
+    name: Backend tests (Python 3.11 · PostgreSQL 16)
+    runs-on: ubuntu-latest
+
+    # Real PostgreSQL 16 service container — the suite runs against a live
+    # Postgres (not a mock), matching the documented test setup.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: synapse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/synapse
+      JWT_SECRET_KEY: ci_test_secret_key_at_least_32_chars_long_1234567890
+      APP_ENV: test
+      CHROMA_TELEMETRY_OPTOUT: "true"
+      TOKENIZERS_PARALLELISM: "false"
+      PYTHONUNBUFFERED: "1"
+      # Cache the embedding model (all-MiniLM-L6-v2) across runs.
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Cache Hugging Face models
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.cache/huggingface
+          key: hf-${{ runner.os }}-all-minilm-l6-v2
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Download the embedding model up front (validated, resumable) so the
+      # lazy load inside the tests can't fail mid-suite. Cached across runs.
+      - name: Pre-download embedding model (all-MiniLM-L6-v2)
+        run: |
+          python -c "from huggingface_hub import snapshot_download; snapshot_download('sentence-transformers/all-MiniLM-L6-v2')"
+
+      - name: Apply database migrations
+        run: alembic upgrade head
+
+      - name: Run pytest (strict — zero failures, zero warnings)
+        run: pytest -W error
+
+  frontend-tests:
+    name: Frontend tests · lint · build (Node 20)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit/component tests (Vitest)
+        run: npm test
+
+      - name: Lint (oxlint)
+        run: npm run lint
+
+      - name: Build (type-check + bundle)
+        run: npm run build

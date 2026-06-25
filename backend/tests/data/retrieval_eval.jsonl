@@ -1,0 +1,8 @@
+{"query": "What produces ATP in the cell?", "expected_chunk_ids": ["a", "g"], "distances": {"a": 0.1, "g": 0.15}}
+{"query": "Einstein photoelectric 1905", "expected_chunk_ids": ["b"], "distances": {"a": 0.2, "b": 0.9}}
+{"query": "Who introduced the quantum hypothesis and when?", "expected_chunk_ids": ["c"], "distances": {"c": 0.3}}
+{"query": "force mass acceleration", "expected_chunk_ids": ["h"], "distances": {"a": 0.3, "h": 0.85}}
+{"query": "What year did World War 2 end?", "expected_chunk_ids": ["j"], "distances": {"j": 0.4}}
+{"query": "boiling point of water", "expected_chunk_ids": ["d"], "document_scope": ["doc-chem"], "distances": {"d": 0.2, "e": 0.5}}
+{"query": "pythagorean theorem right triangle", "expected_chunk_ids": ["l"], "distances": {"a": 0.3, "l": 0.9}}
+{"query": "photosynthesis converts what into glucose?", "expected_chunk_ids": ["f"], "distances": {"f": 0.15}}

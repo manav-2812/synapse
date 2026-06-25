@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6a5ae6" />
+
+    <!-- Type system: system font stack (see --font-* tokens in index.css).
+         The premium webfonts (Inter / Sora / JetBrains Mono) were intentionally
+         dropped to remove a third-party runtime dependency on the Google Fonts
+         CDN. No external font request means zero console errors and full
+         resilience when the CDN is unreachable/blocked. To restore the custom
+         type, self-host the woff2 files under public/fonts/ and add local
+         @font-face rules — do NOT reintroduce the googleapis <link>, which
+         surfaces a console error whenever the CDN is blocked. -->
+    <title>Synapse — AI Study Assistant</title>
+    <meta
+      name="description"
+      content="Synapse turns your course notes and PDFs into a conversational study partner: chat with citations, generate quizzes, notes, and flashcards."
+    />
+    <link rel="canonical" href="https://synapse.vercel.app/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Synapse" />
+    <meta property="og:title" content="Synapse — AI Study Assistant" />
+    <meta
+      property="og:description"
+      content="Chat with your documents, and generate quizzes, notes, and flashcards — all with citations grounded in your files."
+    />
+    <meta property="og:image" content="/og-image.svg" />
+    <meta property="og:url" content="https://synapse.vercel.app/" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Synapse — AI Study Assistant" />
+    <meta
+      name="twitter:description"
+      content="Chat with your documents, and generate quizzes, notes, and flashcards."
+    />
+    <meta name="twitter:image" content="/og-image.svg" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Apply the saved/OS theme before first paint to avoid a flash. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("synapse_theme");
+          if (t !== "light" && t !== "dark") {
+            t = window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          }
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

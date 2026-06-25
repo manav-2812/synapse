@@ -1,0 +1,26 @@
+# --- Python / venv ---
+backend/.venv
+backend/venv
+**/__pycache__/
+**/*.pyc
+*.egg-info/
+
+# --- Local data (mounted as volumes at runtime) ---
+backend/chroma_db/
+backend/storage/
+chroma_db/
+storage/
+
+# --- Secrets & logs ---
+backend/.env
+**/*.log
+
+# --- VCS / meta ---
+.git/
+.github/
+.claude/
+
+# --- Frontend (deployed separately to Vercel) & docs ---
+frontend/
+docs/
+**/*.md

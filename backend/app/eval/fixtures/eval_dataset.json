@@ -1,0 +1,98 @@
+[
+  {
+    "id": "eval-phys-1",
+    "question": "What does Newton's second law of motion state?",
+    "expected_answer": "Force equals mass times acceleration (F = ma).",
+    "expected_documents": ["physics_notes.txt"]
+  },
+  {
+    "id": "eval-phys-2",
+    "question": "What is the law of conservation of energy?",
+    "expected_answer": "Energy cannot be created or destroyed, only transformed from one form to another.",
+    "expected_documents": ["physics_notes.txt"]
+  },
+  {
+    "id": "eval-phys-3",
+    "question": "What is the formula for kinetic energy?",
+    "expected_answer": "KE = 1/2 m v^2 (one half mass times velocity squared).",
+    "expected_documents": ["physics_notes.txt"]
+  },
+  {
+    "id": "eval-phys-4",
+    "question": "If the speed of a wave is constant and its frequency increases, what happens to its wavelength?",
+    "expected_answer": "The wavelength decreases (v = lambda * f).",
+    "expected_documents": ["physics_notes.txt"]
+  },
+  {
+    "id": "eval-bio-1",
+    "question": "Where does photosynthesis occur in plant cells?",
+    "expected_answer": "In the chloroplasts.",
+    "expected_documents": ["biology_notes.txt"]
+  },
+  {
+    "id": "eval-bio-2",
+    "question": "What is the structure of DNA?",
+    "expected_answer": "A double helix made of two nucleotide strands.",
+    "expected_documents": ["biology_notes.txt"]
+  },
+  {
+    "id": "eval-bio-3",
+    "question": "Which organelle is the powerhouse of the cell?",
+    "expected_answer": "The mitochondria.",
+    "expected_documents": ["biology_notes.txt"]
+  },
+  {
+    "id": "eval-bio-4",
+    "question": "What cellular process produces ATP?",
+    "expected_answer": "Cellular respiration, occurring mainly in the mitochondria.",
+    "expected_documents": ["biology_notes.txt"]
+  },
+  {
+    "id": "eval-hist-1",
+    "question": "In what year did World War I begin?",
+    "expected_answer": "1914.",
+    "expected_documents": ["world_history_notes.txt"]
+  },
+  {
+    "id": "eval-hist-2",
+    "question": "What event is considered the start of World War II in Europe?",
+    "expected_answer": "Germany's invasion of Poland in 1939.",
+    "expected_documents": ["world_history_notes.txt"]
+  },
+  {
+    "id": "eval-hist-3",
+    "question": "What were the main drivers of the Industrial Revolution?",
+    "expected_answer": "Mechanization, the steam engine, and the factory system.",
+    "expected_documents": ["world_history_notes.txt"]
+  },
+  {
+    "id": "eval-hist-4",
+    "question": "When did the Cold War end?",
+    "expected_answer": "In the early 1990s, with the dissolution of the Soviet Union in 1991.",
+    "expected_documents": ["world_history_notes.txt"]
+  },
+  {
+    "id": "eval-cs-1",
+    "question": "What is the time complexity of binary search?",
+    "expected_answer": "O(log n).",
+    "expected_documents": ["computer_science_notes.txt"]
+  },
+  {
+    "id": "eval-cs-2",
+    "question": "What does SQL stand for?",
+    "expected_answer": "Structured Query Language.",
+    "expected_documents": ["computer_science_notes.txt"]
+  },
+  {
+    "id": "eval-cs-3",
+    "question": "What is the difference between TCP and UDP?",
+    "expected_answer": "TCP is connection-oriented and reliable; UDP is connectionless and faster but unreliable.",
+    "expected_documents": ["computer_science_notes.txt"]
+  },
+  {
+    "id": "eval-cs-4",
+    "question": "What is Big O notation used for?",
+    "expected_answer": "Describing the upper bound of an algorithm's time or space complexity as input grows.",
+    "expected_documents": ["computer_science_notes.txt"]
+  }
+]

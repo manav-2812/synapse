@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test / coverage output
+test-results/
+.coverage
+htmlcov/
+
+# Local env (secrets)
+.env
+.env.local

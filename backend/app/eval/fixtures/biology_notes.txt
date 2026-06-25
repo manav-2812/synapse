@@ -1,0 +1,16 @@
+BIOLOGY NOTES
+
+Cell Structure
+The cell is the basic unit of life. The nucleus contains DNA and controls cell activity. Mitochondria are the powerhouse of the cell, producing ATP through cellular respiration. Chloroplasts are found in plant cells and carry out photosynthesis.
+
+Photosynthesis
+Photosynthesis occurs in the chloroplasts of plant cells. Plants convert light energy, water, and carbon dioxide into glucose and oxygen. The overall reaction is 6 CO2 + 6 H2O + light -> C6H12O6 + 6 O2.
+
+DNA
+DNA has a double helix structure made of two strands of nucleotides. It stores genetic information and is replicated before cell division. Genes are segments of DNA that code for proteins.
+
+Cellular Respiration
+Cellular respiration is the process that produces ATP by breaking down glucose in the presence of oxygen. It occurs mainly in the mitochondria and releases carbon dioxide and water as byproducts.
+
+Ecosystems
+Ecosystems consist of communities of organisms interacting with their physical environment. Energy flows from producers to consumers to decomposers.

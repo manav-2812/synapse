@@ -1,0 +1,60 @@
+# ============================================================
+# SYNAPSE RAG Study Assistant — pinned Python dependencies
+# ============================================================
+
+# --- Web framework ---
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12       # required for UploadFile / Form
+
+# --- Settings ---
+pydantic==2.10.3
+pydantic-settings==2.6.1
+email-validator==2.2.0             # required for pydantic EmailStr
+
+# --- Database (async) ---
+sqlalchemy==2.0.36
+asyncpg==0.30.0                # async PostgreSQL driver
+psycopg2-binary==2.9.12        # sync driver used by Alembic migrations
+alembic==1.14.0
+
+# --- Auth & security ---
+python-jose[cryptography]==3.3.0
+bcrypt==4.2.1
+
+# --- Rate limiting ---
+slowapi==0.1.9
+
+# --- LLM providers ---
+groq==0.12.0
+google-generativeai==0.8.3
+
+# --- Embeddings (local) ---
+sentence-transformers==3.3.1
+torch==2.6.0                   # CPU-only build is fine for embeddings
+
+# --- Vector store ---
+chromadb==0.6.3
+
+# --- Document processing ---
+pymupdf==1.25.1                # PDF text extraction (fitz)
+python-docx==1.1.2             # DOCX extraction
+pytesseract==0.3.13            # OCR for PNG/JPG
+Pillow==11.0.0                 # image preprocessing for pytesseract
+tiktoken==0.8.0                # token counting for chunking
+rank_bm25==0.2.2               # BM25 keyword index, blended with semantic search
+
+# --- Structured logging ---
+structlog==24.4.0
+python-json-logger==2.0.7      # fallback JSON logger
+
+# --- CORS / HTTP utils ---
+httpx==0.27.2                  # async HTTP client (used in tests and LLM fallback)
+
+# ============================================================
+# Development / testing (not needed in production image)
+# ============================================================
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+aiosqlite==0.20.0              # SQLite async driver for integration tests

@@ -1,0 +1,295 @@
+:root {
+  /* ----------------------------------------------------------------------
+     Synapse — premium design tokens
+     A calm, "intelligent" light canvas with a deep ink and a refined
+     violet→azure→cyan "aurora" accent that evokes synaptic signal flow.
+     Theme is driven by data-theme on <html> (set by useTheme + index.html).
+     ---------------------------------------------------------------------- */
+
+  /* Brand / accent (refined indigo-violet) */
+  --accent: #6a5ae6;
+  --accent-strong: #5848d6;
+  --accent-soft: #8073f0;
+  --accent-bg: rgba(106, 90, 230, 0.09);
+  --accent-border: rgba(106, 90, 230, 0.32);
+  --accent-glow: rgba(106, 90, 230, 0.28);
+  --on-accent: #ffffff;
+
+  /* Aurora signature (low-opacity living light — synapses firing) */
+  --aurora-1: #7c6ff0; /* violet */
+  --aurora-2: #4f8bff; /* azure  */
+  --aurora-3: #34d6e0; /* cyan   */
+  --aurora: radial-gradient(
+      42% 52% at 18% 12%,
+      color-mix(in srgb, var(--aurora-1) 55%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      40% 50% at 86% 8%,
+      color-mix(in srgb, var(--aurora-2) 50%, transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      54% 60% at 70% 96%,
+      color-mix(in srgb, var(--aurora-3) 42%, transparent) 0%,
+      transparent 64%
+    );
+  --aurora-intensity: 0.55;
+
+  /* Surfaces (cool, slightly blue to read as "clean tech") */
+  --bg: #f7f8fc;
+  --bg-soft: #eef0f7;
+  --surface: #ffffff;
+  --surface-2: #f3f4f9;
+  --surface-3: #eceef5;
+  --border: #e6e8f0;
+  --border-strong: #d6dae6;
+
+  /* Text */
+  --text: #565a69;
+  --text-h: #14151c;
+  --text-faint: #8b8f9e;
+
+  /* Status */
+  --ok: #16a34a;
+  --ok-bg: rgba(22, 163, 74, 0.12);
+  --warn: #c5861b;
+  --warn-bg: rgba(197, 134, 27, 0.13);
+  --danger: #e5484d;
+  --danger-bg: rgba(229, 72, 77, 0.12);
+  --info: #2d7ff0;
+  --info-bg: rgba(45, 127, 240, 0.12);
+
+  /* Radii */
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-card: 20px; /* premium 18–20px card corners */
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* Soft, layered, premium shadows */
+  --shadow-sm:
+    0 1px 2px rgba(20, 21, 28, 0.05), 0 1px 3px rgba(20, 21, 28, 0.06);
+  --shadow:
+    0 2px 6px rgba(20, 21, 28, 0.05), 0 10px 24px -10px rgba(20, 21, 28, 0.14);
+  --shadow-md:
+    0 4px 12px rgba(20, 21, 28, 0.06), 0 18px 40px -14px rgba(20, 21, 28, 0.18);
+  --shadow-lg:
+    0 8px 24px rgba(20, 21, 28, 0.08), 0 28px 60px -16px rgba(20, 21, 28, 0.2);
+  --shadow-xl:
+    0 12px 34px rgba(20, 21, 28, 0.1), 0 44px 90px -24px rgba(20, 21, 28, 0.26);
+  --inset-hairline: inset 0 0 0 1px rgba(20, 21, 28, 0.04);
+  /* Faint top inner highlight for glass/elevated surfaces */
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+  /* Motion — smooth, slightly springy, Apple/Linear feel */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --t-fast: 140ms;
+  --t-base: 240ms;
+  --t-slow: 460ms;
+
+  /* Type */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Sora", "Inter Tight", "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: 0.1px;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* ============================ DARK ============================ */
+/* Applies when OS prefers dark AND user hasn't forced light, or when the
+   toggle sets data-theme="dark". The toggle's attribute previously had no
+   effect because the sheet only listened to the OS media query. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent: #8b7bf0;
+    --accent-strong: #a594ff;
+    --accent-soft: #9d8ff5;
+    --accent-bg: rgba(139, 123, 240, 0.14);
+    --accent-border: rgba(139, 123, 240, 0.4);
+    --accent-glow: rgba(139, 123, 240, 0.35);
+    --on-accent: #ffffff;
+
+    --aurora-intensity: 0.7;
+
+    --bg: #0a0b0f;
+    --bg-soft: #0f1117;
+    --surface: #14161e;
+    --surface-2: #1a1d27;
+    --surface-3: #222633;
+    --border: #262a36;
+    --border-strong: #333847;
+
+    --text: #9aa0b0;
+    --text-h: #f2f3f7;
+    --text-faint: #7e859c;
+
+    --ok: #3fcf75;
+    --ok-bg: rgba(63, 207, 117, 0.14);
+    --warn: #f5b34a;
+    --warn-bg: rgba(245, 179, 74, 0.15);
+    --danger: #ff6b70;
+    --danger-bg: rgba(255, 107, 112, 0.16);
+    --info: #6fa8ff;
+    --info-bg: rgba(111, 168, 255, 0.16);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
+    --shadow:
+      0 2px 8px rgba(0, 0, 0, 0.45), 0 14px 30px -12px rgba(0, 0, 0, 0.65);
+    --shadow-md:
+      0 4px 14px rgba(0, 0, 0, 0.5), 0 20px 44px -14px rgba(0, 0, 0, 0.7);
+    --shadow-lg:
+      0 10px 30px rgba(0, 0, 0, 0.5), 0 30px 70px -18px rgba(0, 0, 0, 0.75);
+    --shadow-xl:
+      0 14px 40px rgba(0, 0, 0, 0.55), 0 48px 96px -24px rgba(0, 0, 0, 0.82);
+    --inset-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --accent: #8b7bf0;
+  --accent-strong: #a594ff;
+  --accent-soft: #9d8ff5;
+  --accent-bg: rgba(139, 123, 240, 0.14);
+  --accent-border: rgba(139, 123, 240, 0.4);
+  --accent-glow: rgba(139, 123, 240, 0.35);
+  --on-accent: #ffffff;
+
+  --aurora-intensity: 0.7;
+
+  --bg: #0a0b0f;
+  --bg-soft: #0f1117;
+  --surface: #14161e;
+  --surface-2: #1a1d27;
+  --surface-3: #222633;
+  --border: #262a36;
+  --border-strong: #333847;
+
+  --text: #9aa0b0;
+  --text-h: #f2f3f7;
+  --text-faint: #7e859c;
+
+  --ok: #3fcf75;
+  --ok-bg: rgba(63, 207, 117, 0.14);
+  --warn: #f5b34a;
+  --warn-bg: rgba(245, 179, 74, 0.15);
+  --danger: #ff6b70;
+  --danger-bg: rgba(255, 107, 112, 0.16);
+  --info: #6fa8ff;
+  --info-bg: rgba(111, 168, 255, 0.16);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow:
+    0 2px 8px rgba(0, 0, 0, 0.45), 0 14px 30px -12px rgba(0, 0, 0, 0.65);
+  --shadow-lg:
+    0 10px 30px rgba(0, 0, 0, 0.5), 0 30px 70px -18px rgba(0, 0, 0, 0.75);
+  --inset-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  color-scheme: dark;
+}
+
+/* Explicit light selection forces light even when the OS prefers dark. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--text);
+  /* faint vignette so the canvas feels composed, not flat */
+  background-image: radial-gradient(
+    120% 120% at 50% -10%,
+    color-mix(in srgb, var(--surface) 60%, var(--bg)) 0%,
+    var(--bg) 55%
+  );
+  background-attachment: fixed;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-h);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+h1 { font-size: 27px; letter-spacing: -0.03em; }
+h2 { font-size: 19px; }
+h3 { font-size: 16px; }
+h4 { font-size: 14px; }
+
+p { margin: 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-h);
+}
+
+button { font-family: inherit; }
+
+::selection {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+/* Thin, unobtrusive scrollbars tuned to the surface */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--text-faint); background-clip: content-box; }
