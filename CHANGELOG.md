@@ -65,3 +65,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 - Vanilla-JS SPA (superseded by the React rebuild).
 <!-- [2026-06-25] feat(quiz): add adaptive difficulty scoring algorithm -->
 <!-- [2026-06-26] feat(settings): add dark and light theme toggle with persistence -->
+<!-- [2026-06-26] feat(quiz): add image-based question type support -->
