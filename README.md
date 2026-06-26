@@ -947,3 +947,4 @@ Released under the [MIT License](LICENSE).
 - GitHub: [@manav-2812](https://github.com/manav-2812)
 - Repository: [github.com/manav-2812/Synapse](https://github.com/manav-2812/Synapse)
 
+
