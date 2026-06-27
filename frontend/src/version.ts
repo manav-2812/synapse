@@ -1,3 +1,3 @@
-﻿// 2026-06-26
-export const BUILD_DATE = '2026-06-26';
-export const BUILD_NUM = 19;
+﻿// 2026-06-27
+export const BUILD_DATE = '2026-06-27';
+export const BUILD_NUM = 27;
