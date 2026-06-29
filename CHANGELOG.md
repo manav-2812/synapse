@@ -69,3 +69,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-06-27] fix(auth): resolve token expiry race condition on concurrent requests -->
 <!-- [2026-06-28] fix(quiz): fix timer desync when browser tab loses focus -->
 <!-- [2026-06-28] fix(chat): resolve message deduplication on rapid fire sends -->
+<!-- [2026-06-29] refactor(frontend): replace class components with functional hooks -->
