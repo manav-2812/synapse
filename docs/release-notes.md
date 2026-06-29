@@ -5,3 +5,4 @@
 > [2026-06-28] fix(search): escape special characters in elastic query builder
 > [2026-06-28] fix(settings): persist theme preference across sessions correctly
 > [2026-06-28] refactor(quiz): decompose monolithic QuizEngine into smaller services
+> [2026-06-29] refactor(search): replace manual HTTP calls with SDK client
