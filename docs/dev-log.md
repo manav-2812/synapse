@@ -5,3 +5,4 @@
 ### [2026-06-28] 4 - fix(profile): resolve avatar URL not updating after upload
 ### [2026-06-28] 12 - fix(calendar): fix timezone conversion for scheduled sessions
 ### [2026-06-29] 2 - refactor(db): migrate raw SQL queries to SQLAlchemy ORM
+### [2026-06-29] 10 - refactor(quiz): move hint generation to server-side API call
