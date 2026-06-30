@@ -8,3 +8,4 @@
 | 2026-06-29 | 7 | refactor(payments): centralise Razorpay client instantiation |
 | 2026-06-30 | 4 | refactor(study-mode): convert review algorithm to pure function |
 | 2026-06-30 | 12 | chore: add Docker multi-stage build for production image |
+| 2026-06-30 | 20 | chore: add Lighthouse CI budget thresholds |
