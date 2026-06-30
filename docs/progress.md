@@ -6,3 +6,4 @@
 - [2026-06-28] fix(leaderboard): correct pagination offset for large datasets
 - [2026-06-28] fix(analytics): correct daily active user count calculation
 - [2026-06-29] refactor(styles): consolidate duplicate CSS variables into tokens
+- [2026-06-30] refactor(calendar): extract date utility functions to shared lib
