@@ -7,3 +7,4 @@
 > [2026-06-28] refactor(quiz): decompose monolithic QuizEngine into smaller services
 > [2026-06-29] refactor(search): replace manual HTTP calls with SDK client
 > [2026-06-30] refactor(badges): use observer pattern for badge event dispatch
+> [2026-06-30] chore: set up Playwright E2E test suite scaffolding
