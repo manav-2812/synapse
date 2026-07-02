@@ -11,3 +11,4 @@
 - [2026-06-30] chore: clean up unused environment variable references
 - [2026-07-01] docs: write API reference for quiz endpoints
 - [2026-07-02] test(auth): add unit tests for refresh token rotation service
+- [2026-07-02] test(study-mode): add property-based tests for review scheduler
