@@ -9,3 +9,4 @@
 ### [2026-06-30] 7 - refactor(settings): introduce settings context with reducer
 ### [2026-06-30] 15 - chore: add dependabot config for weekly dependency updates
 ### [2026-07-01] 3 - docs: add architecture decision record for auth strategy
+### [2026-07-02] 4 - docs: document database schema with ER diagram reference
