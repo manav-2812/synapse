@@ -12,3 +12,4 @@
 | 2026-07-02 | 1 | docs: add JSDoc comments to analytics utility functions |
 | 2026-07-02 | 9 | test(ui): add Playwright test for complete quiz submission flow |
 | 2026-07-03 | 1 | perf(frontend): lazy-load heavy chart components on dashboard |
+| 2026-07-03 | 9 | style(dashboard): improve card spacing and typographic hierarchy |
