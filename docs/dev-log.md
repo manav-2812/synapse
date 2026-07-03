@@ -11,3 +11,4 @@
 ### [2026-07-01] 3 - docs: add architecture decision record for auth strategy
 ### [2026-07-02] 4 - docs: document database schema with ER diagram reference
 ### [2026-07-02] 12 - test(notifications): add unit tests for push subscription handler
+### [2026-07-03] 4 - perf(images): convert avatar storage to WebP with lossy compression
