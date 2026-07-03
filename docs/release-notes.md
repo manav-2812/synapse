@@ -11,3 +11,4 @@
 > [2026-07-01] chore: configure Oxlint rules for stricter code quality
 > [2026-07-02] docs: create CHANGELOG entry for v1.2.0 milestone
 > [2026-07-02] test(search): add unit tests for query sanitisation function
+> [2026-07-03] perf(db): add composite index on user_progress table
