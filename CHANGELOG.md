@@ -76,3 +76,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-01] docs: update README with local development setup steps -->
 <!-- [2026-07-02] docs: add security policy and responsible disclosure guide -->
 <!-- [2026-07-02] test(analytics): add tests for DAU aggregation correctness -->
+<!-- [2026-07-03] perf(quiz): preload next question assets during answer animation -->
