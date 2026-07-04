@@ -12,3 +12,4 @@
 ### [2026-07-02] 4 - docs: document database schema with ER diagram reference
 ### [2026-07-02] 12 - test(notifications): add unit tests for push subscription handler
 ### [2026-07-03] 4 - perf(images): convert avatar storage to WebP with lossy compression
+### [2026-07-04] 3 - style(mobile): adjust touch target sizes to meet WCAG AA
