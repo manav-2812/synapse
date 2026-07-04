@@ -13,3 +13,4 @@
 > [2026-07-02] test(search): add unit tests for query sanitisation function
 > [2026-07-03] perf(db): add composite index on user_progress table
 > [2026-07-04] style(auth): polish login form error state animations
+> [2026-07-04] ci: add coverage report upload step to CI pipeline
