@@ -78,3 +78,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-02] test(analytics): add tests for DAU aggregation correctness -->
 <!-- [2026-07-03] perf(quiz): preload next question assets during answer animation -->
 <!-- [2026-07-04] style(chat): improve message bubble contrast ratios -->
+<!-- [2026-07-04] ci: configure Slack notifications for failed CI runs -->
