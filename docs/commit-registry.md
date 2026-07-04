@@ -14,3 +14,4 @@
 | 2026-07-03 | 1 | perf(frontend): lazy-load heavy chart components on dashboard |
 | 2026-07-03 | 9 | style(dashboard): improve card spacing and typographic hierarchy |
 | 2026-07-04 | 8 | ci: configure environment-specific secrets in GitHub Actions |
+| 2026-07-04 | 16 | feat(notifications): implement digest email for weekly summary |
