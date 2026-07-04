@@ -14,3 +14,4 @@
 > [2026-07-03] perf(db): add composite index on user_progress table
 > [2026-07-04] style(auth): polish login form error state animations
 > [2026-07-04] ci: add coverage report upload step to CI pipeline
+> [2026-07-04] fix(quiz): prevent double-submission on slow network connections
