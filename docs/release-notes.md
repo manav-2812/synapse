@@ -15,3 +15,4 @@
 > [2026-07-04] style(auth): polish login form error state animations
 > [2026-07-04] ci: add coverage report upload step to CI pipeline
 > [2026-07-04] fix(quiz): prevent double-submission on slow network connections
+> [2026-07-05] feat(profile): add social links section to user profile page
