@@ -16,3 +16,4 @@
 | 2026-07-04 | 8 | ci: configure environment-specific secrets in GitHub Actions |
 | 2026-07-04 | 16 | feat(notifications): implement digest email for weekly summary |
 | 2026-07-05 | 2 | perf(api): paginate notification list endpoint results |
+| 2026-07-05 | 10 | test(auth): add E2E test for password reset complete flow |
