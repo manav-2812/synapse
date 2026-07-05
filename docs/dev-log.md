@@ -16,3 +16,4 @@
 ### [2026-07-04] 11 - ci: add smoke tests to production deployment gate
 ### [2026-07-04] 19 - fix(api): return 409 conflict on duplicate enrollment requests
 ### [2026-07-05] 5 - refactor(quiz): centralise time formatting utilities
+### [2026-07-05] 13 - fix(calendar): handle DST boundary correctly in reminder scheduler
