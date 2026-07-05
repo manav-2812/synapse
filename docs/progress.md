@@ -16,3 +16,4 @@
 - [2026-07-04] style(profile): align avatar and display name in header
 - [2026-07-04] ci: add database migration check step before deployment
 - [2026-07-04] chore: update ESLint to v9 with flat config migration
+- [2026-07-05] fix(leaderboard): prevent negative score display edge case
