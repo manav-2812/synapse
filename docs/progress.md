@@ -17,3 +17,4 @@
 - [2026-07-04] ci: add database migration check step before deployment
 - [2026-07-04] chore: update ESLint to v9 with flat config migration
 - [2026-07-05] fix(leaderboard): prevent negative score display edge case
+- [2026-07-06] chore: migrate jest config to vitest for frontend unit tests
