@@ -19,3 +19,4 @@
 | 2026-07-05 | 10 | test(auth): add E2E test for password reset complete flow |
 | 2026-07-06 | 5 | feat(export): add CSV export for individual quiz attempt data |
 | 2026-07-07 | 8 | feat(badges): add animated confetti on new badge unlock |
+| 2026-07-07 | 16 | perf(frontend): memoize expensive derived state in quiz context |
