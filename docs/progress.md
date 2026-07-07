@@ -19,3 +19,4 @@
 - [2026-07-05] fix(leaderboard): prevent negative score display edge case
 - [2026-07-06] chore: migrate jest config to vitest for frontend unit tests
 - [2026-07-07] chore: remove lodash and use native array methods instead
+- [2026-07-07] chore: upgrade TypeScript to v5.5 and fix new strict errors
