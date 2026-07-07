@@ -83,3 +83,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-05] feat(onboarding): add skill self-assessment quiz at signup -->
 <!-- [2026-07-06] refactor(frontend): migrate Axios instance to Fetch API wrapper -->
 <!-- [2026-07-07] fix(dashboard): handle missing data gracefully in progress chart -->
+<!-- [2026-07-07] fix(auth): invalidate all sessions on password change -->
