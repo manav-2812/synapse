@@ -18,3 +18,4 @@
 ### [2026-07-05] 5 - refactor(quiz): centralise time formatting utilities
 ### [2026-07-05] 13 - fix(calendar): handle DST boundary correctly in reminder scheduler
 ### [2026-07-07] 3 - feat(course): add estimated completion time to course cards
+### [2026-07-07] 11 - feat(search): add typeahead suggestions for quiz search bar
