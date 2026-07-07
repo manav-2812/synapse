@@ -17,3 +17,4 @@
 > [2026-07-04] fix(quiz): prevent double-submission on slow network connections
 > [2026-07-05] feat(profile): add social links section to user profile page
 > [2026-07-05] perf(db): enable connection pooling in SQLAlchemy engine config
+> [2026-07-07] fix(profile): trim whitespace from display name before save
