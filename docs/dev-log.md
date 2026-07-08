@@ -20,3 +20,4 @@
 ### [2026-07-07] 3 - feat(course): add estimated completion time to course cards
 ### [2026-07-07] 11 - feat(search): add typeahead suggestions for quiz search bar
 ### [2026-07-07] 19 - refactor(study-mode): decouple card renderer from review engine
+### [2026-07-08] 8 - refactor(payments): move webhook handler to dedicated module
