@@ -21,3 +21,4 @@
 - [2026-07-07] chore: remove lodash and use native array methods instead
 - [2026-07-07] chore: upgrade TypeScript to v5.5 and fix new strict errors
 - [2026-07-08] fix(analytics): fix week boundary calculation for weekly report
+- [2026-07-08] fix(settings): reset to defaults clears persisted storage correctly
