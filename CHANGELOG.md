@@ -85,3 +85,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-07] fix(dashboard): handle missing data gracefully in progress chart -->
 <!-- [2026-07-07] fix(auth): invalidate all sessions on password change -->
 <!-- [2026-07-08] feat(calendar): allow recurring study session scheduling -->
+<!-- [2026-07-08] feat(quiz): add bookmark feature to save questions for review -->
