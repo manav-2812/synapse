@@ -22,3 +22,4 @@
 - [2026-07-07] chore: upgrade TypeScript to v5.5 and fix new strict errors
 - [2026-07-08] fix(analytics): fix week boundary calculation for weekly report
 - [2026-07-08] fix(settings): reset to defaults clears persisted storage correctly
+- [2026-07-09] fix(onboarding): allow navigating back without losing form data
