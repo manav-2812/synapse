@@ -23,3 +23,4 @@
 | 2026-07-08 | 5 | test(study-mode): add regression test for interval recalculation |
 | 2026-07-09 | 3 | test(leaderboard): verify rank stability on equal score tie |
 | 2026-07-09 | 11 | test(auth): add token blacklist enforcement integration test |
+| 2026-07-09 | 19 | feat(quiz): add adaptive difficulty scoring algorithm |
