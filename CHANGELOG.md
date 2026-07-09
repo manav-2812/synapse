@@ -87,3 +87,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-08] feat(calendar): allow recurring study session scheduling -->
 <!-- [2026-07-08] feat(quiz): add bookmark feature to save questions for review -->
 <!-- [2026-07-09] feat(auth): add Google OAuth2 social login integration -->
+<!-- [2026-07-09] refactor(quiz): move question factory to dedicated builder class -->
