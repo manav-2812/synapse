@@ -22,3 +22,4 @@
 > [2026-07-07] feat(leaderboard): add all-time ranking tab alongside weekly
 > [2026-07-08] feat(notifications): add in-app notification bell with badge count
 > [2026-07-09] feat(dashboard): add quick-start card for incomplete courses
+> [2026-07-09] perf(search): add search result index with ElasticSearch mapping
