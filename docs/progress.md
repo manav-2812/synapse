@@ -24,3 +24,4 @@
 - [2026-07-08] fix(settings): reset to defaults clears persisted storage correctly
 - [2026-07-09] fix(onboarding): allow navigating back without losing form data
 - [2026-07-09] feat(profile): display earned certificates on public profile
+- [2026-07-09] feat(leaderboard): add weekly ranking reset mechanism
