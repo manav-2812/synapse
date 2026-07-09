@@ -21,3 +21,4 @@
 ### [2026-07-07] 11 - feat(search): add typeahead suggestions for quiz search bar
 ### [2026-07-07] 19 - refactor(study-mode): decouple card renderer from review engine
 ### [2026-07-08] 8 - refactor(payments): move webhook handler to dedicated module
+### [2026-07-09] 6 - refactor(analytics): extract metric definitions to config file
