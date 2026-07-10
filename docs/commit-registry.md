@@ -25,3 +25,4 @@
 | 2026-07-09 | 11 | test(auth): add token blacklist enforcement integration test |
 | 2026-07-09 | 19 | feat(quiz): add adaptive difficulty scoring algorithm |
 | 2026-07-10 | 3 | feat(settings): add dark and light theme toggle with persistence |
+| 2026-07-10 | 11 | feat(quiz): add image-based question type support |
