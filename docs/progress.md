@@ -25,3 +25,4 @@
 - [2026-07-09] fix(onboarding): allow navigating back without losing form data
 - [2026-07-09] feat(profile): display earned certificates on public profile
 - [2026-07-09] feat(leaderboard): add weekly ranking reset mechanism
+- [2026-07-10] feat(study-mode): add spaced-repetition card review mode
