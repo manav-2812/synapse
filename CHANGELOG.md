@@ -89,3 +89,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-09] feat(auth): add Google OAuth2 social login integration -->
 <!-- [2026-07-09] refactor(quiz): move question factory to dedicated builder class -->
 <!-- [2026-07-09] feat(search): implement full-text semantic search with embeddings -->
+<!-- [2026-07-10] feat(export): allow users to export quiz results as PDF -->
