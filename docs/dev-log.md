@@ -24,3 +24,4 @@
 ### [2026-07-09] 6 - refactor(analytics): extract metric definitions to config file
 ### [2026-07-09] 14 - fix(api): sanitise HTML in user-supplied text fields
 ### [2026-07-09] 22 - feat(notifications): add push notification subscription flow
+### [2026-07-10] 6 - feat(payments): integrate Razorpay subscription checkout flow
