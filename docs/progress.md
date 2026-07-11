@@ -26,3 +26,4 @@
 - [2026-07-09] feat(profile): display earned certificates on public profile
 - [2026-07-09] feat(leaderboard): add weekly ranking reset mechanism
 - [2026-07-10] feat(study-mode): add spaced-repetition card review mode
+- [2026-07-11] feat(accessibility): add keyboard navigation across quiz flow
