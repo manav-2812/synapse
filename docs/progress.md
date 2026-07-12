@@ -27,3 +27,4 @@
 - [2026-07-09] feat(leaderboard): add weekly ranking reset mechanism
 - [2026-07-10] feat(study-mode): add spaced-repetition card review mode
 - [2026-07-11] feat(accessibility): add keyboard navigation across quiz flow
+- [2026-07-12] fix(search): escape special characters in elastic query builder
