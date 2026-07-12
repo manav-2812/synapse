@@ -26,3 +26,4 @@
 ### [2026-07-09] 22 - feat(notifications): add push notification subscription flow
 ### [2026-07-10] 6 - feat(payments): integrate Razorpay subscription checkout flow
 ### [2026-07-10] 14 - feat(badges): implement achievement badge unlocking system
+### [2026-07-12] 4 - fix(api): handle null course ID in enrollment endpoint gracefully
