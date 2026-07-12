@@ -28,3 +28,4 @@
 > [2026-07-10] feat(course): introduce prerequisite course locking logic
 > [2026-07-12] fix(quiz): correct score calculation for partial-credit answers
 > [2026-07-12] fix(leaderboard): correct pagination offset for large datasets
+> [2026-07-12] fix(analytics): correct daily active user count calculation
