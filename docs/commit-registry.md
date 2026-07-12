@@ -28,3 +28,4 @@
 | 2026-07-10 | 11 | feat(quiz): add image-based question type support |
 | 2026-07-12 | 1 | fix(auth): resolve token expiry race condition on concurrent requests |
 | 2026-07-12 | 9 | fix(quiz): fix timer desync when browser tab loses focus |
+| 2026-07-12 | 17 | fix(chat): resolve message deduplication on rapid fire sends |
