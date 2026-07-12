@@ -92,3 +92,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-10] feat(export): allow users to export quiz results as PDF -->
 <!-- [2026-07-10] feat(review): add post-quiz detailed answer explanation view -->
 <!-- [2026-07-12] fix(db): fix N+1 query in user progress aggregation -->
+<!-- [2026-07-12] fix(export): fix PDF encoding issue with special unicode characters -->
