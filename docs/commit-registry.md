@@ -26,3 +26,4 @@
 | 2026-07-09 | 19 | feat(quiz): add adaptive difficulty scoring algorithm |
 | 2026-07-10 | 3 | feat(settings): add dark and light theme toggle with persistence |
 | 2026-07-10 | 11 | feat(quiz): add image-based question type support |
+| 2026-07-12 | 1 | fix(auth): resolve token expiry race condition on concurrent requests |
