@@ -28,3 +28,4 @@
 ### [2026-07-10] 14 - feat(badges): implement achievement badge unlocking system
 ### [2026-07-12] 4 - fix(api): handle null course ID in enrollment endpoint gracefully
 ### [2026-07-12] 12 - fix(payments): handle webhook signature mismatch for retried events
+### [2026-07-12] 20 - fix(badges): ensure badge unlock fires only once per achievement
