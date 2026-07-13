@@ -29,3 +29,4 @@
 | 2026-07-12 | 1 | fix(auth): resolve token expiry race condition on concurrent requests |
 | 2026-07-12 | 9 | fix(quiz): fix timer desync when browser tab loses focus |
 | 2026-07-12 | 17 | fix(chat): resolve message deduplication on rapid fire sends |
+| 2026-07-13 | 4 | refactor(frontend): replace class components with functional hooks |
