@@ -94,3 +94,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-12] fix(db): fix N+1 query in user progress aggregation -->
 <!-- [2026-07-12] fix(export): fix PDF encoding issue with special unicode characters -->
 <!-- [2026-07-12] refactor(auth): extract token service into dedicated module -->
+<!-- [2026-07-13] refactor(payments): centralise Razorpay client instantiation -->
