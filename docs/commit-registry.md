@@ -31,3 +31,4 @@
 | 2026-07-12 | 17 | fix(chat): resolve message deduplication on rapid fire sends |
 | 2026-07-13 | 4 | refactor(frontend): replace class components with functional hooks |
 | 2026-07-13 | 12 | refactor(leaderboard): switch from polling to WebSocket updates |
+| 2026-07-14 | 8 | chore: upgrade Vite to v5.4 and resolve breaking config changes |
