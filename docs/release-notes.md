@@ -31,3 +31,4 @@
 > [2026-07-12] fix(analytics): correct daily active user count calculation
 > [2026-07-13] refactor(styles): consolidate duplicate CSS variables into tokens
 > [2026-07-14] refactor(calendar): extract date utility functions to shared lib
+> [2026-07-14] chore: bump FastAPI to 0.111 with dependency updates
