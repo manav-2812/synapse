@@ -31,3 +31,4 @@
 ### [2026-07-12] 20 - fix(badges): ensure badge unlock fires only once per achievement
 ### [2026-07-13] 7 - refactor(analytics): move aggregation logic to background worker
 ### [2026-07-14] 3 - refactor(course): separate course model from enrollment model
+### [2026-07-14] 11 - chore: configure GitHub Actions CI for pull request checks
