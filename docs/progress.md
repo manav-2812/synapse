@@ -33,3 +33,4 @@
 - [2026-07-13] refactor(search): replace manual HTTP calls with SDK client
 - [2026-07-14] refactor(badges): use observer pattern for badge event dispatch
 - [2026-07-14] chore: set up Playwright E2E test suite scaffolding
+- [2026-07-15] chore: configure Oxlint rules for stricter code quality
