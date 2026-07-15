@@ -33,3 +33,4 @@
 ### [2026-07-14] 3 - refactor(course): separate course model from enrollment model
 ### [2026-07-14] 11 - chore: configure GitHub Actions CI for pull request checks
 ### [2026-07-15] 2 - chore: configure path aliases in tsconfig for cleaner imports
+### [2026-07-15] 10 - docs: document environment variable requirements in env example
