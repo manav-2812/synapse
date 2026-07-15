@@ -97,3 +97,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-13] refactor(payments): centralise Razorpay client instantiation -->
 <!-- [2026-07-14] refactor(study-mode): convert review algorithm to pure function -->
 <!-- [2026-07-14] chore: add Docker multi-stage build for production image -->
+<!-- [2026-07-15] chore: add Lighthouse CI budget thresholds -->
