@@ -35,3 +35,4 @@
 | 2026-07-14 | 16 | chore: pin Node.js version to 20 LTS in nvmrc |
 | 2026-07-15 | 7 | docs: update README with local development setup steps |
 | 2026-07-15 | 15 | docs: add security policy and responsible disclosure guide |
+| 2026-07-15 | 23 | test(analytics): add tests for DAU aggregation correctness |
