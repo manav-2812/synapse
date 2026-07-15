@@ -34,3 +34,4 @@
 ### [2026-07-14] 11 - chore: configure GitHub Actions CI for pull request checks
 ### [2026-07-15] 2 - chore: configure path aliases in tsconfig for cleaner imports
 ### [2026-07-15] 10 - docs: document environment variable requirements in env example
+### [2026-07-15] 18 - test(api): write contract tests for enrollment API responses
