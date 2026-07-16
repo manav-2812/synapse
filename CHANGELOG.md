@@ -100,3 +100,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-15] chore: add Lighthouse CI budget thresholds -->
 <!-- [2026-07-15] docs: add JSDoc comments to analytics utility functions -->
 <!-- [2026-07-15] test(ui): add Playwright test for complete quiz submission flow -->
+<!-- [2026-07-16] perf(frontend): lazy-load heavy chart components on dashboard -->
