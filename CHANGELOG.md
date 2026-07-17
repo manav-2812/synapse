@@ -102,3 +102,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-15] test(ui): add Playwright test for complete quiz submission flow -->
 <!-- [2026-07-16] perf(frontend): lazy-load heavy chart components on dashboard -->
 <!-- [2026-07-17] style(dashboard): improve card spacing and typographic hierarchy -->
+<!-- [2026-07-17] ci: configure environment-specific secrets in GitHub Actions -->
