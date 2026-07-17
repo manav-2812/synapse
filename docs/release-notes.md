@@ -38,3 +38,4 @@
 > [2026-07-15] test(study-mode): add property-based tests for review scheduler
 > [2026-07-17] perf(chat): virtualise message list for large chat histories
 > [2026-07-17] style(profile): align avatar and display name in header
+> [2026-07-17] ci: add database migration check step before deployment
