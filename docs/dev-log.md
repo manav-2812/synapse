@@ -37,3 +37,4 @@
 ### [2026-07-15] 18 - test(api): write contract tests for enrollment API responses
 ### [2026-07-16] 1 - perf(api): add Redis caching layer for course catalog endpoint
 ### [2026-07-17] 7 - style(quiz): standardise button border-radius across question types
+### [2026-07-17] 15 - ci: add staging deployment workflow on merge to develop branch
