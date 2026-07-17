@@ -36,3 +36,4 @@
 > [2026-07-15] docs: write API reference for quiz endpoints
 > [2026-07-15] test(auth): add unit tests for refresh token rotation service
 > [2026-07-15] test(study-mode): add property-based tests for review scheduler
+> [2026-07-17] perf(chat): virtualise message list for large chat histories
