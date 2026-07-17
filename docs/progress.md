@@ -37,3 +37,4 @@
 - [2026-07-15] docs: create CHANGELOG entry for v1.2.0 milestone
 - [2026-07-15] test(search): add unit tests for query sanitisation function
 - [2026-07-17] perf(db): add composite index on user_progress table
+- [2026-07-17] style(auth): polish login form error state animations
