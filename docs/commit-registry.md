@@ -37,3 +37,4 @@
 | 2026-07-15 | 15 | docs: add security policy and responsible disclosure guide |
 | 2026-07-15 | 23 | test(analytics): add tests for DAU aggregation correctness |
 | 2026-07-17 | 4 | perf(quiz): preload next question assets during answer animation |
+| 2026-07-17 | 12 | style(chat): improve message bubble contrast ratios |
