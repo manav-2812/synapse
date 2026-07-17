@@ -36,3 +36,4 @@
 | 2026-07-15 | 7 | docs: update README with local development setup steps |
 | 2026-07-15 | 15 | docs: add security policy and responsible disclosure guide |
 | 2026-07-15 | 23 | test(analytics): add tests for DAU aggregation correctness |
+| 2026-07-17 | 4 | perf(quiz): preload next question assets during answer animation |
