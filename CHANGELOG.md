@@ -106,3 +106,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-18] feat(notifications): implement digest email for weekly summary -->
 <!-- [2026-07-19] perf(api): paginate notification list endpoint results -->
 <!-- [2026-07-19] test(auth): add E2E test for password reset complete flow -->
+<!-- [2026-07-19] feat(export): add CSV export for individual quiz attempt data -->
