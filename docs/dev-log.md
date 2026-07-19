@@ -39,3 +39,4 @@
 ### [2026-07-17] 7 - style(quiz): standardise button border-radius across question types
 ### [2026-07-17] 15 - ci: add staging deployment workflow on merge to develop branch
 ### [2026-07-17] 23 - feat(analytics): add cohort retention chart to admin panel
+### [2026-07-19] 4 - test(e2e): add accessibility audit step to Playwright suite
