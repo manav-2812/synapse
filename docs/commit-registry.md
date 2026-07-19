@@ -42,3 +42,4 @@
 | 2026-07-19 | 1 | refactor(db): normalise course_tags into separate junction table |
 | 2026-07-19 | 9 | feat(onboarding): add skill self-assessment quiz at signup |
 | 2026-07-19 | 17 | refactor(frontend): migrate Axios instance to Fetch API wrapper |
+| 2026-07-19 | 25 | fix(dashboard): handle missing data gracefully in progress chart |
