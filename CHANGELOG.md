@@ -104,3 +104,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-17] style(dashboard): improve card spacing and typographic hierarchy -->
 <!-- [2026-07-17] ci: configure environment-specific secrets in GitHub Actions -->
 <!-- [2026-07-18] feat(notifications): implement digest email for weekly summary -->
+<!-- [2026-07-19] perf(api): paginate notification list endpoint results -->
