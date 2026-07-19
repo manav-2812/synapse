@@ -39,3 +39,4 @@
 | 2026-07-17 | 4 | perf(quiz): preload next question assets during answer animation |
 | 2026-07-17 | 12 | style(chat): improve message bubble contrast ratios |
 | 2026-07-17 | 20 | ci: configure Slack notifications for failed CI runs |
+| 2026-07-19 | 1 | refactor(db): normalise course_tags into separate junction table |
