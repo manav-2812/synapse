@@ -44,3 +44,4 @@
 - [2026-07-19] perf(db): enable connection pooling in SQLAlchemy engine config
 - [2026-07-19] fix(profile): trim whitespace from display name before save
 - [2026-07-20] fix(mobile): restore scroll position after back navigation
+- [2026-07-20] feat(leaderboard): add all-time ranking tab alongside weekly
