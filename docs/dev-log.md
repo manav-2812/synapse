@@ -42,3 +42,4 @@
 ### [2026-07-19] 4 - test(e2e): add accessibility audit step to Playwright suite
 ### [2026-07-19] 12 - docs: document retry logic in async task worker module
 ### [2026-07-19] 20 - test(quiz): add snapshot tests for score summary component
+### [2026-07-20] 2 - test(api): add load test baseline with Locust script
