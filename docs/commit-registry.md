@@ -45,3 +45,4 @@
 | 2026-07-19 | 25 | fix(dashboard): handle missing data gracefully in progress chart |
 | 2026-07-20 | 7 | fix(auth): invalidate all sessions on password change |
 | 2026-07-20 | 15 | feat(calendar): allow recurring study session scheduling |
+| 2026-07-20 | 23 | feat(quiz): add bookmark feature to save questions for review |
