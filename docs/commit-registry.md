@@ -43,3 +43,4 @@
 | 2026-07-19 | 9 | feat(onboarding): add skill self-assessment quiz at signup |
 | 2026-07-19 | 17 | refactor(frontend): migrate Axios instance to Fetch API wrapper |
 | 2026-07-19 | 25 | fix(dashboard): handle missing data gracefully in progress chart |
+| 2026-07-20 | 7 | fix(auth): invalidate all sessions on password change |
