@@ -46,3 +46,4 @@
 - [2026-07-20] fix(mobile): restore scroll position after back navigation
 - [2026-07-20] feat(leaderboard): add all-time ranking tab alongside weekly
 - [2026-07-20] feat(notifications): add in-app notification bell with badge count
+- [2026-07-20] feat(dashboard): add quick-start card for incomplete courses
