@@ -44,3 +44,4 @@
 > [2026-07-19] chore: migrate jest config to vitest for frontend unit tests
 > [2026-07-19] chore: remove lodash and use native array methods instead
 > [2026-07-20] chore: upgrade TypeScript to v5.5 and fix new strict errors
+> [2026-07-20] fix(analytics): fix week boundary calculation for weekly report
