@@ -109,3 +109,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-19] feat(export): add CSV export for individual quiz attempt data -->
 <!-- [2026-07-20] feat(badges): add animated confetti on new badge unlock -->
 <!-- [2026-07-20] perf(frontend): memoize expensive derived state in quiz context -->
+<!-- [2026-07-20] test(study-mode): add regression test for interval recalculation -->
