@@ -45,3 +45,4 @@
 ### [2026-07-20] 2 - test(api): add load test baseline with Locust script
 ### [2026-07-20] 10 - test(ui): add visual regression baseline for dashboard layout
 ### [2026-07-20] 18 - docs: update CONTRIBUTING with commit message convention guide
+### [2026-07-20] 26 - docs: write API versioning strategy decision record
