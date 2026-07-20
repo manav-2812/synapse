@@ -43,3 +43,4 @@
 ### [2026-07-19] 12 - docs: document retry logic in async task worker module
 ### [2026-07-19] 20 - test(quiz): add snapshot tests for score summary component
 ### [2026-07-20] 2 - test(api): add load test baseline with Locust script
+### [2026-07-20] 10 - test(ui): add visual regression baseline for dashboard layout
