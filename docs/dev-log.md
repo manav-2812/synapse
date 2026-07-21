@@ -47,3 +47,4 @@
 ### [2026-07-20] 18 - docs: update CONTRIBUTING with commit message convention guide
 ### [2026-07-20] 26 - docs: write API versioning strategy decision record
 ### [2026-07-21] 6 - docs: document environment setup for Apple Silicon developers
+### [2026-07-21] 14 - feat(auth): implement JWT refresh token rotation logic
