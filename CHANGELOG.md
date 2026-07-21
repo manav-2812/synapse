@@ -111,3 +111,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-20] perf(frontend): memoize expensive derived state in quiz context -->
 <!-- [2026-07-20] test(study-mode): add regression test for interval recalculation -->
 <!-- [2026-07-20] test(leaderboard): verify rank stability on equal score tie -->
+<!-- [2026-07-21] test(auth): add token blacklist enforcement integration test -->
