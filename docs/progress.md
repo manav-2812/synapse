@@ -48,3 +48,4 @@
 - [2026-07-20] feat(notifications): add in-app notification bell with badge count
 - [2026-07-20] feat(dashboard): add quick-start card for incomplete courses
 - [2026-07-21] perf(search): add search result index with ElasticSearch mapping
+- [2026-07-21] feat(dashboard): introduce real-time progress analytics widget
