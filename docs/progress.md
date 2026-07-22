@@ -52,3 +52,4 @@
 - [2026-07-22] feat(onboarding): create multi-step user onboarding wizard
 - [2026-07-22] feat(course): introduce prerequisite course locking logic
 - [2026-07-22] fix(quiz): correct score calculation for partial-credit answers
+- [2026-07-22] fix(leaderboard): correct pagination offset for large datasets
