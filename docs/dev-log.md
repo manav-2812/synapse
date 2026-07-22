@@ -50,3 +50,4 @@
 ### [2026-07-21] 14 - feat(auth): implement JWT refresh token rotation logic
 ### [2026-07-22] 4 - feat(quiz): implement streak-based XP multiplier system
 ### [2026-07-22] 12 - feat(analytics): track learning time per topic with heatmap
+### [2026-07-22] 20 - feat(sharing): add shareable quiz score card with OG image
