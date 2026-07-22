@@ -48,3 +48,4 @@
 | 2026-07-20 | 23 | feat(quiz): add bookmark feature to save questions for review |
 | 2026-07-21 | 3 | feat(auth): add Google OAuth2 social login integration |
 | 2026-07-21 | 11 | refactor(quiz): move question factory to dedicated builder class |
+| 2026-07-22 | 1 | feat(search): implement full-text semantic search with embeddings |
