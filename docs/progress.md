@@ -50,3 +50,4 @@
 - [2026-07-21] perf(search): add search result index with ElasticSearch mapping
 - [2026-07-21] feat(dashboard): introduce real-time progress analytics widget
 - [2026-07-22] feat(onboarding): create multi-step user onboarding wizard
+- [2026-07-22] feat(course): introduce prerequisite course locking logic
