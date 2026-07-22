@@ -115,3 +115,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-21] feat(quiz): add adaptive difficulty scoring algorithm -->
 <!-- [2026-07-22] feat(settings): add dark and light theme toggle with persistence -->
 <!-- [2026-07-22] feat(quiz): add image-based question type support -->
+<!-- [2026-07-22] fix(auth): resolve token expiry race condition on concurrent requests -->
