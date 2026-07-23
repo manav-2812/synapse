@@ -52,3 +52,4 @@
 > [2026-07-22] feat(study-mode): add spaced-repetition card review mode
 > [2026-07-22] feat(accessibility): add keyboard navigation across quiz flow
 > [2026-07-22] fix(search): escape special characters in elastic query builder
+> [2026-07-23] fix(settings): persist theme preference across sessions correctly
