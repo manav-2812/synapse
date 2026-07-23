@@ -53,3 +53,4 @@
 ### [2026-07-22] 20 - feat(sharing): add shareable quiz score card with OG image
 ### [2026-07-22] 28 - fix(profile): resolve avatar URL not updating after upload
 ### [2026-07-23] 6 - fix(calendar): fix timezone conversion for scheduled sessions
+### [2026-07-23] 14 - refactor(db): migrate raw SQL queries to SQLAlchemy ORM
