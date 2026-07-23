@@ -53,3 +53,4 @@
 > [2026-07-22] feat(accessibility): add keyboard navigation across quiz flow
 > [2026-07-22] fix(search): escape special characters in elastic query builder
 > [2026-07-23] fix(settings): persist theme preference across sessions correctly
+> [2026-07-23] refactor(quiz): decompose monolithic QuizEngine into smaller services
