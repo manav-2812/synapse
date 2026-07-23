@@ -53,3 +53,4 @@
 | 2026-07-22 | 17 | feat(review): add post-quiz detailed answer explanation view |
 | 2026-07-22 | 25 | fix(db): fix N+1 query in user progress aggregation |
 | 2026-07-23 | 3 | fix(export): fix PDF encoding issue with special unicode characters |
+| 2026-07-23 | 11 | refactor(auth): extract token service into dedicated module |
