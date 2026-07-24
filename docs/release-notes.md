@@ -58,3 +58,4 @@
 > [2026-07-24] refactor(badges): use observer pattern for badge event dispatch
 > [2026-07-24] chore: set up Playwright E2E test suite scaffolding
 > [2026-07-24] chore: configure Oxlint rules for stricter code quality
+> [2026-07-24] docs: create CHANGELOG entry for v1.2.0 milestone
