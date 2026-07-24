@@ -59,3 +59,4 @@
 - [2026-07-24] chore: bump FastAPI to 0.111 with dependency updates
 - [2026-07-24] chore: clean up unused environment variable references
 - [2026-07-24] docs: write API reference for quiz endpoints
+- [2026-07-24] test(auth): add unit tests for refresh token rotation service
