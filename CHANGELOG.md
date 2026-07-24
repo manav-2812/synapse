@@ -121,3 +121,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-23] refactor(frontend): replace class components with functional hooks -->
 <!-- [2026-07-23] refactor(leaderboard): switch from polling to WebSocket updates -->
 <!-- [2026-07-24] chore: upgrade Vite to v5.4 and resolve breaking config changes -->
+<!-- [2026-07-24] chore: pin Node.js version to 20 LTS in nvmrc -->
