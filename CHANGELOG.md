@@ -123,3 +123,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-24] chore: upgrade Vite to v5.4 and resolve breaking config changes -->
 <!-- [2026-07-24] chore: pin Node.js version to 20 LTS in nvmrc -->
 <!-- [2026-07-24] docs: update README with local development setup steps -->
+<!-- [2026-07-24] docs: add security policy and responsible disclosure guide -->
