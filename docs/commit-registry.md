@@ -56,3 +56,4 @@
 | 2026-07-23 | 11 | refactor(auth): extract token service into dedicated module |
 | 2026-07-23 | 19 | refactor(payments): centralise Razorpay client instantiation |
 | 2026-07-23 | 27 | refactor(study-mode): convert review algorithm to pure function |
+| 2026-07-24 | 8 | chore: add Docker multi-stage build for production image |
