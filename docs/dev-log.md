@@ -57,3 +57,4 @@
 ### [2026-07-23] 22 - refactor(quiz): move hint generation to server-side API call
 ### [2026-07-24] 3 - refactor(settings): introduce settings context with reducer
 ### [2026-07-24] 11 - chore: add dependabot config for weekly dependency updates
+### [2026-07-24] 19 - docs: add architecture decision record for auth strategy
