@@ -126,3 +126,4 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 <!-- [2026-07-24] docs: add security policy and responsible disclosure guide -->
 <!-- [2026-07-25] test(analytics): add tests for DAU aggregation correctness -->
 <!-- [2026-07-25] perf(quiz): preload next question assets during answer animation -->
+<!-- [2026-07-27] feat(dashboard): show daily study goal progress ring -->
