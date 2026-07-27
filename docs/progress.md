@@ -62,3 +62,4 @@
 - [2026-07-24] test(auth): add unit tests for refresh token rotation service
 - [2026-07-25] test(study-mode): add property-based tests for review scheduler
 - [2026-07-25] perf(chat): virtualise message list for large chat histories
+- [2026-07-27] feat(ai): stream AI explanation responses token by token
