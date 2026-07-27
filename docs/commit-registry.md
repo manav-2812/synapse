@@ -63,3 +63,4 @@
 | 2026-07-25 | 11 | perf(frontend): lazy-load heavy chart components on dashboard |
 | 2026-07-26 | 3 | style(dashboard): improve card spacing and typographic hierarchy |
 | 2026-07-27 | 5 | fix(ui): correct z-index stacking on modal overlay in Safari |
+| 2026-07-27 | 13 | perf(frontend): defer non-critical scripts to improve LCP score |
