@@ -63,3 +63,4 @@
 ### [2026-07-25] 14 - perf(images): convert avatar storage to WebP with lossy compression
 ### [2026-07-26] 6 - style(mobile): adjust touch target sizes to meet WCAG AA
 ### [2026-07-27] 8 - chore: update python-dotenv to 1.0.1 in requirements
+### [2026-07-28] 3 - fix(notifications): debounce rapid push subscription toggle clicks
