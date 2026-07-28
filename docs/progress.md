@@ -64,3 +64,4 @@
 - [2026-07-25] perf(chat): virtualise message list for large chat histories
 - [2026-07-27] feat(ai): stream AI explanation responses token by token
 - [2026-07-27] docs: add inline comments to spaced-repetition scheduler module
+- [2026-07-28] refactor(leaderboard): extract score formatter to shared utility
