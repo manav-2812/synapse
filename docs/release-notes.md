@@ -63,3 +63,4 @@
 > [2026-07-25] perf(db): add composite index on user_progress table
 > [2026-07-26] style(auth): polish login form error state animations
 > [2026-07-27] refactor(auth): move session validation to dedicated middleware layer
+> [2026-07-28] perf(api): add response compression middleware to FastAPI app
