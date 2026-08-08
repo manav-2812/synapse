@@ -11,9 +11,9 @@
   spaced-repetition flashcards from the same material.
 </p>
 
-<p align="center">
+<!-- <p align="center">
   <a href="https://.vercel.app"><img src="https://img.shields.io/badge/%F0%9F%94%97_Live_Demo-synapse.vercel.app-0070F3?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" /></a>
-</p>
+</p> -->
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT" /></a>
@@ -68,10 +68,13 @@ The system is built around two non-negotiable design goals:
    Linear-inspired frontend with light/dark design tokens, and a clean Lighthouse
    profile across every route.
 
-> Synapse is a **two-tier application**: an async FastAPI backend that owns the
-> database, vector store, embeddings, and LLM calls, and a React 19 SPA that is
-> deployed separately and talks to the API over `fetch`. The backend is
-> **API-only** — it never serves the SPA.
+> Synapse is a **three-tier application**:
+> - **Presentation tier** — a React 19 SPA (deployed to Vercel) that communicates
+>   with the backend exclusively over `fetch`.
+> - **Application tier** — an async FastAPI service that owns all business logic,
+>   embeddings, and LLM calls. It is **API-only** — it never serves the SPA.
+> - **Data tier** — PostgreSQL 16 (relational store) and ChromaDB (vector store),
+>   both accessed only through the application tier.
 
 ---
 
@@ -946,68 +949,4 @@ Released under the [MIT License](LICENSE).
 - Email: [manavbaghhel@gmail.com](mailto:manavbaghhel@gmail.com)
 - GitHub: [@manav-2812](https://github.com/manav-2812)
 - Repository: [github.com/manav-2812/Synapse](https://github.com/manav-2812/Synapse)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
