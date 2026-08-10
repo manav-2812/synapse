@@ -22,6 +22,90 @@ const TYPES: { value: NoteType; label: string; hint: string }[] = [
   { value: "formula_sheet", label: "Formula sheet", hint: "Key formulas & defs" },
 ];
 
+/** Lightweight markdown → HTML renderer (no external dependency). */
+function renderMarkdown(text: string): string {
+  const lines = text.split("\n");
+  const html: string[] = [];
+  let inUl = false;
+  let inOl = false;
+
+  const closeLists = () => {
+    if (inUl) { html.push("</ul>"); inUl = false; }
+    if (inOl) { html.push("</ol>"); inOl = false; }
+  };
+
+  const inline = (s: string) =>
+    s
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/__(.*?)__/g, "<strong>$1</strong>");
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+
+    // Headings
+    const h3 = line.match(/^###\s+(.+)/);
+    const h2 = line.match(/^##\s+(.+)/);
+    const h1 = line.match(/^#\s+(.+)/);
+    if (h1 || h2 || h3) {
+      closeLists();
+      const level = h1 ? 1 : h2 ? 2 : 3;
+      const text2 = (h1 ?? h2 ?? h3)![1];
+      html.push(`<h${level} class="nc-h${level}">${inline(text2)}</h${level}>`);
+      continue;
+    }
+
+    // Ordered list
+    const ol = line.match(/^\d+\.\s+(.+)/);
+    if (ol) {
+      if (inUl) { html.push("</ul>"); inUl = false; }
+      if (!inOl) { html.push("<ol class=\"nc-ol\">"); inOl = true; }
+      html.push(`<li>${inline(ol[1])}</li>`);
+      continue;
+    }
+
+    // Unordered list
+    const ul = line.match(/^[-*]\s+(.+)/);
+    if (ul) {
+      if (inOl) { html.push("</ol>"); inOl = false; }
+      if (!inUl) { html.push("<ul class=\"nc-ul\">"); inUl = true; }
+      html.push(`<li>${inline(ul[1])}</li>`);
+      continue;
+    }
+
+    closeLists();
+
+    // Horizontal rule
+    if (/^---+$/.test(line)) { html.push("<hr class=\"nc-hr\" />"); continue; }
+
+    // Empty line → paragraph break
+    if (line.trim() === "") { html.push("<div class=\"nc-gap\"></div>"); continue; }
+
+    html.push(`<p class="nc-p">${inline(line)}</p>`);
+  }
+
+  closeLists();
+  return html.join("\n");
+}
+
+/** Copy-to-clipboard button with tick feedback. */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+  return (
+    <button className="note-copy-btn" onClick={copy} title={copied ? "Copied!" : "Copy to clipboard"}>
+      <Icon name={copied ? "check" : "clipboard"} size={15} />
+      <span>{copied ? "Copied!" : "Copy"}</span>
+    </button>
+  );
+}
+
 export default function Notes() {
   const { toast } = useToast();
   const [params] = useSearchParams();
@@ -178,7 +262,15 @@ export default function Notes() {
       ) : (
         <div className="list">
           {notes.map((n) => (
-            <div key={n.id} className="list-item">
+            <div
+              key={n.id}
+              className="list-item list-item--clickable"
+              onClick={() => setView(n)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${n.title}`}
+              onKeyDown={(e) => e.key === "Enter" && setView(n)}
+            >
               <div className="li-main">
                 <div className="li-title">{n.title}</div>
                 <div className="li-sub">
@@ -186,10 +278,7 @@ export default function Notes() {
                   {formatDate(n.created_at.toString())}
                 </div>
               </div>
-              <div className="li-actions">
-                <Button variant="ghost" className="btn-sm" onClick={() => setView(n)}>
-                  View
-                </Button>
+              <div className="li-actions" onClick={(e) => e.stopPropagation()}>
                 <button
                   className="icon-btn"
                   aria-label={`Edit ${n.title}`}
@@ -210,14 +299,45 @@ export default function Notes() {
         </div>
       )}
 
-      <Modal open={!!view} onClose={() => setView(null)} title={view?.title ?? "Note"}>
-        {view && <div className="note-content">{view.content}</div>}
-        <div className="row" style={{ marginTop: 16, justifyContent: "flex-end" }}>
-          <Button variant="ghost" onClick={() => setView(null)}>
-            Close
-          </Button>
+      {/* ── Note viewer modal ── */}
+      {view && (
+        <div className="modal-overlay note-modal-overlay" onClick={() => setView(null)} role="presentation">
+          <div className="modal note-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="note-modal-head">
+              <div className="note-modal-meta">
+                <span className="note-modal-type">
+                  {TYPES.find((t) => t.value === view.note_type)?.label ?? view.note_type}
+                </span>
+                <h2 className="note-modal-title">{view.title}</h2>
+                <span className="note-modal-date muted">{formatDate(view.created_at.toString())}</span>
+              </div>
+              <div className="note-modal-actions">
+                <CopyButton text={view.content} />
+                <button
+                  className="icon-btn"
+                  aria-label="Close"
+                  onClick={() => setView(null)}
+                >
+                  <Icon name="close" size={18} />
+                </button>
+              </div>
+            </div>
+            {/* Body */}
+            <div
+              className="note-modal-body"
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(view.content) }}
+            />
+            {/* Footer */}
+            <div className="note-modal-foot">
+              <Button variant="ghost" onClick={() => { setView(null); openEdit(view); }}>
+                <Icon name="edit" size={14} /> Edit
+              </Button>
+              <Button variant="ghost" onClick={() => setView(null)}>Close</Button>
+            </div>
+          </div>
         </div>
-      </Modal>
+      )}
 
       <Modal open={!!editNote} onClose={() => setEditNote(null)} title="Edit note">
         <Input

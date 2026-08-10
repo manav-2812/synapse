@@ -418,7 +418,7 @@ export default function Chat() {
               <span className="badge hybrid-badge" title="Retrieval blends semantic vector search with BM25 keyword search">
                 <Icon name="search" size={12} /> Hybrid search
               </span>
-              <DocumentScopePicker value={scopeIds} onChange={setScopeIds} allowUpload />
+              <DocumentScopePicker value={scopeIds} onChange={setScopeIds} allowUpload popupDirection="up" size="sm" />
             </div>
             <textarea
               placeholder="Message Synapse…"
