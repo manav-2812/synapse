@@ -4,14 +4,34 @@
 export const BASE: string =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
-const TOKEN_KEY = "synapse_access";
-const REFRESH_KEY = "synapse_refresh";
+// ============================================================
+// Token storage — "Remember me" behaviour
+// ============================================================
+// When "Remember me" is OFF  → tokens go in sessionStorage (cleared on tab close)
+// When "Remember me" is ON   → tokens go in localStorage  (survive restarts)
+//
+// The choice is persisted as a tiny flag in localStorage so that after a
+// page reload `setTokens` (called by the refresh-token flow) still writes
+// to the correct store.
+// ============================================================
+const TOKEN_KEY    = "synapse_access";
+const REFRESH_KEY  = "synapse_refresh";
+const PERSIST_FLAG = "synapse_persist";  // "1" | "0"
 
-// "Remember me" off => tokens live in sessionStorage and vanish when the
-// browser/tab closes. On => localStorage, so the session survives restarts.
-let persistent = true;
+// Initialise from the saved flag (default: persistent = true).
+let persistent: boolean =
+  localStorage.getItem(PERSIST_FLAG) !== "0";
+
 export function setPersistence(value: boolean): void {
   persistent = value;
+  // Save so that the preference survives page reloads.
+  localStorage.setItem(PERSIST_FLAG, value ? "1" : "0");
+  // If switching OFF, remove any existing tokens from localStorage
+  // so the old "remembered" session doesn't linger.
+  if (!value) {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+  }
 }
 
 function writeStorage(): Storage {
