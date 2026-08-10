@@ -380,6 +380,7 @@ Synapse/
 │   │   └── styles/                   # design-system CSS (tokens in index.css)
 │   ├── public/                       # favicon, robots.txt, sitemap.xml, OG image
 │   ├── e2e/                          # Playwright end-to-end tests
+│   ├── Dockerfile                    # Node 22-alpine multi-stage build
 │   └── src/__tests__/                # Vitest unit/component tests
 ├── docs/                             # architecture, setup, api,
 │   │                                 #         lighthouse-report
@@ -697,11 +698,11 @@ Other scripts: `npm run build` (type-check + bundle to `dist/`),
 
 ```bash
 docker compose up --build
-# backend → http://localhost:8000   postgres → localhost:5432
+# frontend → http://localhost:4173   backend → http://localhost:8000   postgres → localhost:5432
 ```
 
-Data (Chroma vectors, uploads, Postgres) persists in mounted volumes under
-`backend/chroma_db`, `backend/storage`, and the `pgdata` volume.
+Data (Chroma vectors, uploads, Postgres) persists across container restarts in mounted volumes under
+`backend/chroma_db`, `backend/storage`, and the named Postgres volume `pgdata`.
 
 See [`docs/setup.md`](docs/setup.md) for the full runbook, including OCR engine
 setup, troubleshooting, and the deploy configuration.
