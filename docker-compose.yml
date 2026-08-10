@@ -26,16 +26,15 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env          # gitignored — contains real secrets
     environment:
-      APP_ENV: development          # serves frontend from FastAPI (zero CORS)
+      # These override the .env values for the Docker network
+      APP_ENV: development
       DATABASE_URL: postgresql+asyncpg://synapse:synapse@db:5432/synapse
       CHROMA_PERSIST_PATH: /app/chroma_db
       STORAGE_PATH: /app/storage
-      ALLOWED_ORIGINS: http://localhost:8000
-      # --- fill these with real values (or use an env_file) ---
-      JWT_SECRET_KEY: change_me_in_production_at_least_32_chars
-      GROQ_API_KEY: ""
-      GEMINI_API_KEY: ""
+      ALLOWED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000
     volumes:
       - ./backend/chroma_db:/app/chroma_db
       - ./backend/storage:/app/storage
