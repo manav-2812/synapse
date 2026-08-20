@@ -9,8 +9,9 @@ from app.core.logger import get_logger
 
 log = get_logger("llm.gemini")
 
-_MODEL = "gemini-2.5-flash"
-_MAX_TOKENS = 2048
+# Model name is read from settings so it can be overridden via GEMINI_MODEL env var.
+# No module-level _MODEL constant — the value is locked in at first _configure() call.
+_MAX_TOKENS = 4096
 _TEMPERATURE = 0.2
 _TIMEOUT_SECONDS = 60
 
@@ -25,7 +26,7 @@ def _configure() -> None:
         with _lock:
             if not _configured:
                 genai.configure(api_key=settings.gemini_api_key)
-                _model = genai.GenerativeModel(_MODEL)
+                _model = genai.GenerativeModel(settings.gemini_model)
                 _configured = True
 
 

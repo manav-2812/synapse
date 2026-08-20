@@ -148,7 +148,7 @@ class ChatService:
             cost = 0.0 if cached_text is not None else tok.estimate_cost(
                 provider, prompt_tokens, completion_tokens
             )
-            model_name = "llama-3.3-70b-versatile" if provider == "groq" else "gemini-2.5-flash"
+            model_name = "openai/gpt-oss-120b" if provider == "groq" else "gemini-flash-latest"
             self.session.add(
                 LLMUsageLog(
                     user_id=user_id,

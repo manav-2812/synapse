@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # LLM providers
     groq_api_key: str = ""
     gemini_api_key: str = ""
+    # Gemini model name — override via GEMINI_MODEL env var if the default 404s.
+    # "gemini-2.0-flash" is the current stable model (gemini-flash-latest is an alias).
+    gemini_model: str = "gemini-2.0-flash"
 
     # CORS — restricted to known frontend origins (dev servers, vite preview
     # ports used by local `npm run preview` and the Playwright/Lighthouse audit
@@ -39,6 +42,7 @@ class Settings(BaseSettings):
     allowed_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"
         "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost:5174,http://127.0.0.1:5174,"
         "http://localhost:4173,http://127.0.0.1:4173,"
         "http://localhost:4319,http://127.0.0.1:4319,"
         "http://localhost:8000,http://127.0.0.1:8000,"
@@ -68,7 +72,7 @@ class Settings(BaseSettings):
     # LLM. This has API cost — keep OFF unless you have a provider key and
     # accept the spend. Gemini is preferred; Groq is used if no Gemini key.
     ocr_vision_fallback_enabled: bool = False
-    ocr_vision_model: str = "gemini-2.5-flash"
+    ocr_vision_model: str = "gemini-flash-latest"
     ocr_vision_model_groq: str = "llama-3.2-11b-vision-preview"
     ocr_timeout_seconds: int = 60
 

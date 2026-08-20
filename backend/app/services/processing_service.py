@@ -1,4 +1,5 @@
 """Background ingestion: extract -> clean -> chunk -> embed -> persist."""
+import traceback
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,8 +76,13 @@ async def process_document(document_id: str) -> None:
             log.info("document_processed", document_id=str(doc.id), chunks=len(chunks))
         except Exception as e:
             doc.processing_status = "failed"
-            doc.error_message = str(e)[:1000]
-            log.error("document_failed", document_id=str(doc.id), error=str(e))
+            doc.error_message = repr(e)[:1000]
+            log.error(
+                "document_failed",
+                document_id=str(doc.id),
+                error=repr(e),
+                traceback=traceback.format_exc(),
+            )
 
         await session.commit()
 

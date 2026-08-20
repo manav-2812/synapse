@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.embeddings.embedding_client import embed_query
 from app.ai.rag import retrieve
-from app.ai.study import generate_json
+from app.ai.study import generate_json, generate_structured
 from app.ai.study.prompts import (
     build_flashcards_prompt,
     build_note_prompt,

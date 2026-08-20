@@ -41,7 +41,7 @@ class BM25Index:
 
 # Per-user cache so we don't rebuild the index on every query. Keyed by a
 # (version) tuple so stale indexes are dropped when the collection changes.
-_cache: dict[str, tuple[int, BM25Index]] = {}
+_cache: dict[str, tuple[int, BM25Index, dict[str, dict]]] = {}
 _cache_lock = threading.Lock()
 
 
@@ -50,3 +50,19 @@ def build_index(
 ) -> BM25Index:
     """Build a fresh BM25 index from chunk ids + raw texts."""
     return BM25Index(chunk_ids, [tokenize(t) for t in texts])
+
+
+def get_or_build_index(
+    user_id: str, chunks: list[dict]
+) -> tuple[BM25Index, dict[str, dict]]:
+    """Return a cached (or newly built) BM25 index and chunk map for the user."""
+    chunk_count = len(chunks)
+    with _cache_lock:
+        if user_id in _cache:
+            count, index, chunk_map = _cache[user_id]
+            if count == chunk_count:
+                return index, chunk_map
+        chunk_map = {c["chunk_id"]: c for c in chunks}
+        index = build_index([c["chunk_id"] for c in chunks], [c["text"] for c in chunks])
+        _cache[user_id] = (chunk_count, index, chunk_map)
+        return index, chunk_map

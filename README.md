@@ -334,7 +334,7 @@ OCR degradation behavior, and the eval pipeline.
 | **Database** | PostgreSQL 16 + SQLAlchemy 2.0 (async) + Alembic |
 | **Vector store** | ChromaDB 0.6.3 (one persistent collection per user) |
 | **Embeddings** | Sentence-Transformers `all-MiniLM-L6-v2` (local, CPU) |
-| **LLM** | Groq `llama-3.3-70b` (primary) · Gemini `gemini-2.5-flash` (fallback) |
+| **LLM** | Groq `qwen/qwen3.6-27b` (primary) · Gemini `gemini-2.5-flash` (fallback) |
 | **RAG** | Hand-rolled retriever — semantic (Chroma) + BM25, no LangChain |
 | **Auth** | JWT (20-min access + 7-day rotating refresh) · bcrypt |
 | **Frontend tests** | Vitest + React Testing Library · Playwright |

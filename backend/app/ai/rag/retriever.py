@@ -64,20 +64,17 @@ async def _semantic_search(
 
 async def _bm25_search(
     user_id: str, query: str, top_k: int, document_scope: list[str] | None
-) -> list[tuple[str, float]]:
+) -> tuple[list[tuple[str, float]], dict[str, dict]]:
     """Build (or reuse) the per-user BM25 index and score the query."""
     chunks = await chroma_client.get_all_chunks(user_id)
     if not chunks:
-        return []
-    index = bm25_mod.build_index(
-        [c["chunk_id"] for c in chunks], [c["text"] for c in chunks]
-    )
+        return [], {}
+    index, chunk_map = bm25_mod.get_or_build_index(user_id, chunks)
     ranked = index.search(query, top_k=top_k * _CANDIDATE_FACTOR)
     if document_scope:
         scope = {str(d) for d in document_scope}
-        id_to_doc = {c["chunk_id"]: c["document_id"] for c in chunks}
-        ranked = [(cid, s) for cid, s in ranked if str(id_to_doc.get(cid)) in scope]
-    return ranked
+        ranked = [(cid, s) for cid, s in ranked if str(chunk_map.get(cid, {}).get("document_id")) in scope]
+    return ranked, chunk_map
 
 
 async def retrieve(
@@ -106,8 +103,9 @@ async def retrieve(
             sem_norm[r["chunk_id"]] = r.get("score") or 0.0
 
     bm25_norm: dict[str, float] = {}
+    bm25_map: dict[str, dict] = {}
     if query:
-        bm25_ranked = await _bm25_search(user_id, query, top_k, document_scope)
+        bm25_ranked, bm25_map = await _bm25_search(user_id, query, top_k, document_scope)
         if bm25_ranked:
             norms = _minmax([s for _, s in bm25_ranked])
             for (cid, _), n in zip(bm25_ranked, norms):
@@ -118,11 +116,12 @@ async def retrieve(
     candidates: dict[str, dict] = {cid: r for cid, r in by_id.items()}
     for cid in bm25_norm:
         if cid not in candidates:
-            candidates[cid] = by_id.get(cid) or {
+            bm_chunk = bm25_map.get(cid) or {}
+            candidates[cid] = {
                 "chunk_id": cid,
-                "text": "",
-                "page_number": None,
-                "document_id": None,
+                "text": bm_chunk.get("text", ""),
+                "page_number": bm_chunk.get("page_number"),
+                "document_id": bm_chunk.get("document_id"),
             }
 
     merged: list[dict] = []
