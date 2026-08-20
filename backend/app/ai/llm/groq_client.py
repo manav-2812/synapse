@@ -15,9 +15,9 @@ _FALLBACK_MODEL = "openai/gpt-oss-20b"
 
 # Model used exclusively for structured JSON generation (quiz/flashcards/notes).
 # Must be a non-reasoning model so <think> blocks never contaminate JSON output.
-_STRUCTURED_MODEL = "llama-3.3-70b-versatile"
+_STRUCTURED_MODEL = "qwen/qwen3-32b"  # non-reasoning model; replaces deprecated llama-3.3-70b-versatile (removed 2026-06-17)
 
-_MAX_TOKENS = 4096
+_MAX_TOKENS = 1024  # free tier is 8,000 TPM; 4096 alone ate >50% of the budget
 _TEMPERATURE = 0.2
 _TIMEOUT_SECONDS = 60
 
@@ -85,7 +85,7 @@ async def complete(system: str, user: str) -> str:
 async def complete_structured(system: str, user: str) -> str:
     """Completion for structured JSON generation (quiz / flashcards / notes).
 
-    Uses ``_STRUCTURED_MODEL`` (llama-3.3-70b-versatile) — a non-reasoning
+    Uses ``_STRUCTURED_MODEL`` (qwen/qwen3-32b) — a non-reasoning
     model — so <think> blocks can never corrupt the JSON output.  Falls back
     to the chat primary model only on hard errors.
     """

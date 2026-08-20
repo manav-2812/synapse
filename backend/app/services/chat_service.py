@@ -22,7 +22,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.chat_schema import ChatRequest, SourceResponse
 
 log = get_logger("chat")
-TOP_K = 5
+TOP_K = 4
 
 
 def _sse(event_type: str, value) -> str:

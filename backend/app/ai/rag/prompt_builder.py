@@ -32,7 +32,7 @@ def _format_history(history: list) -> str:
     if not history:
         return ""
     lines = []
-    for m in history[-6:]:
+    for m in history[-3:]:
         role = "Student" if getattr(m, "role", None) == MessageRole.USER else "Synapse"
         lines.append(f"{role}: {m.content}")
     return "\n".join(lines)

@@ -21,7 +21,7 @@ from app.repositories.user_repository import UserRepository
 
 log = get_logger("study")
 
-GEN_TOP_K = 8
+GEN_TOP_K = 5
 
 
 def _validate_enum(value: str, enum_cls, field: str):
