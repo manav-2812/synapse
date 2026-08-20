@@ -15,9 +15,9 @@ _FALLBACK_MODEL = "openai/gpt-oss-20b"
 
 # Model used exclusively for structured JSON generation (quiz/flashcards/notes).
 # Must be a non-reasoning model so <think> blocks never contaminate JSON output.
-_STRUCTURED_MODEL = "qwen/qwen3-32b"  # non-reasoning model; replaces deprecated llama-3.3-70b-versatile (removed 2026-06-17)
+_STRUCTURED_MODEL = "openai/gpt-oss-20b"  # Fast, non-reasoning model for clean JSON (quizzes/flashcards/notes)
 
-_MAX_TOKENS = 1024  # free tier is 8,000 TPM; 4096 alone ate >50% of the budget
+_MAX_TOKENS = 2048  # Sufficient for structured output without exceeding TPM ceilings
 _TEMPERATURE = 0.2
 _TIMEOUT_SECONDS = 60
 
