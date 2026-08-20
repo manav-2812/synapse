@@ -1290,6 +1290,7 @@ select.input { appearance: none; cursor: pointer; }
 }
 .wk-baseline { stroke: var(--border); stroke-width: 1; }
 .wk-bar { fill: var(--surface-3); transition: fill var(--t-base) var(--ease); }
+.wk-bar-active,
 .wk-bar-top { fill: var(--accent); }
 .wk-labels {
   display: flex;

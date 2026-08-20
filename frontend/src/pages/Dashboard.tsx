@@ -320,11 +320,11 @@ function WeeklyChart({ byDay, total }: { byDay: DayMinutes[]; total: number }) {
           const x = cx - barW / 2;
           const h = Math.round((d.minutes / scaleMax) * plotH);
           const y = padTop + (plotH - h);
-          const isTop = d.minutes > 0 && d.minutes === topMinutes;
+          const hasMinutes = d.minutes > 0;
           return (
             <rect
               key={d.date}
-              className={isTop ? "wk-bar wk-bar-top" : "wk-bar"}
+              className={hasMinutes ? "wk-bar wk-bar-active" : "wk-bar"}
               x={x}
               y={h > 0 ? y : H - 2}
               width={barW}

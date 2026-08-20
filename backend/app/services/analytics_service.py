@@ -5,17 +5,17 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.llm import cache as resp_cache
-from app.core.exceptions import NotFoundError
-from app.core.constants import MessageRole
-from app.models.analytics import Analytics
-from app.models.conversation import Conversation, Message
-from app.models.llm_usage_log import LLMUsageLog
-from app.repositories.chunk_repository import ChunkRepository
-from app.repositories.document_repository import DocumentRepository
-from app.repositories.study_activity_repository import StudyActivityRepository
-from app.repositories.study_repository import StudyRepository
-from app.repositories.user_repository import UserRepository
+from ..ai.llm import cache as resp_cache
+from ..core.exceptions import NotFoundError
+from ..core.constants import MessageRole
+from ..models.analytics import Analytics
+from ..models.conversation import Conversation, Message
+from ..models.llm_usage_log import LLMUsageLog
+from ..repositories.chunk_repository import ChunkRepository
+from ..repositories.document_repository import DocumentRepository
+from ..repositories.study_activity_repository import StudyActivityRepository
+from ..repositories.study_repository import StudyRepository
+from ..repositories.user_repository import UserRepository
 
 
 class AnalyticsService:
@@ -123,7 +123,7 @@ class AnalyticsService:
         weak, strong = [], []
         for did, scores in perf.items():
             avg = sum(scores) / len(scores)
-            name = doc_names.get(str(did), "Untitled document")
+            name = doc_names.get(did, "Untitled document")
             topic_performance.append({"topic": name, "score": avg, "quizzes": len(scores)})
             if avg < 0.5:
                 weak.append(name)
@@ -242,20 +242,20 @@ class AnalyticsService:
                 bucket["cache_hits"] += 1
                 cached_total += 1
             total_requests += 1
-            total_tokens += log_row.total_tokens
-            total_cost += log_row.estimated_cost
+            total_tokens += int(log_row.total_tokens or 0)
+            total_cost += float(log_row.estimated_cost or 0.0)
 
         # Cache-hit rate: blend the persisted ``cached`` flags (per-request,
         # accurate historically) with the live in-memory counter rate.
         persisted_rate = (cached_total / total_requests) if total_requests else 0.0
-        live_rate = resp_cache.hit_rate()
+        live_rate = float(resp_cache.hit_rate())
         cache_hit_rate = max(persisted_rate, live_rate)
 
         return {
             "requests": total_requests,
             "total_tokens": total_tokens,
-            "total_cost": round(float(total_cost), 6),
-            "cache_hit_rate": round(float(cache_hit_rate), 4),
+            "total_cost": round(total_cost, 6),
+            "cache_hit_rate": round(cache_hit_rate, 4),
             "per_day": list(series.values()),
         }
 
