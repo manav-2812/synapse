@@ -3,6 +3,7 @@ import re
 import threading
 
 from groq import AsyncGroq
+from groq.types.chat import ChatCompletionMessageParam
 
 from app.core.config import settings
 from app.core.logger import get_logger
@@ -52,7 +53,7 @@ def _get_client() -> AsyncGroq:
     return _client
 
 
-def _messages(system: str, user: str) -> list[dict]:
+def _messages(system: str, user: str) -> list[ChatCompletionMessageParam]:
     return [
         {"role": "system", "content": system},
         {"role": "user", "content": user},
