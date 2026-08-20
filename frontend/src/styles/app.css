@@ -1353,13 +1353,19 @@ select.input { appearance: none; cursor: pointer; }
   line-height: 1.3;
 }
 .trend-delta { white-space: nowrap; }
-.trend.is-up { color: var(--ok); }
-.trend.is-down { color: var(--danger); }
+.trend.is-up,
+.trend-up { color: var(--ok); }
+.trend.is-down,
+.trend-down { color: var(--danger); }
 .trend.is-flat,
-.trend.is-neutral { color: var(--text-faint); }
-.trend-ico { flex-shrink: 0; }
-.trend.is-down .trend-ico { transform: rotate(180deg); }
-.trend.is-flat .trend-ico { transform: rotate(90deg); }
+.trend-flat,
+.trend.is-neutral,
+.trend-neutral { color: var(--text-faint); }
+.trend-ico { flex-shrink: 0; transform: none; }
+.trend.is-down .trend-ico,
+.trend-down .trend-ico { transform: rotate(180deg); }
+.trend.is-flat .trend-ico,
+.trend-flat .trend-ico { transform: rotate(90deg); }
 
 /* Trend badge (chart header) — same signal, wrapped in a soft token pill. */
 .trend-badge {
@@ -1374,14 +1380,19 @@ select.input { appearance: none; cursor: pointer; }
   white-space: nowrap;
   flex-shrink: 0;
 }
-.trend-badge.is-up { background: var(--ok-bg); color: var(--ok); }
-.trend-badge.is-down { background: var(--danger-bg); color: var(--danger); }
+.trend-badge.is-up,
+.trend-badge-up { background: var(--ok-bg); color: var(--ok); }
+.trend-badge.is-down,
+.trend-badge-down { background: var(--danger-bg); color: var(--danger); }
 .trend-badge.is-flat,
-.trend-badge.is-neutral { background: var(--surface-2); color: var(--text-faint); }
-.trend-badge .trend-ico { transform: rotate(180deg); }
-.trend-badge.is-up .trend-ico,
-.trend-badge.is-flat .trend-ico { transform: none; }
-.trend-badge.is-flat .trend-ico { transform: rotate(90deg); }
+.trend-badge-flat,
+.trend-badge.is-neutral,
+.trend-badge-neutral { background: var(--surface-2); color: var(--text-faint); }
+.trend-badge .trend-ico { transform: none; }
+.trend-badge.is-down .trend-ico,
+.trend-badge-down .trend-ico { transform: rotate(180deg); }
+.trend-badge.is-flat .trend-ico,
+.trend-badge-flat .trend-ico { transform: rotate(90deg); }
 
 /* Quick actions — compact horizontal chips (icon + label, ~46px tall) */
 .dash-quick {

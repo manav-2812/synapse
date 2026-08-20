@@ -352,7 +352,7 @@ type TrendDir = "up" | "down" | "flat" | "neutral";
 
 function Trend({ dir, text }: { dir: TrendDir; text: string }) {
   return (
-    <span className={`trend trend-${dir}`}>
+    <span className={`trend is-${dir} trend-${dir}`}>
       {dir !== "neutral" && <Icon name="trending" size={13} className="trend-ico" />}
       <span className="trend-delta">{text}</span>
     </span>
@@ -361,7 +361,7 @@ function Trend({ dir, text }: { dir: TrendDir; text: string }) {
 
 function TrendBadge({ trend }: { trend: { dir: TrendDir; text: string } }) {
   return (
-    <span className={`trend-badge trend-badge-${trend.dir}`}>
+    <span className={`trend-badge is-${trend.dir} trend-badge-${trend.dir}`}>
       {trend.dir !== "neutral" && <Icon name="trending" size={13} className="trend-ico" />}
       <span className="trend-delta">{trend.text}</span>
     </span>

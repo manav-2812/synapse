@@ -44,6 +44,7 @@ class AnalyticsService:
             r.minutes for r in activity if r.date >= today - timedelta(days=6)
         )
         today_minutes = sum(r.minutes for r in activity if r.date == today)
+        total_study_minutes = max(analytics.total_study_minutes, sum(r.minutes for r in activity))
 
         user = await UserRepository(self.session).get_by_id(user_id)
         goal = user.daily_study_goal_minutes if user else 30
@@ -161,7 +162,7 @@ class AnalyticsService:
                 "questions_asked_count": analytics.questions_asked_count,
                 "quizzes_taken_count": analytics.quizzes_taken_count,
                 "average_quiz_score": analytics.average_quiz_score,
-                "total_study_minutes": analytics.total_study_minutes,
+                "total_study_minutes": total_study_minutes,
                 "study_streak": study_streak,
                 "today_study_minutes": today_minutes,
                 "weekly_study_minutes": weekly_minutes,
