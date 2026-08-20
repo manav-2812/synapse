@@ -1,7 +1,7 @@
 """Chunk cleaned document text into token pieces, keeping page metadata."""
 import re
 
-from app.ai.processing.text_cleaner import clean_text
+from .text_cleaner import clean_text
 
 # all-MiniLM-L6-v2 has max_seq_length=256. Keep chunks safely under that so the
 # embedder never silently truncates text. A 500-token chunk previously lost
