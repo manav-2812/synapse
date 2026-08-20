@@ -1,14 +1,21 @@
 """Retrieval evaluation endpoints.
 
-``POST /api/v1/eval/run`` runs the hand-written eval set through the *real*
-retrieval pipeline (hybrid BM25 + semantic) for the authenticated user, scores
-each question with precision@k / recall@k / MRR, and persists an aggregate run
-to the ``eval_runs`` table. ``GET /api/v1/eval/runs`` returns historical runs
-so the dashboard can plot quality trends.
+``POST /api/v1/eval/run`` dynamically builds an evaluation dataset from *every*
+document the authenticated user has successfully uploaded (``processing_status ==
+completed``).  For each document, a sample of representative chunks is drawn from
+Chroma and used as questions; the source ``document_id`` is the ground-truth
+label.  This means the eval automatically covers all past and future uploads with
+no manual curation or fixture files.
+
+Each question is run through the real hybrid retrieval pipeline (BM25 + semantic),
+scored with precision@k / recall@k / MRR / NDCG, and the aggregate run is
+persisted to ``eval_runs`` so the dashboard can plot quality trends over time.
+
+``GET /api/v1/eval/runs`` returns historical runs (newest first).
 """
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,9 +23,8 @@ from app.ai.embeddings.embedding_client import embed_query
 from app.ai.rag import retrieve
 from app.api.deps import get_current_user, get_db
 from app.core.logger import get_logger
-from app.eval.eval_dataset import load_eval_dataset
-from app.eval.metrics import aggregate, mrr, precision_at_k, recall_at_k
-from app.models.document import Document
+from app.eval.eval_dataset import build_dynamic_dataset
+from app.eval.metrics import aggregate, mrr, ndcg_at_k, precision_at_k, recall_at_k
 from app.models.eval_run import EvalRun
 from app.models.user import User
 from app.schemas.eval_schema import EvalRunItem, EvalRunResponse, RunEvalResponse
@@ -31,76 +37,67 @@ K = 5  # retrieved results counted for @k metrics
 
 
 @router.post("/run", response_model=RunEvalResponse, status_code=status.HTTP_200_OK)
-async def run_eval(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_db)):
-    """Run the full eval set against the user's retrieval pipeline."""
-    dataset = load_eval_dataset()
+async def run_eval(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Run the retrieval eval against *all* of the user's uploaded documents.
+
+    The dataset is generated dynamically — no fixture files involved.  Every
+    completed document contributes questions proportional to its chunk count,
+    so new uploads are automatically included in the next eval run.
+    """
+    user_id = str(current_user.id)
+
+    # Build the dynamic dataset from this user's actual documents.
+    dataset = await build_dynamic_dataset(user_id, session)
+
     if not dataset:
+        log.info("eval_run_no_data", user_id=user_id)
         return RunEvalResponse(
-            user_id=str(current_user.id),
+            user_id=user_id,
             timestamp=datetime.now(timezone.utc).isoformat(),
             k=K,
             results=[],
-            aggregate={"precision_at_k": 0.0, "recall_at_k": 0.0, "mrr": 0.0,
-                       "n_evaluated": 0, "n_total": 0, "n_passed": 0},
+            aggregate={
+                "precision_at_k": 0.0,
+                "recall_at_k": 0.0,
+                "mrr": 0.0,
+                "ndcg_at_k": 0.0,
+                "n_evaluated": 0,
+                "n_total": 0,
+                "n_passed": 0,
+            },
         )
-
-    # Resolve expected document filenames -> this user's real document ids.
-    expected_names = {n for item in dataset for n in item.get("expected_documents", [])}
-    name_to_ids: dict[str, list[str]] = {}
-    if expected_names:
-        res = await session.execute(
-            select(Document.id, Document.original_filename).where(
-                Document.user_id == current_user.id,
-                Document.original_filename.in_(expected_names),
-            )
-        )
-        for doc_id, fname in res.all():
-            name_to_ids.setdefault(fname, []).append(str(doc_id))
 
     results: list[EvalRunItem] = []
-    for item in dataset:
-        expected_ids = {
-            did
-            for name in item.get("expected_documents", [])
-            for did in name_to_ids.get(name, [])
-        }
 
+    for item in dataset:
+        # Ground-truth: set of document_id UUIDs expected for this question.
+        expected_ids: set[str] = set(item.get("expected_documents", []))
+
+        # Embed the question text and retrieve top-k chunks.
         query_vector = await embed_query(item["question"])
         chunks = await retrieve(
             query_vector,
-            str(current_user.id),
+            user_id,
             top_k=K,
             query=item["question"],
         )
         retrieved_ids = [str(c["document_id"]) for c in chunks if c.get("document_id")]
 
-        if not expected_ids:
-            # User hasn't uploaded the source doc(s) for this question.
-            results.append(
-                EvalRunItem(
-                    id=item["id"],
-                    question=item["question"],
-                    expected_answer=item.get("expected_answer", ""),
-                    expected_documents=item.get("expected_documents", []),
-                    retrieved_documents=retrieved_ids,
-                    precision_at_k=0.0,
-                    recall_at_k=0.0,
-                    mrr=0.0,
-                    hit=False,
-                    skipped=True,
-                )
-            )
-            continue
-
         p = precision_at_k(retrieved_ids, expected_ids, K)
         r = recall_at_k(retrieved_ids, expected_ids, K)
         m = mrr(retrieved_ids, expected_ids)
+        nd = ndcg_at_k(retrieved_ids, expected_ids, K)
+
         results.append(
             EvalRunItem(
                 id=item["id"],
                 question=item["question"],
                 expected_answer=item.get("expected_answer", ""),
-                expected_documents=item.get("expected_documents", []),
+                expected_documents=list(expected_ids),
+                source_document_name=item.get("source_document_name", ""),
                 retrieved_documents=retrieved_ids,
                 precision_at_k=p,
                 recall_at_k=r,
@@ -124,8 +121,18 @@ async def run_eval(current_user: User = Depends(get_current_user), session: Asyn
     session.add(run)
     await session.commit()
 
+    log.info(
+        "eval_run_complete",
+        user_id=user_id,
+        n_total=agg["n_total"],
+        n_evaluated=agg["n_evaluated"],
+        precision=agg["precision_at_k"],
+        recall=agg["recall_at_k"],
+        mrr=agg["mrr"],
+    )
+
     return RunEvalResponse(
-        user_id=str(current_user.id),
+        user_id=user_id,
         timestamp=run.raw_results["timestamp"],
         k=K,
         results=results,
@@ -134,7 +141,10 @@ async def run_eval(current_user: User = Depends(get_current_user), session: Asyn
 
 
 @router.get("/runs", response_model=list[EvalRunResponse])
-async def list_runs(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_db)):
+async def list_runs(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
     """Return historical eval runs (newest first) for the dashboard chart."""
     res = await session.execute(
         select(EvalRun)
