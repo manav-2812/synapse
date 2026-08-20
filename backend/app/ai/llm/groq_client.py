@@ -15,7 +15,7 @@ _MODEL = "openai/gpt-oss-120b"
 _FALLBACK_MODEL = "openai/gpt-oss-20b"
 
 # Model used exclusively for structured JSON generation (quiz/flashcards/notes).
-# Must be a non-reasoning model so <think> blocks never contaminate JSON output.
+# It is the smaller GPT-OSS model to keep structured output fast and reliable.
 _STRUCTURED_MODEL = "openai/gpt-oss-20b"  # Fast, non-reasoning model for clean JSON (quizzes/flashcards/notes)
 
 _MAX_TOKENS = 2048  # Sufficient for structured output without exceeding TPM ceilings
@@ -86,9 +86,8 @@ async def complete(system: str, user: str) -> str:
 async def complete_structured(system: str, user: str) -> str:
     """Completion for structured JSON generation (quiz / flashcards / notes).
 
-    Uses ``_STRUCTURED_MODEL`` (qwen/qwen3-32b) — a non-reasoning
-    model — so <think> blocks can never corrupt the JSON output.  Falls back
-    to the chat primary model only on hard errors.
+    Uses ``_STRUCTURED_MODEL`` (openai/gpt-oss-20b) for clean JSON output.
+    Falls back to the chat primary model only on hard errors.
     """
     client = _get_client()
     for model in (_STRUCTURED_MODEL, _MODEL):

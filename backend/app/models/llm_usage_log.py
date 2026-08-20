@@ -17,7 +17,7 @@ class LLMUsageLog(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), nullable=False, index=True
     )
-    provider: Mapped[str] = mapped_column(String(32), nullable=False)  # groq | gemini
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)  # groq | gemini | openrouter
     model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     prompt_tokens: Mapped[int] = mapped_column(default=0)
     completion_tokens: Mapped[int] = mapped_column(default=0)

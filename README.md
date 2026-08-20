@@ -187,7 +187,7 @@ flowchart TB
   end
   PG[("PostgreSQL 16<br/>+ Alembic migrations")]
   Chroma[("ChromaDB<br/>one collection per user")]
-  LLM{{"LLM  Groq → Gemini fallback"}}
+  LLM{{"LLM Chain: Groq → Gemini → OpenRouter fallback"}}
 
   UI -->|HTTPS / CORS| Client
   Client -->|/api/v1| Routes
@@ -656,45 +656,58 @@ the live OpenAPI schema). The API exposes **44 endpoints** across 9 groups
 | Python | **3.11** | 3.13 breaks the dependency build (`torch` / `sentence-transformers` / `chromadb`). Create the venv explicitly. |
 | Node.js | 20+ | For the Vite frontend (local dev used 24.x). |
 | PostgreSQL | 16 | Local instance, or Docker. |
-| Groq + Gemini keys | — | For the LLM (Groq primary, Gemini fallback). |
+| Groq / Gemini / OpenRouter keys | — | Multi-tier LLM fallback (Groq primary, Gemini second, OpenRouter third). |
 | (Optional) Tesseract | — | For OCR of scanned images; the app degrades gracefully without it. |
 
 > **Python 3.11 only.** `backend/.python-version` pins `3.11`. On Windows use
 > `py -3.11`; elsewhere `python3.11`. Never `python -m venv .venv` (may resolve to
 > 3.13). Confirm with `python3.11 --version` before creating the environment.
 
-### 1. Backend (API only)
+---
 
-```bash
+### ⚡ Quick Start: All-in-One Runner
+
+Run both the FastAPI backend and Vite frontend concurrently with unified color logs:
+
+```powershell
+python run_dev.py
+```
+
+---
+
+### 💻 Manual Service Execution
+
+#### 1. Backend (API only)
+
+```powershell
 cd backend
-python3.11 -m venv .venv
-source .venv/bin/activate            # Windows (Git Bash): source .venv/Scripts/activate
+.\.venv\Scripts\Activate.ps1   # macOS / Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env                 # fill GROQ_API_KEY / GEMINI_API_KEY / JWT_SECRET_KEY
-alembic upgrade head                 # create tables
+cp .env.example .env           # fill GROQ_API_KEY / GEMINI_API_KEY / JWT_SECRET_KEY
+alembic upgrade head           # apply database migrations
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-- API base: `http://localhost:8000/api/v1`
-- Docs: `http://localhost:8000/docs`
-- Health: `http://localhost:8000/health`
+- API Base: `http://127.0.0.1:8000/api/v1`
+- Swagger Docs: `http://127.0.0.1:8000/docs`
+- Health: `http://127.0.0.1:8000/health`
 
-### 2. Frontend (React SPA)
+#### 2. Frontend (React SPA)
 
-```bash
+```powershell
 cd frontend
 npm install
-cp .env.example .env                 # optional; sets VITE_API_BASE_URL
-npm run dev                          # → http://localhost:5173
+npm run dev                    # → http://localhost:5173
 ```
 
 The client defaults to `http://localhost:8000/api/v1`. Point it elsewhere by
 setting `VITE_API_BASE_URL` in `frontend/.env` (rebuild after changing).
 
-Other scripts: `npm run build` (type-check + bundle to `dist/`),
-`npm run preview` (serve the production build), `npm run lint` (oxlint).
+> 📖 For full command copy-paste blocks and test scripts, see the [**Development & Execution Runbook (`docs/commands.md`)**](docs/commands.md).
 
-### 3. Docker (full stack, local)
+---
+
+### 3. Docker (Full Stack, Local)
 
 ```bash
 docker compose up --build
@@ -704,8 +717,8 @@ docker compose up --build
 Data (Chroma vectors, uploads, Postgres) persists across container restarts in mounted volumes under
 `backend/chroma_db`, `backend/storage`, and the named Postgres volume `pgdata`.
 
-See [`docs/setup.md`](docs/setup.md) for the full runbook, including OCR engine
-setup, troubleshooting, and the deploy configuration.
+See [`docs/setup.md`](docs/setup.md) for the full setup guide, including OCR engine
+setup, troubleshooting, and cloud deployment configurations.
 
 ---
 
@@ -864,7 +877,8 @@ Required values must be set; the rest have sensible defaults.
 | `DATABASE_URL` | ✅ | `postgresql+asyncpg://user:pass@host:5432/synapse` |
 | `JWT_SECRET_KEY` | ✅ | Signs access/refresh tokens (≥ 32 random chars) |
 | `GROQ_API_KEY` | ✅ | Primary LLM |
-| `GEMINI_API_KEY` | ✅ | Fallback LLM |
+| `GEMINI_API_KEY` | | Second fallback LLM |
+| `OPENROUTER_API_KEY` | | Third fallback LLM (Free Models Router / Nemotron) |
 | `CHROMA_PERSIST_PATH` | | Vector store dir (default `./chroma_db`) |
 | `STORAGE_PATH` | | Uploaded-file dir (default `./storage`) |
 | `ALLOWED_ORIGINS` | | CORS allow-list (must include the frontend origin) |

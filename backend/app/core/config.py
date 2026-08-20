@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     # LLM providers
     groq_api_key: str = ""
     gemini_api_key: str = ""
-    # Gemini model name — override via GEMINI_MODEL env var if the default 404s.
-    # "gemini-2.0-flash" is the current stable model (gemini-flash-latest is an alias).
-    gemini_model: str = "gemini-2.0-flash"
+    openrouter_api_key: str = ""
+    # Gemini model name — override via GEMINI_MODEL env var if the default changes.
+    gemini_model: str = "gemini-3.6-flash"
 
     # CORS — restricted to known frontend origins (dev servers, vite preview
     # ports used by local `npm run preview` and the Playwright/Lighthouse audit

@@ -35,6 +35,9 @@ def build_note_prompt(note_type: str, chunks: list[dict]) -> tuple[str, str]:
         f"\nProduce {style}. "
         "Respond with a single JSON object: "
         '{"title": str, "content": str}. '
+        "Use only facts, examples, and terminology present in the excerpts; do not add "
+        "outside material to make the notes seem complete. For long_notes and exam_answer, "
+        "organize the content with clear headings. "
         "The 'content' field must contain ONLY the final notes — no meta-commentary, "
         "no preamble like 'here are your notes', no <think> tags."
     )
@@ -47,7 +50,12 @@ def build_quiz_prompt(difficulty: str, count: int, chunks: list[dict]) -> tuple[
         f"\nCreate {count} {difficulty}-difficulty quiz questions from the excerpts. "
         "Mix multiple-choice (mcq) and short-answer questions. For mcq, provide 3-4 options "
         "and set correct_answer to the exact option text. For short_answer, leave options empty "
-        "and set correct_answer to a concise reference answer.\n"
+        "and set correct_answer to a concise reference answer. Every question and its answer "
+        "must be directly verifiable against a specific excerpt; do not invent facts. Incorrect "
+        "mcq options must be plausible but contradicted by or unsupported by the excerpts, never "
+        "random text. Each explanation must state which [Source N] supports the correct answer. "
+        "Return fewer questions rather than pad, duplicate, or invent content when the excerpts "
+        "do not support the requested count.\n"
         "Output ONLY a valid JSON array matching this schema — no preamble, no markdown fences, "
         "no <think> tags, no explanation outside the JSON:\n"
         '[{"question_type":"mcq|short_answer","prompt":str,"options":[str],'
@@ -61,7 +69,10 @@ def build_quiz_prompt(difficulty: str, count: int, chunks: list[dict]) -> tuple[
 def build_flashcards_prompt(count: int, chunks: list[dict]) -> tuple[str, str]:
     system = SYSTEM_STUDY + (
         f"\nCreate {count} flashcards from the excerpts. Each has a 'front' (a term or question) "
-        "and a 'back' (the definition or answer).\n"
+        "and a 'back' (the definition or answer). Every front/back pair must be directly "
+        "verifiable against a specific excerpt; do not invent facts. Do not create near-duplicate "
+        "cards that test the same fact twice. Return fewer cards rather than pad or duplicate "
+        "when the excerpts do not support the requested count.\n"
         "Output ONLY a valid JSON array matching this schema — no preamble, no markdown fences, "
         "no <think> tags, no explanation outside the JSON:\n"
         '[{"front":str,"back":str}]\n'

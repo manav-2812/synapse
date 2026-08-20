@@ -1,19 +1,20 @@
-"""Response generation with automatic Groq -> Gemini fallback.
+"""Response generation with automatic Groq -> Gemini -> OpenRouter fallback.
 
 Yields tagged events so the caller can (a) stream tokens to the client and
 (b) record which provider actually answered (for cost/usage logging):
 
-    ("provider", "groq" | "gemini")
+    ("provider", "groq" | "gemini" | "openrouter")
     ("token", "<text chunk>")
 """
-from app.ai.llm import gemini_client, groq_client
+from app.ai.llm import gemini_client, groq_client, openrouter_client
+from app.core.config import settings
 from app.core.logger import get_logger
 
 log = get_logger("llm.generator")
 
 
 async def stream_answer(system: str, user: str):
-    """Yield ("provider", name) / ("token", text) events, Groq first, Gemini fallback."""
+    """Yield provider/token events: Groq, Gemini, then configured OpenRouter."""
     emitted = 0
     provider = None
     try:
@@ -35,15 +36,36 @@ async def stream_answer(system: str, user: str):
         )
         return
 
+    gemini_emitted = 0
     try:
         async for chunk in gemini_client.stream(system, user):
             if provider is None:
                 provider = "gemini"
                 yield ("provider", provider)
+            gemini_emitted += 1
             yield ("token", chunk)
         return
     except Exception as e:
-        log.error("gemini_stream_failed", error=str(e)[:300])
+        log.warning("gemini_stream_failed", error=str(e)[:300])
+
+    if gemini_emitted > 0:
+        yield (
+            "token",
+            "\n\n_(Note: the response was interrupted partway through. "
+            "Please retry if it looks incomplete.)_",
+        )
+        return
+
+    if settings.openrouter_api_key:
+        try:
+            async for chunk in openrouter_client.stream(system, user):
+                if provider is None:
+                    provider = "openrouter"
+                    yield ("provider", provider)
+                yield ("token", chunk)
+            return
+        except Exception as e:
+            log.error("openrouter_stream_failed", error=str(e)[:300])
 
     yield (
         "token",

@@ -1,9 +1,10 @@
-"""Study-tool generation: Groq -> Gemini fallback + robust JSON extraction."""
+"""Study-tool generation: Groq -> Gemini -> OpenRouter fallback + JSON extraction."""
 import json
 import re
 
-from app.ai.llm import gemini_client, groq_client
+from app.ai.llm import gemini_client, groq_client, openrouter_client
 from app.ai.llm.groq_client import strip_think_block
+from app.core.config import settings
 from app.core.exceptions import ProcessingError
 from app.core.logger import get_logger
 
@@ -11,7 +12,7 @@ log = get_logger("study.generator")
 
 
 async def generate(system: str, user: str) -> str:
-    """Return generated text, trying Groq then Gemini.
+    """Return generated text, trying Groq, Gemini, then configured OpenRouter.
 
     Raises ProcessingError (clean 500) if neither provider can respond, rather
     than leaking a raw provider exception.
@@ -23,15 +24,20 @@ async def generate(system: str, user: str) -> str:
     try:
         return await gemini_client.complete(system, user)
     except Exception as e:
-        log.error("study_generate_failed", error=str(e)[:300])
-        raise ProcessingError(
-            "The AI provider is unavailable right now. Please try again later."
-        )
+        log.warning("gemini_complete_failed", error=str(e)[:300])
+    if settings.openrouter_api_key:
+        try:
+            return await openrouter_client.complete(system, user)
+        except Exception as e:
+            log.error("openrouter_complete_failed", error=str(e)[:300])
+    raise ProcessingError(
+        "The AI provider is unavailable right now. Please try again later."
+    )
 
 
 async def generate_structured(system: str, user: str) -> str:
     """Return generated text using the non-reasoning structured model (Groq),
-    falling back to Gemini.  Use this for quiz/flashcard/notes generation where
+    falling back to Gemini and then configured OpenRouter. Use this for quiz/flashcard/notes generation where
     <think> blocks in the output would corrupt JSON parsing.
     """
     try:
@@ -41,27 +47,35 @@ async def generate_structured(system: str, user: str) -> str:
     try:
         return await gemini_client.complete(system, user)
     except Exception as e:
-        log.error("study_generate_structured_failed", error=str(e)[:300])
-        raise ProcessingError(
-            "The AI provider is unavailable right now. Please try again later."
-        )
+        log.warning("gemini_structured_failed", error=str(e)[:300])
+    if settings.openrouter_api_key:
+        try:
+            return await openrouter_client.complete(system, user)
+        except Exception as e:
+            log.error("openrouter_structured_failed", error=str(e)[:300])
+    raise ProcessingError(
+        "The AI provider is unavailable right now. Please try again later."
+    )
 
 
 async def generate_json(system: str, user: str):
-    """Return parsed JSON from the model, trying Groq (structured) then Gemini.
+    """Return parsed JSON from Groq (structured), Gemini, then OpenRouter.
 
-    Uses ``groq_client.complete_structured`` (llama-3.3-70b-versatile) as the
+    Uses ``groq_client.complete_structured`` (openai/gpt-oss-20b) as the
     primary path so reasoning-model <think> blocks never contaminate the JSON.
     Falls back to the second provider when the first returns output that *isn't
     valid JSON* — not only on hard errors.
     """
     last_err: Exception | None = None
 
-    # (provider_callable, label) pairs — Groq structured first, Gemini fallback.
+    # Groq structured first, Gemini second, optional OpenRouter third. Parsing
+    # occurs per provider so malformed JSON also advances the fallback chain.
     providers = [
         (groq_client.complete_structured, "groq_structured"),
         (gemini_client.complete, "gemini"),
     ]
+    if settings.openrouter_api_key:
+        providers.append((openrouter_client.complete, "openrouter"))
     for call, label in providers:
         try:
             text = await call(system, user)
