@@ -5,8 +5,8 @@ import threading
 from groq import AsyncGroq
 from groq.types.chat import ChatCompletionMessageParam
 
-from app.core.config import settings
-from app.core.logger import get_logger
+from ...core.config import settings
+from ...core.logger import get_logger
 
 log = get_logger("llm.groq")
 
