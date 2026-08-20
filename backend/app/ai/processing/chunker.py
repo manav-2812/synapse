@@ -57,6 +57,7 @@ def _hard_window(pieces: list[str], max_tokens: int, overlap: int) -> list[str]:
     out: list[str] = []
     step = max(1, int(max_tokens * _FALLBACK_CHARS_PER_TOKEN * 0.9))
     overlap_chars = overlap * _FALLBACK_CHARS_PER_TOKEN if overlap else 0
+    advance = max(1, step - overlap_chars)
     for p in pieces:
         if _count_tokens(p) <= max_tokens:
             out.append(p)
@@ -68,9 +69,9 @@ def _hard_window(pieces: list[str], max_tokens: int, overlap: int) -> list[str]:
             seg = p[start:end].strip()
             if seg:
                 out.append(seg)
-            start = end - overlap_chars
-            if start >= end:  # safety against zero/negative progress
-                start = end
+            if end >= n:
+                break
+            start += advance
     return out
 
 
