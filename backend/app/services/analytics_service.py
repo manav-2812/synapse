@@ -1,4 +1,5 @@
 """Analytics dashboard aggregation."""
+from dataclasses import asdict, dataclass
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
@@ -16,6 +17,17 @@ from ..repositories.document_repository import DocumentRepository
 from ..repositories.study_activity_repository import StudyActivityRepository
 from ..repositories.study_repository import StudyRepository
 from ..repositories.user_repository import UserRepository
+
+
+@dataclass
+class UsageBucket:
+    date: str
+    requests: int = 0
+    total_tokens: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    estimated_cost: float = 0.0
+    cache_hits: int = 0
 
 
 class AnalyticsService:
@@ -202,18 +214,10 @@ class AnalyticsService:
 
         # Build a continuous per-day series so the sparkline has no gaps.
         today = datetime.now(timezone.utc).date()
-        series: dict[str, dict] = {}
+        series: dict[str, UsageBucket] = {}
         for i in range(days - 1, -1, -1):
             d = (today - timedelta(days=i)).isoformat()
-            series[d] = {
-                "date": d,
-                "requests": 0,
-                "total_tokens": 0,
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-                "estimated_cost": 0.0,
-                "cache_hits": 0,
-            }
+            series[d] = UsageBucket(date=d)
 
         total_requests = 0
         total_tokens = 0
@@ -223,32 +227,24 @@ class AnalyticsService:
             day_key = log_row.created_at.date().isoformat()
             bucket = series.get(day_key)
             if bucket is None:  # older than the window; still count in totals
-                bucket = {
-                    "date": day_key,
-                    "requests": 0,
-                    "total_tokens": 0,
-                    "prompt_tokens": 0,
-                    "completion_tokens": 0,
-                    "estimated_cost": 0.0,
-                    "cache_hits": 0,
-                }
+                bucket = UsageBucket(date=day_key)
                 series[day_key] = bucket
-            bucket["requests"] += 1
-            bucket["total_tokens"] += log_row.total_tokens
-            bucket["prompt_tokens"] += log_row.prompt_tokens
-            bucket["completion_tokens"] += log_row.completion_tokens
-            bucket["estimated_cost"] += log_row.estimated_cost
+            bucket.requests += 1
+            bucket.total_tokens += log_row.total_tokens
+            bucket.prompt_tokens += log_row.prompt_tokens
+            bucket.completion_tokens += log_row.completion_tokens
+            bucket.estimated_cost += log_row.estimated_cost
             if log_row.cached:
-                bucket["cache_hits"] += 1
+                bucket.cache_hits += 1
                 cached_total += 1
             total_requests += 1
-            total_tokens += int(log_row.total_tokens or 0)
-            total_cost += float(log_row.estimated_cost or 0.0)
+            total_tokens += log_row.total_tokens or 0
+            total_cost += log_row.estimated_cost or 0.0
 
         # Cache-hit rate: blend the persisted ``cached`` flags (per-request,
         # accurate historically) with the live in-memory counter rate.
         persisted_rate = (cached_total / total_requests) if total_requests else 0.0
-        live_rate = float(resp_cache.hit_rate())
+        live_rate = resp_cache.hit_rate()
         cache_hit_rate = max(persisted_rate, live_rate)
 
         return {
@@ -256,7 +252,7 @@ class AnalyticsService:
             "total_tokens": total_tokens,
             "total_cost": round(total_cost, 6),
             "cache_hit_rate": round(cache_hit_rate, 4),
-            "per_day": list(series.values()),
+            "per_day": [asdict(b) for b in series.values()],
         }
 
 
