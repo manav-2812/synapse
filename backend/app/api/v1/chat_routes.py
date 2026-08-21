@@ -41,19 +41,7 @@ async def list_conversations(
     session: AsyncSession = Depends(get_db),
 ):
     svc = ChatService(session)
-    convs = await svc.list_conversations(current_user.id)
-    items = []
-    for c in convs:
-        items.append(
-            ConversationListItem(
-                id=str(c.id),
-                title=c.title,
-                created_at=c.created_at,
-                updated_at=c.updated_at,
-                message_count=await svc.repo.message_count(c.id),
-            )
-        )
-    return items
+    return await svc.list_conversations_with_counts(current_user.id)
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationDetail)

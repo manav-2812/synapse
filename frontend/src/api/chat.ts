@@ -1,6 +1,7 @@
-import { request, getToken, BASE } from "./client";
+import { request, getToken, BASE, refreshTokens, clearTokens } from "./client";
 import type {
   ChatRequest,
+  ChatConversationPayload,
   ChatDonePayload,
   ChatStreamEvent,
   ConversationDetail,
@@ -13,6 +14,7 @@ import type {
 
 export interface ChatStreamHandlers {
   onStart?: () => void;
+  onConversation?: (payload: ChatConversationPayload) => void;
   onToken?: (t: string) => void;
   onSources?: (s: SourceResponse[]) => void;
   onDone?: (payload: ChatDonePayload | null) => void;
@@ -81,26 +83,45 @@ export const chatApi = {
   /**
    * Send a chat message and stream the SSE response. Returns the done payload
    * (conversation_id / message_id / title) once streaming completes.
+   *
+   * Unlike request(), this uses raw fetch for streaming. We replicate the
+   * 401 → refresh → retry logic here so expired tokens are handled correctly.
    */
   async sendMessage(
     params: ChatRequest,
     handlers: ChatStreamHandlers = {},
   ): Promise<ChatDonePayload | null> {
-    const token = getToken();
     const body = {
       message: params.message,
       conversation_id: params.conversation_id || undefined,
       document_scope: params.document_scope || undefined,
     };
 
-    const res = await fetch(`${BASE}/chat/message`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(body),
-    });
+    async function doFetch(token: string | null): Promise<Response> {
+      return fetch(`${BASE}/chat/message`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+    }
+
+    let res = await doFetch(getToken());
+
+    // 401 → try to refresh once, then retry.
+    if (res.status === 401) {
+      try {
+        const newToken = await refreshTokens();
+        res = await doFetch(newToken);
+      } catch {
+        clearTokens();
+        const err = new Error("Session expired. Please sign in again.");
+        handlers.onError?.(err);
+        throw err;
+      }
+    }
 
     if (!res.ok) {
       let msg = `Chat request failed (${res.status})`;
@@ -133,19 +154,27 @@ export const chatApi = {
         buffer = buffer.slice(idx + 2);
         const ev = parseEvent(rawEvent);
         if (!ev) continue;
-        if (ev.type === "sources") handlers.onSources?.(ev.value);
+        if (ev.type === "conversation") handlers.onConversation?.(ev.value);
+        else if (ev.type === "sources") handlers.onSources?.(ev.value);
         else if (ev.type === "token") handlers.onToken?.(ev.value || "");
         else if (ev.type === "done") {
           donePayload = ev.value;
           handlers.onDone?.(donePayload);
+        } else if (ev.type === "error") {
+          handlers.onError?.(new Error(typeof ev.value === "string" ? ev.value : "Chat stream error"));
         }
       }
     }
 
     const trailing = parseEvent(buffer.trim());
     if (trailing) {
-      if (trailing.type === "sources") handlers.onSources?.(trailing.value);
+      if (trailing.type === "conversation") handlers.onConversation?.(trailing.value);
+      else if (trailing.type === "sources") handlers.onSources?.(trailing.value);
+      else if (trailing.type === "token") handlers.onToken?.(trailing.value || "");
       else if (trailing.type === "done") handlers.onDone?.(trailing.value);
+      else if (trailing.type === "error") {
+        handlers.onError?.(new Error(typeof trailing.value === "string" ? trailing.value : "Chat stream error"));
+      }
     }
 
     return donePayload;

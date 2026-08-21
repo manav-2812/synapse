@@ -100,6 +100,8 @@ async function refreshTokens(): Promise<string> {
   return data.access_token;
 }
 
+export { refreshTokens };
+
 interface RequestOptions {
   method?: string;
   body?: unknown;

@@ -228,6 +228,12 @@ class StudyService:
     async def list_notes(self, user_id: uuid.UUID):
         return await self.repo.list_notes(user_id)
 
+    async def get_note(self, note_id: str, user_id: uuid.UUID) -> GeneratedNote:
+        note = await self.repo.get_note(uuid.UUID(note_id), user_id)
+        if note is None:
+            raise NotFoundError("Note not found.")
+        return note
+
     async def list_quizzes(self, user_id: uuid.UUID):
         return await self.repo.list_quizzes(user_id)
 

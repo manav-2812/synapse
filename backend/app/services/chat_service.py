@@ -1,7 +1,9 @@
 """RAG chat orchestration: retrieve -> generate (streamed) -> persist."""
+import asyncio
 import json
 import uuid
 
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.embeddings.embedding_client import embed_query
@@ -9,20 +11,44 @@ from app.ai.llm import cache as resp_cache
 from app.ai.llm import stream_answer
 from app.ai.llm import tokens as tok
 from app.ai.rag import build_prompt, retrieve
+from app.ai.study.generator import generate_title
 from app.core.config import settings
 from app.core.constants import MessageRole
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.logger import get_logger
+from app.core.database import AsyncSessionLocal
 from app.models.conversation import AnswerSource, Conversation, Message
+from app.models.document import Document
 from app.models.llm_usage_log import LLMUsageLog
 from app.repositories.conversation_repository import ConversationRepository
-from app.repositories.document_repository import DocumentRepository
 from app.repositories.study_activity_repository import StudyActivityRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.chat_schema import ChatRequest, SourceResponse
+from app.schemas.chat_schema import ChatRequest, ConversationListItem, SourceResponse
 
 log = get_logger("chat")
 TOP_K = 4
+
+
+async def _generate_title_background(
+    conversation_id: uuid.UUID, user_message: str, answer_text: str
+) -> None:
+    """Generate and persist a conversation title in a separate DB session.
+
+    Runs as a fire-and-forget asyncio task so the HTTP stream closes
+    immediately after the done event. Errors are logged but never raised.
+    """
+    try:
+        generated = await generate_title(user_message, answer_text)
+        if not generated:
+            return
+        async with AsyncSessionLocal() as session:
+            repo = ConversationRepository(session)
+            conv = await session.get(Conversation, conversation_id)
+            if conv:
+                await repo.rename(conv, generated[:255])
+                await session.commit()
+    except Exception as e:
+        log.warning("auto_title_background_failed", error=str(e)[:200])
 
 
 def _sse(event_type: str, value) -> str:
@@ -35,12 +61,7 @@ class ChatService:
         self.repo = ConversationRepository(session)
 
     async def chat(self, payload: ChatRequest, user_id: uuid.UUID):
-        """Stream the answer as SSE lines; persist message + sources at the end.
-
-        Any failure during streaming (retrieval error, provider outage, persist
-        error) is caught and surfaced as a single ``error`` SSE event so the
-        client can show a message instead of a silently truncated stream.
-        """
+        """Stream the answer as SSE lines; persist message + sources at the end."""
         try:
             async for event in self._chat_stream(payload, user_id):
                 yield event
@@ -52,7 +73,7 @@ class ChatService:
             )
 
     async def _chat_stream(self, payload: ChatRequest, user_id: uuid.UUID):
-        # --- Resolve conversation (must belong to user) ---
+        # --- Resolve conversation ---
         first_message = False
         if payload.conversation_id:
             conv = await self.repo.get_with_messages(
@@ -62,7 +83,8 @@ class ChatService:
                 raise NotFoundError("Conversation not found.")
             history = list(conv.messages)
         else:
-            conv = Conversation(user_id=user_id, title="New Chat")
+            initial_title = payload.message[:60].strip() or "New Chat"
+            conv = Conversation(user_id=user_id, title=initial_title)
             await self.repo.create(conv)
             history = []
             first_message = True
@@ -74,11 +96,18 @@ class ChatService:
             content=payload.message,
         )
         await self.repo.add_message(user_msg)
-        await self.session.flush()
+        await self.session.commit()
 
-        if first_message:
-            conv.title = payload.message[:60].strip() or "New Chat"
-            await self.repo.rename(conv, conv.title)
+        # Emit conversation event immediately so client has conversation_id right away!
+        yield _sse(
+            "conversation",
+            {
+                "conversation_id": str(conv.id),
+                "title": conv.title,
+                "created_at": conv.created_at.isoformat() if conv.created_at else None,
+                "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
+            },
+        )
 
         # --- Retrieve grounded context ---
         query_vector = await embed_query(payload.message)
@@ -90,12 +119,17 @@ class ChatService:
             query=payload.message,
         )
 
-        # Resolve document names once for all chunks (for citation chips).
+        # Resolve document names for only the chunks we retrieved (not all user docs)
         doc_ids = {uuid.UUID(c["document_id"]) for c in chunks if c.get("document_id")}
         doc_names: dict[uuid.UUID, str] = {}
         if doc_ids:
-            owned = await DocumentRepository(self.session).list_by_user(user_id)
-            doc_names = {d.id: d.original_filename for d in owned if d.id in doc_ids}
+            res = await self.session.execute(
+                sa_select(Document.id, Document.original_filename).where(
+                    Document.id.in_(doc_ids),
+                    Document.user_id == user_id,
+                )
+            )
+            doc_names = {row.id: row.original_filename for row in res}
 
         sources = [
             SourceResponse(
@@ -111,10 +145,9 @@ class ChatService:
             for c in chunks
         ]
 
-        # --- Emit retrieved sources first so the UI can render citations ---
         yield _sse("sources", [s.model_dump() for s in sources])
 
-        # --- Stream the answer (with response cache + usage logging) ---
+        # --- Stream the answer ---
         system, user = build_prompt(payload.message, chunks, history)
 
         cache_key = resp_cache.make_key(
@@ -136,12 +169,11 @@ class ChatService:
                 elif evt == "token":
                     full.append(val)
                     yield _sse("token", val)
-            answer_full = "".join(full)
-            resp_cache.set(cache_key, answer_full)
+            resp_cache.set(cache_key, "".join(full))
 
         answer_text = "".join(full).strip()
 
-        # Log token usage + estimated cost (cache hit still logged, cost ~0).
+        # --- Log token usage ---
         try:
             prompt_tokens = tok.estimate_tokens(system + "\n" + user)
             completion_tokens = tok.estimate_tokens(answer_text)
@@ -165,7 +197,7 @@ class ChatService:
                     cached=cached_text is not None,
                 )
             )
-        except Exception as e:  # usage logging must never break the response
+        except Exception as e:
             log.warning("usage_log_failed", error=str(e)[:200])
 
         # --- Persist assistant message + citation rows ---
@@ -186,11 +218,16 @@ class ChatService:
                 )
             )
 
-        await UserRepository(self.session).increment_questions_asked(user_id)
-        # A chat question counts as light study activity (~1 minute).
-        await StudyActivityRepository(self.session).record_minutes(user_id, 1)
+        # Persist analytics sequentially to prevent concurrent flush on the same AsyncSession
+        try:
+            await UserRepository(self.session).increment_questions_asked(user_id)
+            await StudyActivityRepository(self.session).record_minutes(user_id, 1)
+        except Exception as e:
+            log.warning("analytics_record_failed", error=str(e)[:200])
+
         await self.session.commit()
 
+        # Send done immediately
         yield _sse(
             "done",
             {
@@ -200,9 +237,29 @@ class ChatService:
             },
         )
 
+        # Title generation runs as a fire-and-forget background task so the
+        # HTTP stream closes immediately after done. The updated title will
+        # appear next time the frontend calls loadConversations().
+        if first_message:
+            asyncio.ensure_future(
+                _generate_title_background(conv.id, payload.message, answer_text)
+            )
+
     async def list_conversations(self, user_id: uuid.UUID) -> list[Conversation]:
-        convs = await self.repo.list_by_user(user_id)
-        return convs
+        return await self.repo.list_by_user(user_id)
+
+    async def list_conversations_with_counts(self, user_id: uuid.UUID) -> list[ConversationListItem]:
+        rows = await self.repo.list_by_user_with_counts(user_id)
+        return [
+            ConversationListItem(
+                id=str(conv.id),
+                title=conv.title,
+                created_at=conv.created_at,
+                updated_at=conv.updated_at,
+                message_count=count,
+            )
+            for conv, count in rows
+        ]
 
     async def get_conversation(self, conversation_id: uuid.UUID, user_id: uuid.UUID):
         conv = await self.repo.get_with_messages(conversation_id, user_id)

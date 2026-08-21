@@ -38,15 +38,15 @@ _VISION_PROMPT = (
 
 _lock = threading.Lock()
 _tesseract_checked = False
-_tesseract_available: bool | None = None
+_tesseract_ok: bool | None = None
 
 
 def _tesseract_available() -> bool:
     """Probe for a working Tesseract install once, then cache the result."""
-    global _tesseract_checked, _tesseract_available
+    global _tesseract_checked, _tesseract_ok
     with _lock:
         if _tesseract_checked:
-            return bool(_tesseract_available)
+            return bool(_tesseract_ok)
         available = False
         try:
             import pytesseract  # noqa: F401
@@ -56,7 +56,7 @@ def _tesseract_available() -> bool:
         except Exception as e:  # Tesseract binary missing, not on PATH, etc.
             log.warning("tesseract_unavailable", error=str(e)[:200])
         _tesseract_checked = True
-        _tesseract_available = available
+        _tesseract_ok = available
         return available
 
 

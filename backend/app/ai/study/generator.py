@@ -35,6 +35,52 @@ async def generate(system: str, user: str) -> str:
     )
 
 
+async def generate_title(user_message: str, assistant_message: str) -> str:
+    """Generate a short 3-6 word conversation title from the first exchange.
+
+    Reuses the existing groq_client singleton (complete_structured) with a
+    tight prompt. Never raises — returns empty string on failure so callers
+    fall back to the truncated-first-message heuristic.
+    """
+    system = (
+        "You are a title generator. Given a user question and an assistant reply, "
+        "output ONLY a 3-6 word conversation title. No punctuation. No quotes. No explanation."
+    )
+    user = (
+        f"User: {user_message[:400]}\n"
+        f"Assistant: {assistant_message[:400]}\n\n"
+        "Title:"
+    )
+    # Use the existing singleton clients — no new instantiation needed.
+    try:
+        raw = await groq_client.complete_structured(system, user)
+        raw = strip_think_block(raw).strip()
+        if raw:
+            return raw[:120]
+    except Exception as e:
+        log.warning("title_groq_failed", error=str(e)[:200])
+
+    try:
+        text = await gemini_client.complete(system, user)
+        raw = text.strip()
+        if raw:
+            return raw[:120]
+    except Exception as e:
+        log.warning("title_gemini_failed", error=str(e)[:200])
+
+    # OpenRouter fallback
+    if settings.openrouter_api_key:
+        try:
+            text = await openrouter_client.complete(system, user)
+            raw = text.strip()
+            if raw:
+                return raw[:120]
+        except Exception as e:
+            log.warning("title_openrouter_failed", error=str(e)[:200])
+
+    return ""
+
+
 async def generate_structured(system: str, user: str) -> str:
     """Return generated text using the non-reasoning structured model (Groq),
     falling back to Gemini and then configured OpenRouter. Use this for quiz/flashcard/notes generation where

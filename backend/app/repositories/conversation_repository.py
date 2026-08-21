@@ -25,6 +25,19 @@ class ConversationRepository:
         )
         return list(res.scalars().all())
 
+    async def list_by_user_with_counts(self, user_id: UUID) -> list[tuple[Conversation, int]]:
+        res = await self.session.execute(
+            select(
+                Conversation,
+                func.count(Message.id).label("message_count"),
+            )
+            .outerjoin(Message, Message.conversation_id == Conversation.id)
+            .where(Conversation.user_id == user_id)
+            .group_by(Conversation.id)
+            .order_by(Conversation.updated_at.desc())
+        )
+        return [(row[0], int(row[1])) for row in res.all()]
+
     async def get_owned(self, conversation_id: UUID, user_id: UUID) -> Conversation | None:
         res = await self.session.execute(
             select(Conversation)
@@ -63,7 +76,7 @@ class ConversationRepository:
             .select_from(Message)
             .where(Message.conversation_id == conversation_id)
         )
-        return int(res.scalar() or 0)
+        return res.scalar() or 0
 
     async def get_message(self, message_id: UUID, conversation_id: UUID) -> Message | None:
         """Fetch a message, scoped to a specific conversation (ownership)."""

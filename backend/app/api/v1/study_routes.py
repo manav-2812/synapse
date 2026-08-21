@@ -93,6 +93,14 @@ async def list_notes(current_user=Depends(get_current_user), session: AsyncSessi
     return [_note_out(n) for n in await StudyService(session).list_notes(current_user.id)]
 
 
+@router.get("/notes/{note_id}", response_model=NoteResponse)
+async def get_note(
+    note_id: str, current_user=Depends(get_current_user), session: AsyncSession = Depends(get_db)
+):
+    note = await StudyService(session).get_note(note_id, current_user.id)
+    return _note_out(note)
+
+
 @router.delete("/notes/{note_id}", status_code=status.HTTP_200_OK)
 async def delete_note(
     note_id: str, current_user=Depends(get_current_user), session: AsyncSession = Depends(get_db)

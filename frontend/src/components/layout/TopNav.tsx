@@ -228,6 +228,8 @@ export function TopNav({ title, theme, onToggleTheme }: Props) {
           )}
         </div>
 
+        <div className="top-nav-divider" aria-hidden="true" />
+
         <div className="nav-item-wrap">
           <button
             className="workspace-pill"
@@ -266,6 +268,8 @@ export function TopNav({ title, theme, onToggleTheme }: Props) {
             </>
           )}
         </div>
+
+        <div className="top-nav-divider" aria-hidden="true" />
 
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
 

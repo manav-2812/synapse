@@ -162,6 +162,12 @@ export interface ConversationDetail {
   updated_at: string;
   messages: MessageResponse[];
 }
+export interface ChatConversationPayload {
+  conversation_id: string;
+  title: string;
+  created_at?: string;
+  updated_at?: string;
+}
 export interface ChatDonePayload {
   conversation_id: string;
   message_id: string;
@@ -174,9 +180,11 @@ export interface MessageUpdateRequest {
   content: string;
 }
 export type ChatStreamEvent =
+  | { type: "conversation"; value: ChatConversationPayload }
   | { type: "sources"; value: SourceResponse[] }
   | { type: "token"; value: string }
-  | { type: "done"; value: ChatDonePayload | null };
+  | { type: "done"; value: ChatDonePayload | null }
+  | { type: "error"; value: string };
 
 /* ---------------- Study tools ---------------- */
 export type NoteType = "short_notes" | "long_notes" | "exam_answer" | "formula_sheet";

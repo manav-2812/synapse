@@ -15,12 +15,15 @@ _MODEL = "openai/gpt-oss-120b"
 _FALLBACK_MODEL = "openai/gpt-oss-20b"
 
 # Model used exclusively for structured JSON generation (quiz/flashcards/notes).
-# It is the smaller GPT-OSS model to keep structured output fast and reliable.
-_STRUCTURED_MODEL = "openai/gpt-oss-20b"  # Fast, non-reasoning model for clean JSON (quizzes/flashcards/notes)
+_STRUCTURED_MODEL = "openai/gpt-oss-20b"
 
-_MAX_TOKENS = 2048  # Sufficient for structured output without exceeding TPM ceilings
+_MAX_TOKENS = 2048
 _TEMPERATURE = 0.2
-_TIMEOUT_SECONDS = 60
+
+# Shorter timeout for streaming/primary use so the fallback chain kicks in fast
+# rather than waiting the full 60s before trying Gemini.
+_STREAM_TIMEOUT_SECONDS = 15
+_COMPLETE_TIMEOUT_SECONDS = 30
 
 _client = None
 _lock = threading.Lock()
@@ -29,28 +32,45 @@ _lock = threading.Lock()
 # Think-block stripping
 # ---------------------------------------------------------------------------
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+# Partial opening tag — used to hold back a potential think-block start
+_THINK_OPEN_RE = re.compile(r"<think", re.IGNORECASE)
 
 
 def strip_think_block(text: str) -> str:
-    """Remove any <think>...</think> reasoning traces from a model response.
-
-    Applied unconditionally to every response so callers never see reasoning
-    narration regardless of which underlying model produced the output.
-    """
+    """Remove any <think>...</think> reasoning traces from a model response."""
     return _THINK_RE.sub("", text).strip()
 
 
 # ---------------------------------------------------------------------------
-# Client singleton
+# Client singletons (separate timeouts for streaming vs non-streaming)
 # ---------------------------------------------------------------------------
 
-def _get_client() -> AsyncGroq:
-    global _client
-    if _client is None:
+_stream_client = None
+_complete_client = None
+
+
+def _get_stream_client() -> AsyncGroq:
+    global _stream_client
+    if _stream_client is None:
         with _lock:
-            if _client is None:
-                _client = AsyncGroq(api_key=settings.groq_api_key, timeout=_TIMEOUT_SECONDS)
-    return _client
+            if _stream_client is None:
+                _stream_client = AsyncGroq(
+                    api_key=settings.groq_api_key,
+                    timeout=_STREAM_TIMEOUT_SECONDS,
+                )
+    return _stream_client
+
+
+def _get_complete_client() -> AsyncGroq:
+    global _complete_client
+    if _complete_client is None:
+        with _lock:
+            if _complete_client is None:
+                _complete_client = AsyncGroq(
+                    api_key=settings.groq_api_key,
+                    timeout=_COMPLETE_TIMEOUT_SECONDS,
+                )
+    return _complete_client
 
 
 def _messages(system: str, user: str) -> list[ChatCompletionMessageParam]:
@@ -66,7 +86,7 @@ def _messages(system: str, user: str) -> list[ChatCompletionMessageParam]:
 
 async def complete(system: str, user: str) -> str:
     """Chat completion with primary → fallback model, think-block stripped."""
-    client = _get_client()
+    client = _get_complete_client()
     for model in (_MODEL, _FALLBACK_MODEL):
         try:
             resp = await client.chat.completions.create(
@@ -84,12 +104,8 @@ async def complete(system: str, user: str) -> str:
 
 
 async def complete_structured(system: str, user: str) -> str:
-    """Completion for structured JSON generation (quiz / flashcards / notes).
-
-    Uses ``_STRUCTURED_MODEL`` (openai/gpt-oss-20b) for clean JSON output.
-    Falls back to the chat primary model only on hard errors.
-    """
-    client = _get_client()
+    """Completion for structured JSON generation (quiz / flashcards / notes)."""
+    client = _get_complete_client()
     for model in (_STRUCTURED_MODEL, _MODEL):
         try:
             resp = await client.chat.completions.create(
@@ -107,8 +123,14 @@ async def complete_structured(system: str, user: str) -> str:
 
 
 async def stream(system: str, user: str):
-    """Streaming chat completion, think-block stripped from every chunk."""
-    client = _get_client()
+    """True streaming: yield text chunks as they arrive from the API.
+
+    Think-block suppression uses a hold-back buffer: text inside a potential
+    <think> block is withheld until the closing </think> is seen (then
+    discarded), or until the buffer clearly cannot be a think-block (then
+    flushed). This avoids buffering the entire response.
+    """
+    client = _get_stream_client()
     for model in (_MODEL, _FALLBACK_MODEL):
         try:
             response_stream = await client.chat.completions.create(
@@ -118,20 +140,59 @@ async def stream(system: str, user: str):
                 max_tokens=_MAX_TOKENS,
                 stream=True,
             )
-            # Accumulate chunks, strip think blocks from the aggregated buffer,
-            # then yield. For streaming we do a best-effort strip: we collect
-            # all chunks, strip once, then yield the cleaned text as a single
-            # chunk. This prevents a <think> block that spans multiple chunks
-            # from being partially emitted before it can be stripped.
-            buffer: list[str] = []
+            hold = ""          # buffer for potential <think> block
+            in_think = False   # currently inside a <think> block
+
             async for chunk in response_stream:
                 delta = chunk.choices[0].delta.content
-                if delta:
-                    buffer.append(delta)
-            cleaned = strip_think_block("".join(buffer))
-            if cleaned:
-                yield cleaned
+                if not delta:
+                    continue
+
+                hold += delta
+
+                while hold:
+                    if in_think:
+                        # Looking for </think>
+                        end = hold.lower().find("</think>")
+                        if end != -1:
+                            hold = hold[end + len("</think>"):]
+                            in_think = False
+                        else:
+                            # Keep buffering — the close tag may arrive in next chunk
+                            # but cap the buffer to avoid unbounded growth
+                            if len(hold) > 8192:
+                                # Clearly not a real think block — flush it
+                                yield hold
+                                hold = ""
+                                in_think = False
+                            break
+                    else:
+                        # Not in a think block — look for opening <think
+                        start = hold.lower().find("<think")
+                        if start == -1:
+                            # No think tag anywhere — yield everything
+                            yield hold
+                            hold = ""
+                        elif start > 0:
+                            # Yield the safe prefix before the potential tag
+                            yield hold[:start]
+                            hold = hold[start:]
+                        else:
+                            # hold starts with <think — check if tag is complete
+                            gt = hold.find(">", 6)
+                            if gt != -1:
+                                # Full opening tag present — enter think mode
+                                hold = hold[gt + 1:]
+                                in_think = True
+                            else:
+                                # Incomplete tag — wait for more chunks
+                                break
+
+            # Flush anything left over that wasn't in a think block
+            if hold and not in_think:
+                yield hold.strip()
             return
+
         except Exception as e:
             log.warning("groq_stream_model_failed", model=model, error=str(e)[:200])
             if model == _FALLBACK_MODEL:

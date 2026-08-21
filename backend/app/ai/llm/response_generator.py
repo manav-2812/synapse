@@ -14,56 +14,61 @@ log = get_logger("llm.generator")
 
 
 async def stream_answer(system: str, user: str):
-    """Yield provider/token events: Groq, Gemini, then configured OpenRouter."""
-    emitted = 0
-    provider = None
+    """Yield provider/token events: Groq first, then Gemini, then OpenRouter.
+
+    Groq uses a 15s timeout so failure is detected quickly and the fallback
+    chain kicks in without a 60s wait.
+    """
+    groq_chunks = 0
     try:
         async for chunk in groq_client.stream(system, user):
-            if provider is None:
-                provider = "groq"
-                yield ("provider", provider)
-            emitted += 1
+            if groq_chunks == 0:
+                yield ("provider", "groq")
+            groq_chunks += 1
             yield ("token", chunk)
-        return
-    except Exception as e:  # network/quota/any failure -> fallback
+        if groq_chunks > 0:
+            return  # Groq delivered a complete response
+    except Exception as e:
         log.warning("groq_stream_failed", error=str(e)[:300])
 
-    if emitted > 0:
+    # Groq either failed outright or returned nothing — try Gemini.
+    # If Groq emitted some tokens before failing, warn the user inline.
+    if groq_chunks > 0:
         yield (
             "token",
-            "\n\n_(Note: the response was interrupted partway through. "
-            "Please retry if it looks incomplete.)_",
+            "\n\n_(Note: the response was interrupted. Please retry if it looks incomplete.)_",
         )
         return
 
-    gemini_emitted = 0
+    gemini_chunks = 0
     try:
         async for chunk in gemini_client.stream(system, user):
-            if provider is None:
-                provider = "gemini"
-                yield ("provider", provider)
-            gemini_emitted += 1
+            if gemini_chunks == 0:
+                yield ("provider", "gemini")
+            gemini_chunks += 1
             yield ("token", chunk)
-        return
+        if gemini_chunks > 0:
+            return
     except Exception as e:
         log.warning("gemini_stream_failed", error=str(e)[:300])
 
-    if gemini_emitted > 0:
+    if gemini_chunks > 0:
         yield (
             "token",
-            "\n\n_(Note: the response was interrupted partway through. "
-            "Please retry if it looks incomplete.)_",
+            "\n\n_(Note: the response was interrupted. Please retry if it looks incomplete.)_",
         )
         return
 
     if settings.openrouter_api_key:
         try:
+            openrouter_chunks = 0
             async for chunk in openrouter_client.stream(system, user):
-                if provider is None:
-                    provider = "openrouter"
-                    yield ("provider", provider)
+                if openrouter_chunks == 0:
+                    yield ("provider", "openrouter")
+                openrouter_chunks += 1
                 yield ("token", chunk)
-            return
+            if openrouter_chunks > 0:
+                return
         except Exception as e:
             log.error("openrouter_stream_failed", error=str(e)[:300])
 

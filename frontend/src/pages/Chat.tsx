@@ -32,6 +32,13 @@ interface ChatMessage {
   sources: SourceResponse[];
 }
 
+const SUGGESTION_CHIPS = [
+  "Summarize this document",
+  "Quiz me on the key concepts",
+  "What are the important definitions?",
+  "Explain this in simple terms",
+] as const;
+
 export default function Chat() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -52,7 +59,7 @@ export default function Chat() {
   const [deleteConv, setDeleteConv] = useState<ConversationListItem | null>(null);
 
   const threadRef = useRef<HTMLDivElement>(null);
-  const streamIdx = useRef<number>(-1);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     void loadConversations();
@@ -61,6 +68,14 @@ export default function Chat() {
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  // Auto-resize textarea as content grows
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+  }, [input]);
 
   async function loadConversations() {
     try {
@@ -78,6 +93,7 @@ export default function Chat() {
   }
 
   async function openConversation(id: string) {
+    if (id.startsWith("temp-")) return;
     setActiveId(id);
     try {
       const detail = await chatApi.getConversation(id);
@@ -99,6 +115,7 @@ export default function Chat() {
   }
 
   function startNew() {
+    if (busy) return;
     setActiveId(null);
     setMessages([]);
   }
@@ -169,11 +186,15 @@ export default function Chat() {
     }
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || busy) return;
 
     const docScope = scopeIds;
+    const isNew = !activeId;
+    const tempId = `temp-${Date.now()}`;
+    const optimisticTitle = text.slice(0, 50) || "New Chat";
+    const nowIso = new Date().toISOString();
 
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
@@ -181,51 +202,132 @@ export default function Chat() {
       content: text,
       sources: [],
     };
+    const assistantId = `a-${Date.now()}`;
     const assistantMsg: ChatMessage = {
-      id: `a-${Date.now()}`,
+      id: assistantId,
       role: "assistant",
       content: "",
       sources: [],
     };
+
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
-    streamIdx.current = messages.length + 1; // index of assistantMsg after append
     setInput("");
     setBusy(true);
 
+    // Optimistically insert new chat into sidebar immediately!
+    if (isNew) {
+      setConversations((prev) => [
+        {
+          id: tempId,
+          title: optimisticTitle,
+          created_at: nowIso,
+          updated_at: nowIso,
+          message_count: 1,
+        },
+        ...prev.filter((c) => !c.id.startsWith("temp-")),
+      ]);
+    }
+
+    // Patch by stable ID — never by index, which breaks with stale closures
     const patchAssistant = (patch: Partial<ChatMessage>) => {
       setMessages((prev) =>
-        prev.map((m, i) => (i === streamIdx.current ? { ...m, ...patch } : m)),
+        prev.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)),
       );
     };
+
+    let confirmedId = activeId;
 
     try {
       await chatApi.sendMessage(
         { message: text, conversation_id: activeId, document_scope: docScope },
         {
+          onConversation: (convPayload) => {
+            if (convPayload.conversation_id) {
+              const newId = convPayload.conversation_id;
+              confirmedId = newId;
+              setActiveId(newId);
+              setConversations((prev) => {
+                const hasItem = prev.some((c) => c.id === newId || c.id === tempId || c.id.startsWith("temp-"));
+                if (hasItem) {
+                  return prev.map((c) =>
+                    c.id === tempId || c.id === newId || c.id.startsWith("temp-")
+                      ? {
+                          ...c,
+                          id: newId,
+                          title: convPayload.title || c.title,
+                          updated_at: convPayload.updated_at || c.updated_at,
+                        }
+                      : c,
+                  );
+                }
+                return [
+                  {
+                    id: newId,
+                    title: convPayload.title || optimisticTitle,
+                    created_at: convPayload.created_at || nowIso,
+                    updated_at: convPayload.updated_at || nowIso,
+                    message_count: 1,
+                  },
+                  ...prev,
+                ];
+              });
+            }
+          },
           onSources: (s: SourceResponse[]) => patchAssistant({ sources: s }),
           onToken: (t: string) =>
             setMessages((prev) =>
-              prev.map((m, i) =>
-                i === streamIdx.current ? { ...m, content: m.content + t } : m,
+              prev.map((m) =>
+                m.id === assistantId ? { ...m, content: m.content + t } : m,
               ),
             ),
           onDone: (payload) => {
             if (payload?.conversation_id) {
-              setActiveId(payload.conversation_id);
+              const finalId = payload.conversation_id;
+              setActiveId(finalId);
+              setConversations((prev) => {
+                const found = prev.some((c) => c.id === finalId || c.id === tempId || c.id.startsWith("temp-"));
+                if (found) {
+                  return prev.map((c) =>
+                    c.id === finalId || c.id === tempId || c.id.startsWith("temp-")
+                      ? {
+                          ...c,
+                          id: finalId,
+                          title: payload.title || c.title,
+                          message_count: Math.max(c.message_count, 2),
+                          updated_at: new Date().toISOString(),
+                        }
+                      : c,
+                  );
+                }
+                return [
+                  {
+                    id: finalId,
+                    title: payload.title || optimisticTitle,
+                    created_at: nowIso,
+                    updated_at: nowIso,
+                    message_count: 2,
+                  },
+                  ...prev,
+                ];
+              });
               void loadConversations();
             }
           },
           onError: (e: Error) => {
             toast("error", "Chat error", e.message);
             patchAssistant({ content: `⚠️ ${e.message}` });
+            if (isNew && !confirmedId) {
+              setConversations((prev) => prev.filter((c) => c.id !== tempId));
+            }
           },
         },
       );
     } catch {
-      /* onError already handled */
+      if (isNew && !confirmedId) {
+        setConversations((prev) => prev.filter((c) => c.id !== tempId));
+      }
     } finally {
       setBusy(false);
-      streamIdx.current = -1;
     }
   }
 
@@ -234,6 +336,12 @@ export default function Chat() {
       e.preventDefault();
       void send();
     }
+  }
+
+  function sendChip(text: string) {
+    setInput(text);
+    // Use a microtask so input state is set before send() reads it
+    setTimeout(() => void send(text), 0);
   }
 
   return (
@@ -319,12 +427,24 @@ export default function Chat() {
 
       <section style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
         {messages.length === 0 ? (
-          <div style={{ margin: 16, flex: 1 }}>
+          <div style={{ margin: 16, flex: 1, display: "flex", flexDirection: "column" }}>
             <EmptyState
               icon="chat"
               title="Ask anything about your documents."
               hint="Optionally scope the answer to specific document IDs below."
             />
+            <div className="chat-suggestion-chips">
+              {SUGGESTION_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  className="chat-suggestion-chip"
+                  onClick={() => sendChip(chip)}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="thread" ref={threadRef}>
@@ -435,6 +555,7 @@ export default function Chat() {
               <DocumentScopePicker value={scopeIds} onChange={setScopeIds} allowUpload popupDirection="up" size="sm" />
             </div>
             <textarea
+              ref={textareaRef}
               placeholder="Message Synapse…"
               value={input}
               onChange={(e) => setInput(e.target.value)}

@@ -97,7 +97,7 @@
   border-right: 1px solid var(--border);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--accent-bg) 50%, transparent), transparent 22%),
-    var(--bg-soft);
+    color-mix(in srgb, var(--bg-soft) 85%, var(--bg));
 }
 .sidebar-brand {
   display: flex;
@@ -105,10 +105,10 @@
   gap: 11px;
   padding: 6px 10px 20px;
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-h);
-  font-size: 18px;
-  letter-spacing: -0.02em;
+  font-size: 17px;
+  letter-spacing: 0.01em;
 }
 .sidebar-brand .logo {
   display: grid;
@@ -203,11 +203,13 @@
   align-self: center;
 }
 .top-nav h1 {
-  font-size: 19px;
-  letter-spacing: -0.02em;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   white-space: nowrap;
   line-height: 1;
   margin: 0;
+  color: var(--text-h);
 }
 /* Centered global search fills the otherwise-empty middle of the bar. */
 .top-nav-search {
@@ -253,9 +255,18 @@
 .top-nav-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
   align-self: center;
+}
+/* Thin vertical divider between logical groups in the top-nav action cluster */
+.top-nav-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border-strong);
+  opacity: 0.6;
+  flex-shrink: 0;
+  margin: 0 2px;
 }
 .nav-item-wrap {
   position: relative;
@@ -990,6 +1001,28 @@ select.input { appearance: none; cursor: pointer; }
   border: 1px solid var(--accent-border);
   box-shadow: var(--shadow-sm), inset 0 0 0 4px var(--accent-bg);
   animation: empty-pulse 2.8s var(--ease-in-out) infinite;
+  position: relative;
+  z-index: 1;
+}
+/* Ambient radial glow behind the icon — slow, very low opacity */
+.empty-icon::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent) 22%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 8%, transparent) 40%,
+    transparent 70%
+  );
+  animation: empty-glow 3.6s var(--ease-in-out) infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes empty-glow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.18); }
 }
 .empty .empty-title {
   font-family: var(--font-display);
@@ -1009,8 +1042,14 @@ select.input { appearance: none; cursor: pointer; }
   to { opacity: 1; transform: none; }
 }
 @keyframes empty-pulse {
-  0%, 100% { box-shadow: var(--shadow-sm), inset 0 0 0 4px var(--accent-bg); }
-  50% { box-shadow: var(--shadow-sm), inset 0 0 0 9px color-mix(in srgb, var(--accent-bg) 32%, transparent); }
+  0%, 100% {
+    box-shadow: var(--shadow-sm), inset 0 0 0 4px var(--accent-bg),
+      0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+  50% {
+    box-shadow: var(--shadow-sm), inset 0 0 0 9px color-mix(in srgb, var(--accent-bg) 32%, transparent),
+      0 0 20px 4px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
 }
 .toolbar {
   display: flex;
@@ -1659,7 +1698,8 @@ select.input { appearance: none; cursor: pointer; }
   transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
     box-shadow var(--t-fast) var(--ease);
 }
-.scope-trigger:hover { background: color-mix(in srgb, var(--accent-bg) 80%, var(--accent-border)); }
+.scope-trigger:hover { background: color-mix(in srgb, var(--accent-bg) 80%, var(--accent-border)); border-color: var(--accent); }
+.scope-trigger:active { background: color-mix(in srgb, var(--accent-bg) 50%, var(--accent-border)); transform: scale(0.97); }
 .scope-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 4px var(--accent-bg); }
 .scope-trigger .scope-chev { transition: transform var(--t-fast) var(--ease); color: var(--accent-strong); opacity: 0.7; }
 .scope-trigger .scope-chev.open { transform: rotate(180deg); }
@@ -1803,11 +1843,16 @@ select.input { appearance: none; cursor: pointer; }
   grid-template-columns: 264px 1fr;
   gap: 0;
   height: calc(100svh - 178px);
-  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  /* Gradient border: box-shadow layered — accent corner + aurora corner, neutral sides */
+  border: 1px solid var(--border);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px color-mix(in srgb, var(--accent-border) 55%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-bg) 40%, transparent);
+  position: relative;
 }
 @media (max-width: 768px) {
   .chat-layout { grid-template-columns: 1fr; height: calc(100svh - 200px); }
@@ -1818,7 +1863,7 @@ select.input { appearance: none; cursor: pointer; }
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: color-mix(in srgb, var(--bg-soft) 60%, var(--surface));
+  background: color-mix(in srgb, var(--bg-soft) 70%, var(--surface));
 }
 .conv-panel-head {
   padding: 15px 16px;
@@ -1827,7 +1872,7 @@ select.input { appearance: none; cursor: pointer; }
   font-weight: 600;
   color: var(--text-h);
 }
-.conv-list { overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.conv-list { overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
 .conv-item {
   text-align: left;
   border: none;
@@ -1839,11 +1884,14 @@ select.input { appearance: none; cursor: pointer; }
   transition: background var(--t-fast) var(--ease);
 }
 .conv-item:hover { background: var(--surface-2); }
-.conv-item.active { background: var(--accent-bg); }
+.conv-item.active {
+  background: var(--accent-bg);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
 .conv-item .ci-title { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.conv-item .ci-sub { font-size: 11.5px; color: var(--text-faint); }
+.conv-item .ci-sub { font-size: 11px; color: var(--text-faint); opacity: 0.75; letter-spacing: 0.01em; }
 .conv-item.active .ci-title,
-.conv-item.active .ci-sub { color: var(--accent-strong); }
+.conv-item.active .ci-sub { color: var(--accent-strong); opacity: 1; }
 
 .thread {
   display: flex;
@@ -1905,7 +1953,7 @@ select.input { appearance: none; cursor: pointer; }
   text-align: left;
   border: none;
   background: transparent;
-  padding: 10px 12px;
+  padding: 11px 12px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: inherit;
@@ -1914,7 +1962,46 @@ select.input { appearance: none; cursor: pointer; }
 .conv-item.active .ci-main { color: var(--accent-strong); }
 .ci-rename { width: 28px; height: 28px; flex-shrink: 0; opacity: 0; transition: opacity var(--t-fast) var(--ease); }
 .conv-item:hover .ci-rename { opacity: 1; }
+/* Delete icon — hidden by default, fades in on row hover (desktop) */
+.ci-del { width: 28px; height: 28px; flex-shrink: 0; opacity: 0; transition: opacity var(--t-fast) var(--ease); }
+.conv-item:hover .ci-del { opacity: 1; }
+/* On touch/mobile viewports always show delete at low opacity so it's reachable */
+@media (hover: none) {
+  .ci-del { opacity: 0.45; }
+  .ci-rename { opacity: 0.45; }
+}
 .conv-rename-input { width: 100%; padding: 6px 8px; font-size: 13px; }
+
+/* Suggestion chips shown in the empty chat state */
+.chat-suggestion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.chat-suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.chat-suggestion-chip:hover {
+  background: color-mix(in srgb, var(--accent-bg) 80%, var(--accent-border));
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+.chat-suggestion-chip:active { transform: scale(0.96); }
 
 .source-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .source-chip {
@@ -1980,12 +2067,20 @@ select.input { appearance: none; cursor: pointer; }
   font-family: inherit;
   line-height: 1;
   box-sizing: border-box;
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
+}
+.hybrid-badge:hover {
+  background: color-mix(in srgb, var(--accent-bg) 150%, var(--accent-border) 30%);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 .composer textarea {
   flex: 1;
   resize: none;
   min-height: 46px;
-  max-height: 150px;
+  max-height: 200px;
+  overflow-y: auto;
   padding: 12px 13px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
@@ -1993,7 +2088,9 @@ select.input { appearance: none; cursor: pointer; }
   color: var(--text-h);
   font-family: inherit;
   font-size: 14px;
-  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+  line-height: 1.5;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease),
+    height var(--t-fast) var(--ease);
 }
 .composer textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-bg); }
 
@@ -2617,6 +2714,12 @@ select.input { appearance: none; cursor: pointer; }
   padding: 15px 18px;
   border-bottom: 1px solid var(--border);
   color: var(--text-faint);
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.cmd-search:focus-within {
+  background: color-mix(in srgb, var(--accent-bg) 60%, transparent);
+  box-shadow: inset 0 -2px 0 var(--accent-border), 0 0 0 4px color-mix(in srgb, var(--accent-bg) 50%, transparent);
+  color: var(--accent-strong);
 }
 .cmd-input {
   flex: 1;
@@ -2767,9 +2870,11 @@ select.input { appearance: none; cursor: pointer; }
   top: 0;
   z-index: 6;
   padding: 14px 20px;
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
-  backdrop-filter: blur(12px) saturate(1.2);
-  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  /* Slightly lighter than the main canvas so the header reads as a distinct elevation */
+  background: color-mix(in srgb, var(--surface) 45%, color-mix(in srgb, var(--bg) 70%, transparent));
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
 }
 /* Lift the nav into its own stacking context so the notification / workspace
    / profile dropdowns (which live inside .top-nav) paint above page content. */
@@ -2875,7 +2980,11 @@ select.input { appearance: none; cursor: pointer; }
   border-color: var(--border-strong);
 }
 .chat-layout:hover {
-  box-shadow: var(--shadow-md), 0 0 0 1px var(--accent-border), 0 0 30px -12px var(--accent-glow);
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 1px color-mix(in srgb, var(--accent-border) 80%, transparent),
+    0 0 30px -12px var(--accent-glow),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-bg) 60%, transparent);
 }
 
 /* ----------------------------- Reduced motion -------------------------- */

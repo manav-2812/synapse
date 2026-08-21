@@ -20,11 +20,10 @@
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11-3776AB.svg" alt="Python 3.11" /></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-20%2B-339933.svg" alt="Node 20+" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-61DAFB.svg" alt="React 19" /></a>
-  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.115.5-009688.svg" alt="FastAPI 0.115.5" /></a>
-  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16-336791.svg" alt="PostgreSQL 16" /></a>
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.115.5-009688.svg" alt="FastAPI 0.115.5" /></a>  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16-336791.svg" alt="PostgreSQL 16" /></a>
   <a href="https://www.trychroma.com/"><img src="https://img.shields.io/badge/ChromaDB-0.6.3-ff6b6b.svg" alt="ChromaDB 0.6.3" /></a>
   <a href="#-quality--performance"><img src="https://img.shields.io/badge/Lighthouse-desktop%20100%20%7C%20mobile%2095%E2%80%9399-brightgreen.svg" alt="Lighthouse scores" /></a>
-  <a href="#-testing"><img src="https://img.shields.io/badge/tests-23%20backend%20%2B%2036%20frontend-brightgreen.svg" alt="Test count" /></a>
+  <a href="#-testing"><img src="https://img.shields.io/badge/tests-23%20backend%20%2B%2048%20frontend-brightgreen.svg" alt="Test count" /></a>
   <a href="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml"><img src="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="#-getting-started"><img src="https://img.shields.io/badge/status-production%20ready-blue.svg" alt="Status" /></a>
 </p>
@@ -334,7 +333,7 @@ OCR degradation behavior, and the eval pipeline.
 | **Database** | PostgreSQL 16 + SQLAlchemy 2.0 (async) + Alembic |
 | **Vector store** | ChromaDB 0.6.3 (one persistent collection per user) |
 | **Embeddings** | Sentence-Transformers `all-MiniLM-L6-v2` (local, CPU) |
-| **LLM** | Groq `qwen/qwen3.6-27b` (primary) · Gemini `gemini-2.5-flash` (fallback) |
+| **LLM** | Groq `openai/gpt-oss-120b` (primary) · Gemini `gemini-2.0-flash` (fallback) |
 | **RAG** | Hand-rolled retriever — semantic (Chroma) + BM25, no LangChain |
 | **Auth** | JWT (20-min access + 7-day rotating refresh) · bcrypt |
 | **Frontend tests** | Vitest + React Testing Library · Playwright |
@@ -697,6 +696,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```powershell
 cd frontend
 npm install
+cp .env.example .env           # set VITE_API_BASE_URL if needed (defaults to http://localhost:8000)
 npm run dev                    # → http://localhost:5173
 ```
 
@@ -746,7 +746,7 @@ README for the current status.
 cd backend && pytest                 # 23 passed, 0 failures, 0 warnings
 
 # Frontend — Vitest unit/component (api client, hooks, UI primitives)
-cd frontend && npm test              # 26 passed
+cd frontend && npm test              # 38 passed
 
 # Frontend — Playwright e2e (signup → upload → chat citation → flashcard → quiz → analytics)
 cd frontend && npm run test:e2e      # 10 passed (against the real stack + live LLM)
