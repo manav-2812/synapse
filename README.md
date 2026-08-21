@@ -25,6 +25,8 @@
   <a href="#-quality--performance"><img src="https://img.shields.io/badge/Lighthouse-desktop%20100%20%7C%20mobile%2095%E2%80%9399-brightgreen.svg" alt="Lighthouse scores" /></a>
   <a href="#-testing"><img src="https://img.shields.io/badge/tests-23%20backend%20%2B%2048%20frontend-brightgreen.svg" alt="Test count" /></a>
   <a href="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml"><img src="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://img.shields.io/github/last-commit/manav-2812/Synapse"><img src="https://img.shields.io/github/last-commit/manav-2812/Synapse.svg" alt="Last Commit" /></a>
+  <a href="https://img.shields.io/github/commit-activity/m/manav-2812/Synapse"><img src="https://img.shields.io/github/commit-activity/m/manav-2812/Synapse.svg" alt="Commit Activity" /></a>
   <a href="#-getting-started"><img src="https://img.shields.io/badge/status-production%20ready-blue.svg" alt="Status" /></a>
 </p>
 
@@ -38,9 +40,8 @@
   <a href="#getting-started">Getting Started</a> ·
   <a href="#testing">Testing</a> ·
   <a href="#quality--performance">Quality</a> ·
-  <a href="#deployment">Deployment</a> ·
-  <a href="#configuration-reference">Configuration</a> ·
-  <a href="#security">Security</a> ·
+  <a href="#design-decisions">Design Decisions</a> ·
+  <a href="#known-limitations">Known Limitations</a> ·
   <a href="#roadmap">Roadmap</a> ·
   <a href="#contributing">Contributing</a> ·
   <a href="#license">License</a>
@@ -256,7 +257,7 @@ sequenceDiagram
   participant C as API Client
   participant S as /chat/message (SSE)
   participant R as Retriever (semantic + BM25)
-  participant L as LLM (Groq → Gemini)
+  participant L as LLM (Groq → Gemini → OpenRouter)
   participant PG as PostgreSQL
 
   U->>C: Ask a question (optionally scoped to a doc)
@@ -271,6 +272,42 @@ sequenceDiagram
   end
   S-->>U: event: done (message_id, conversation_id)
   S->>PG: Persist message + answer_sources
+```
+
+### Multi-provider LLM fallback chain
+
+```mermaid
+flowchart LR
+    Req[LLM request] --> Groq[Groq<br/>openai/gpt-oss-120b]
+    Groq -->|429 / 4xx / timeout| Gemini[Gemini<br/>gemini-2.0-flash]
+    Gemini -->|429 / 4xx / timeout| OpenRouter[OpenRouter<br/>openrouter/free]
+    OpenRouter -->|429 / 4xx / timeout| Nemotron[OpenRouter<br/>nemotron-3-ultra-550b:free]
+    Nemotron -->|429 / 4xx / timeout| Fail[503: all providers exhausted]
+    Groq -->|success| Ok[Return response]
+    Gemini -->|success| Ok
+    OpenRouter -->|success| Ok
+    Nemotron -->|success| Ok
+    Fail --> End[End]
+```
+
+Structured-JSON calls (quiz/flashcards/notes) fall through on **unparseable output**, not just hard errors — see the structured generation pipeline below.
+
+```mermaid
+flowchart LR
+    Retrieve[Retrieve chunks] --> Prompt[Build schema-constrained prompt]
+    Prompt --> ProviderChain[Send to provider chain (Groq → Gemini → OpenRouter)]
+    ProviderChain --> StripFences[Strip ``` blocks & markdown fences]
+    StripFences --> JSONParse[Try json.loads]
+    JSONParse -->|Success| Validate[Validate against schema]
+    JSONParse -->|Failure| ExtractBalanced[Extract balanced bracket block]
+    ExtractBalanced --> Repair[Repair unescaped control chars]
+    Repair --> JSONParse2[Try json.loads again]
+    JSONParse2 -->|Success| Validate
+    JSONParse2 -->|Failure| Fallback[Fall through to next provider]
+    Fallback --> ProviderChain
+    Validate --> Persist[Persist result]
+    Persist --> End[End]
+    Fallback -->|Exhausted| Fail[Error: all providers failed]
 ```
 
 ### Hybrid retrieval
@@ -312,7 +349,7 @@ aggregates tokens, cost, and cache-hit rate.
 flowchart LR
   Req[LLM request] --> Cache{In LRU cache?}
   Cache -->|hit| Return[Cached response<br/>cached = true]
-  Cache -->|miss| LLM[Call provider<br/>Groq → Gemini fallback]
+  Cache -->|miss| LLM[Call provider<br/>Groq → Gemini → OpenRouter fallback]
   LLM --> Meter[Log tokens + cost<br/>llm_usage_logs]
   Meter --> Store[Store in LRU]
   Store --> Return
@@ -333,7 +370,7 @@ OCR degradation behavior, and the eval pipeline.
 | **Database** | PostgreSQL 16 + SQLAlchemy 2.0 (async) + Alembic |
 | **Vector store** | ChromaDB 0.6.3 (one persistent collection per user) |
 | **Embeddings** | Sentence-Transformers `all-MiniLM-L6-v2` (local, CPU) |
-| **LLM** | Groq `openai/gpt-oss-120b` (primary) · Gemini `gemini-2.0-flash` (fallback) |
+| **LLM** | Groq `openai/gpt-oss-120b` (primary) · Gemini `gemini-2.0-flash` (fallback) · OpenRouter (`openrouter/free`, third fallback) |
 | **RAG** | Hand-rolled retriever — semantic (Chroma) + BM25, no LangChain |
 | **Auth** | JWT (20-min access + 7-day rotating refresh) · bcrypt |
 | **Frontend tests** | Vitest + React Testing Library · Playwright |
@@ -546,7 +583,7 @@ erDiagram
   llm_usage_logs {
     uuid id PK
     uuid user_id FK
-    string provider "groq|gemini"
+    string provider "groq|gemini|openrouter"
     string model
     int prompt_tokens
     int completion_tokens
@@ -739,6 +776,25 @@ The full-stack Playwright e2e suite is **not** wired into per-PR CI (it requires
 a live LLM); it is run locally — see below. See the CI badge at the top of this
 README for the current status.
 
+### CI/CD Pipeline
+
+```mermaid
+flowchart TB
+    Push[Push / PR triggers workflow] --> Parallel[Run jobs in parallel]
+    Parallel -->|Backend| BackendJobs[pytest against real PostgreSQL 16<br/>fail-on-warning]
+    Parallel -->|Frontend| FrontendJobs[oxlint · Vitest · vite build]
+    BackendJobs -->|all green| Gate[Gate: all green → merge allowed]
+    FrontendJobs -->|all green| Gate
+    Gate -->|any red| PRBlocked[PR blocked / CI fails]
+    style Push fill:#f9f,stroke:#333,stroke-width:2px
+    style Gate fill:#bbf,stroke:#333,stroke-width:2px
+    style PRBlocked fill:#fbb,stroke:#333,stroke-width:2px
+```
+
+The full-stack Playwright e2e suite is **not** wired into per-PR CI (it requires
+a live LLM); it is run locally — see below. See the CI badge at the top of this
+README for the current status.
+
 ### Local
 
 ```bash
@@ -803,6 +859,19 @@ answer → expected source triples) runs through the *real* pipeline. For each
 question the backend computes precision@k, recall@k, MRR, and NDCG, and persists
 an aggregate run. The dashboard plots score trends across runs — a concrete answer
 to *"how do you know your RAG actually retrieves the right context?"*
+
+```mermaid
+flowchart TB
+    EvalDataset[Labelled eval dataset] --> Loop[Loop per question]
+    Loop --> Embed[Embed query<br/>(same path as live chat)]
+    Embed --> Retrieve[Hybrid retrieve<br/>(same retriever.py as live chat)]
+    Retrieve --> Score[Score against expected documents<br/>(precision@k, recall@k, MRR, NDCG)]
+    Score --> Aggregate[Aggregate across questions]
+    Aggregate --> Persist[Persist to eval_runs table]
+    Persist --> Dashboard[Dashboard trend chart]
+    style EvalDataset fill:#bbf,stroke:#333,stroke-width:2px
+    style Dashboard fill:#bbf,stroke:#333,stroke-width:2px
+```
 
 **Query caching & cost analytics.** Before any LLM call, the pipeline checks an
 in-memory **LRU** keyed on `hash(user_id + normalized_query + document_scope)`; a
@@ -924,7 +993,54 @@ For vulnerability reporting instructions and security disclosures, see [`SECURIT
 - **Upload guardrails** — extension allow-list and size cap (`MAX_UPLOAD_SIZE_MB`).
 - **Rate limiting** — `slowapi` guards the API; tune via `core/limiter.py`.
 
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as Auth Service
+    U->>S: Login
+    S->>S: Issue access & refresh tokens
+    note right of S: Store last_refresh_jti
+    delay 1200
+    S->>U: 401 error (access token expired)
+    U->>S: Refresh request (with refresh token)
+    S->>S: Decode refresh token, extract jti
+    alt jti matches stored last_refresh_jti
+        S->>S: Issue new access & refresh tokens
+        S->>S: Update last_refresh_jti (rotate)
+        S->>U: New tokens
+    else jti does not match (replay)
+        S->>U: Reject (Unauthorized)
+    end
+    U->>S: Logout (with refresh token)
+    S->>S: Decode refresh token, extract jti
+    alt jti matches stored last_refresh_jti
+        S->>S: Set last_refresh_jti = null
+        S->>U: Logout successful
+    else
+        S->>U: Ignore (token already used/invalid)
+    end
+```
+
 ---
+
+## Design Decisions
+
+| Decision | Why | Trade-off accepted |
+|----------|-----|-------------------|
+| Hand-rolled RAG vs LangChain | Full control over retrieval quality and performance tuning | Increased implementation complexity |
+| ChromaDB vs a managed vector DB | Full control over privacy and cost | Not production-scalable (single-node/file-persisted) |
+| Hybrid retrieval (semantic + BM25) vs semantic-only | Better handling of keyword queries | Double resource usage for index maintenance |
+| Multi-tier LLM fallback vs single provider | Better reliability through redundancy | Increased latency and cost |
+| Local embeddings vs an embedding API | No cloud dependence | Limited to CPU performance |
+| Spaced-repetition algorithm choice (SM-2) vs a simpler scheme | Proven algorithm with historical efficacy | Implementation complexity |
+| Local knowledge base vs cloud API | Data privacy and control | Limited to local storage capacity |
+
+## Known Limitations
+- Free-tier LLM rate limits (Groq/Gemini) require fallback management.
+- OCR requires Tesseract on host (performance degrades without it).
+- ChromaDB is single-node/file-persisted (not production-scale).
+- Playwright E2E tests run locally, not in CI.
+- Full-stack E2E still not wired into CI.
 
 ## Roadmap
 
