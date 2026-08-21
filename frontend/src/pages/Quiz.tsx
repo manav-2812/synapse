@@ -7,7 +7,7 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Icon } from "../components/ui/Icon";
 import { Modal } from "../components/ui/Modal";
-import { Spinner } from "../components/ui/Spinner";
+import { GenLoading } from "../components/ui/GenLoading";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Tip } from "../components/Tip";
 import { TIP } from "../components/tips";
@@ -227,8 +227,12 @@ export default function Quiz() {
               <EmptyState icon="quiz" title="No quizzes yet — generate one above." />
             ) : (
               <div className="list">
-                {quizzes.map((q) => (
-                  <div key={q.id} className="list-item">
+                {quizzes.map((q, idx) => (
+                  <div
+                    key={q.id}
+                    className="list-item"
+                    style={{ "--i": idx } as CSSProperties}
+                  >
                     <div className="li-main">
                       <div className="li-title">{q.title}</div>
                       <div className="li-sub">
@@ -270,7 +274,11 @@ export default function Quiz() {
             const reveal = mode === "review";
             const resItem = result?.items.find((it) => it.question_id === q.id);
             return (
-              <div key={q.id} className="quiz-q">
+              <div
+                key={q.id}
+                className="quiz-q"
+                style={{ "--i": i } as CSSProperties}
+              >
                 <div className="qq-prompt">
                   {i + 1}. {q.prompt}
                 </div>
@@ -359,9 +367,15 @@ export default function Quiz() {
       )}
 
       {busy && mode === "list" && (
-        <div className="spinner-center">
-          <Spinner />
-        </div>
+        <GenLoading
+          label="Generating quiz"
+          steps={[
+            "Analyzing your documents…",
+            "Composing questions…",
+            "Calibrating difficulty…",
+            "Almost ready…",
+          ]}
+        />
       )}
 
       <Modal open={renameQuizId !== null} onClose={() => setRenameQuizId(null)} title="Rename quiz">

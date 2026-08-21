@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { studyApi } from "../api/study";
 import { ApiError } from "../api/client";
@@ -8,7 +8,7 @@ import { DocumentScopePicker } from "../components/DocumentScopePicker";
 import { Input } from "../components/ui/Input";
 import { Icon } from "../components/ui/Icon";
 import { Modal } from "../components/ui/Modal";
-import { Spinner } from "../components/ui/Spinner";
+import { GenLoading } from "../components/ui/GenLoading";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Tip } from "../components/Tip";
 import { TIP } from "../components/tips";
@@ -253,18 +253,36 @@ export default function Notes() {
         </div>
       </section>
 
+      {busy && (
+        <GenLoading
+          label="Generating notes"
+          steps={[
+            "Retrieving relevant sections…",
+            "Structuring content…",
+            "Finalizing your notes…",
+            "Almost ready…",
+          ]}
+        />
+      )}
+
       {loading ? (
-        <div className="spinner-center">
-          <Spinner />
-        </div>
+        <GenLoading
+          label="Loading notes"
+          steps={[
+            "Retrieving your notes…",
+            "Preparing content…",
+            "Almost ready…",
+          ]}
+        />
       ) : notes.length === 0 ? (
         <EmptyState icon="doc" title="No notes yet — generate a set above." />
       ) : (
         <div className="list">
-          {notes.map((n) => (
+          {notes.map((n, idx) => (
             <div
               key={n.id}
               className="list-item list-item--clickable"
+              style={{ "--i": idx } as CSSProperties}
               onClick={() => setView(n)}
               role="button"
               tabIndex={0}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { studyApi } from "../api/study";
 import { ApiError } from "../api/client";
@@ -9,7 +9,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { Tip } from "../components/Tip";
 import { TIP } from "../components/tips";
 import { Modal } from "../components/ui/Modal";
-import { Skeleton } from "../components/ui/Skeleton";
+import { GenLoading } from "../components/ui/GenLoading";
 import { DocumentScopePicker } from "../components/DocumentScopePicker";
 import type { FlashcardResponse } from "../types/api";
 
@@ -232,10 +232,14 @@ export default function Flashcards() {
           <EmptyState icon="card" title="Nothing due right now." hint="New cards are due immediately; reviewed cards return on their schedule." />
         ) : (
           <div className="stack">
-            {due.map((c) => {
+            {due.map((c, idx) => {
               const revealed = revealedDue.has(c.id);
               return (
-                <div key={c.id} className="list-item due-card">
+                <div
+                  key={c.id}
+                  className="list-item due-card"
+                  style={{ "--i": idx } as CSSProperties}
+                >
                   <div className="li-main">
                     <div className="li-title">{c.front}</div>
                     {revealed ? (
@@ -267,15 +271,26 @@ export default function Flashcards() {
         )}
       </section>
 
+      {busy && (
+        <GenLoading
+          label="Generating flashcards"
+          steps={[
+            "Scanning your documents…",
+            "Identifying key concepts…",
+            "Creating flashcards…",
+            "Almost done…",
+          ]}
+        />
+      )}
+
       {loading ? (
-        <div className="grid grid-3">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flashcard-skeleton">
-              <Skeleton width="80%" height="16px" />
-              <Skeleton width="60%" height="14px" />
-            </div>
-          ))}
-        </div>
+        <GenLoading
+          label="Loading flashcards"
+          steps={[
+            "Fetching your cards…",
+            "Almost ready…",
+          ]}
+        />
       ) : cards.length === 0 ? (
         <EmptyState icon="card" title="No flashcards yet — generate a set above." />
       ) : (
@@ -284,6 +299,7 @@ export default function Flashcards() {
             <div
               key={c.id}
               className={`flashcard ${flipped.has(i) ? "flipped" : ""}`}
+              style={{ "--i": i } as CSSProperties}
               onClick={() => flip(i)}
               role="button"
               tabIndex={0}

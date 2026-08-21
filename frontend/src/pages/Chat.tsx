@@ -2,6 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
 } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +18,7 @@ import { Tip } from "../components/Tip";
 import { TIP } from "../components/tips";
 import { Skeleton } from "../components/ui/Skeleton";
 import { DocumentScopePicker } from "../components/DocumentScopePicker";
+import { MarkdownContent } from "../components/ui/MarkdownContent";
 import { formatDateTime } from "../lib/format";
 import type {
   ConversationListItem,
@@ -326,8 +328,12 @@ export default function Chat() {
           </div>
         ) : (
           <div className="thread" ref={threadRef}>
-            {messages.map((m) => (
-              <div key={m.id} className={`msg msg-${m.role}`}>
+            {messages.map((m, idx) => (
+              <div
+                key={m.id}
+                className={`msg msg-${m.role}`}
+                style={{ "--i": idx } as CSSProperties}
+              >
                 <div className="msg-avatar">
                   {m.role === "user" ? "You" : <BrandLogo />}
                 </div>
@@ -354,7 +360,15 @@ export default function Chat() {
                     <>
                       <div className="msg-bubble">
                         {m.content ? (
-                          m.content
+                          m.role === "assistant" ? (
+                            <MarkdownContent
+                              isStreaming={busy && idx === messages.length - 1}
+                            >
+                              {m.content}
+                            </MarkdownContent>
+                          ) : (
+                            m.content
+                          )
                         ) : busy ? (
                           <span className="typing" aria-label="Generating response">
                             <span className="dot" />
