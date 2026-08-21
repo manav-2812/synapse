@@ -176,8 +176,8 @@ the browser (deployed to Vercel); the FastAPI service runs on an ASGI host
 ```mermaid
 flowchart TB
   subgraph Browser["Browser — React 19 SPA (Vercel)"]
-    UI[React Router pages]
-    Client[Typed fetch client<br/>401 → refresh → retry]
+    UI["React Router pages"]
+    Client["Typed fetch client<br/>401 → refresh → retry"]
   end
   subgraph Backend["FastAPI — Python 3.11 (Render / Docker)"]
     Routes["api/v1/*  (routes only)"]
@@ -194,7 +194,7 @@ flowchart TB
   Routes --> Services --> Repos
   Repos --> PG
   Services --> AI --> Chroma
-  AI -. "stream tokens" .-> LLM
+  AI -.->|stream tokens| LLM
 ```
 
 ### Layered backend
@@ -228,11 +228,11 @@ PostgreSQL 16  +  ChromaDB (one vector collection per user)
 
 ```mermaid
 flowchart LR
-  A[Upload PDF / DOCX / TXT / Image] --> B[Load + OCR]
-  B --> C[Clean + chunk<br/>token-aware ~240 tokens]
-  C --> D[Embed<br/>all-MiniLM-L6-v2]
+  A["Upload PDF / DOCX / TXT / Image"] --> B["Load + OCR"]
+  B --> C["Clean + chunk<br/>token-aware ~240 tokens"]
+  C --> D["Embed<br/>all-MiniLM-L6-v2"]
   D --> E["Upsert Chroma<br/>user_{id} collection"]
-  E --> F[(status: completed)]
+  E --> F[("status: completed")]
 ```
 
 1. `POST /documents/upload` saves the file to `STORAGE_PATH` and creates a
@@ -278,36 +278,36 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    Req[LLM request] --> Groq[Groq<br/>openai/gpt-oss-120b]
-    Groq -->|429 / 4xx / timeout| Gemini[Gemini<br/>gemini-2.0-flash]
-    Gemini -->|429 / 4xx / timeout| OpenRouter[OpenRouter<br/>openrouter/free]
-    OpenRouter -->|429 / 4xx / timeout| Nemotron[OpenRouter<br/>nemotron-3-ultra-550b:free]
-    Nemotron -->|429 / 4xx / timeout| Fail[503: all providers exhausted]
-    Groq -->|success| Ok[Return response]
+    Req["LLM request"] --> Groq["Groq<br/>openai/gpt-oss-120b"]
+    Groq -->|429 / 4xx / timeout| Gemini["Gemini<br/>gemini-2.0-flash"]
+    Gemini -->|429 / 4xx / timeout| OpenRouter["OpenRouter<br/>openrouter/free"]
+    OpenRouter -->|429 / 4xx / timeout| Nemotron["OpenRouter<br/>nemotron-3-ultra-550b:free"]
+    Nemotron -->|429 / 4xx / timeout| Fail["503: all providers exhausted"]
+    Groq -->|success| Ok["Return response"]
     Gemini -->|success| Ok
     OpenRouter -->|success| Ok
     Nemotron -->|success| Ok
-    Fail --> End[End]
+    Fail --> EndNode["End"]
 ```
 
 Structured-JSON calls (quiz/flashcards/notes) fall through on **unparseable output**, not just hard errors — see the structured generation pipeline below.
 
 ```mermaid
 flowchart LR
-    Retrieve[Retrieve chunks] --> Prompt[Build schema-constrained prompt]
-    Prompt --> ProviderChain[Send to provider chain (Groq → Gemini → OpenRouter)]
-    ProviderChain --> StripFences[Strip ``` blocks & markdown fences]
-    StripFences --> JSONParse[Try json.loads]
-    JSONParse -->|Success| Validate[Validate against schema]
-    JSONParse -->|Failure| ExtractBalanced[Extract balanced bracket block]
-    ExtractBalanced --> Repair[Repair unescaped control chars]
-    Repair --> JSONParse2[Try json.loads again]
+    Retrieve["Retrieve chunks"] --> Prompt["Build schema-constrained prompt"]
+    Prompt --> ProviderChain["Send to provider chain (Groq → Gemini → OpenRouter)"]
+    ProviderChain --> StripFences["Strip markdown code fences"]
+    StripFences --> JSONParse["Try json.loads"]
+    JSONParse -->|Success| Validate["Validate against schema"]
+    JSONParse -->|Failure| ExtractBalanced["Extract balanced bracket block"]
+    ExtractBalanced --> Repair["Repair unescaped control chars"]
+    Repair --> JSONParse2["Try json.loads again"]
     JSONParse2 -->|Success| Validate
-    JSONParse2 -->|Failure| Fallback[Fall through to next provider]
+    JSONParse2 -->|Failure| Fallback["Fall through to next provider"]
     Fallback --> ProviderChain
-    Validate --> Persist[Persist result]
-    Persist --> End[End]
-    Fallback -->|Exhausted| Fail[Error: all providers failed]
+    Validate --> Persist["Persist result"]
+    Persist --> EndNode["End"]
+    Fallback -->|Exhausted| Fail["Error: all providers failed"]
 ```
 
 ### Hybrid retrieval
@@ -326,15 +326,15 @@ the blend with the best MRR.
 
 ```mermaid
 flowchart LR
-  Q[User query] --> E[Embed query<br/>MiniLM-L6-v2]
-  E --> S[Semantic search<br/>Chroma top-k]
-  Q --> B[BM25 index<br/>over user chunks]
-  B --> K[BM25 top-k]
-  S --> N1[Normalize 0..1]
-  K --> N2[Normalize 0..1]
-  N1 --> BL[Blend: w_s·S + w_k·K]
+  Q["User query"] --> E["Embed query<br/>MiniLM-L6-v2"]
+  E --> S["Semantic search<br/>Chroma top-k"]
+  Q --> B["BM25 index<br/>over user chunks"]
+  B --> K["BM25 top-k"]
+  S --> N1["Normalize 0..1"]
+  K --> N2["Normalize 0..1"]
+  N1 --> BL["Blend: w_s·S + w_k·K"]
   N2 --> BL
-  BL --> R[Re-ranked grounded chunks]
+  BL --> R["Re-ranked grounded chunks"]
 ```
 
 ### Query cache & cost metering
@@ -347,13 +347,13 @@ aggregates tokens, cost, and cache-hit rate.
 
 ```mermaid
 flowchart LR
-  Req[LLM request] --> Cache{In LRU cache?}
-  Cache -->|hit| Return[Cached response<br/>cached = true]
-  Cache -->|miss| LLM[Call provider<br/>Groq → Gemini → OpenRouter fallback]
-  LLM --> Meter[Log tokens + cost<br/>llm_usage_logs]
-  Meter --> Store[Store in LRU]
+  Req["LLM request"] --> Cache{"In LRU cache?"}
+  Cache -->|hit| Return["Cached response<br/>cached = true"]
+  Cache -->|miss| LLM["Call provider<br/>Groq → Gemini → OpenRouter fallback"]
+  LLM --> Meter["Log tokens + cost<br/>llm_usage_logs"]
+  Meter --> Store["Store in LRU"]
   Store --> Return
-  Return --> Usage[/GET /analytics/usage<br/>tokens · cost · cache-hit rate/]
+  Return --> Usage[/"GET /analytics/usage<br/>tokens · cost · cache-hit rate"/]
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the full layered design,
@@ -780,12 +780,12 @@ README for the current status.
 
 ```mermaid
 flowchart TB
-    Push[Push / PR triggers workflow] --> Parallel[Run jobs in parallel]
-    Parallel -->|Backend| BackendJobs[pytest against real PostgreSQL 16<br/>fail-on-warning]
-    Parallel -->|Frontend| FrontendJobs[oxlint · Vitest · vite build]
-    BackendJobs -->|all green| Gate[Gate: all green → merge allowed]
+    Push["Push / PR triggers workflow"] --> Parallel["Run jobs in parallel"]
+    Parallel -->|Backend| BackendJobs["pytest against real PostgreSQL 16<br/>fail-on-warning"]
+    Parallel -->|Frontend| FrontendJobs["oxlint · Vitest · vite build"]
+    BackendJobs -->|all green| Gate["Gate: all green → merge allowed"]
     FrontendJobs -->|all green| Gate
-    Gate -->|any red| PRBlocked[PR blocked / CI fails]
+    Gate -->|any red| PRBlocked["PR blocked / CI fails"]
     style Push fill:#f9f,stroke:#333,stroke-width:2px
     style Gate fill:#bbf,stroke:#333,stroke-width:2px
     style PRBlocked fill:#fbb,stroke:#333,stroke-width:2px
@@ -862,13 +862,13 @@ to *"how do you know your RAG actually retrieves the right context?"*
 
 ```mermaid
 flowchart TB
-    EvalDataset[Labelled eval dataset] --> Loop[Loop per question]
-    Loop --> Embed[Embed query<br/>(same path as live chat)]
-    Embed --> Retrieve[Hybrid retrieve<br/>(same retriever.py as live chat)]
-    Retrieve --> Score[Score against expected documents<br/>(precision@k, recall@k, MRR, NDCG)]
-    Score --> Aggregate[Aggregate across questions]
-    Aggregate --> Persist[Persist to eval_runs table]
-    Persist --> Dashboard[Dashboard trend chart]
+    EvalDataset["Labelled eval dataset"] --> Loop["Loop per question"]
+    Loop --> Embed["Embed query<br/>(same path as live chat)"]
+    Embed --> Retrieve["Hybrid retrieve<br/>(same retriever.py as live chat)"]
+    Retrieve --> Score["Score against expected documents<br/>(precision@k, recall@k, MRR, NDCG)"]
+    Score --> Aggregate["Aggregate across questions"]
+    Aggregate --> Persist["Persist to eval_runs table"]
+    Persist --> Dashboard["Dashboard trend chart"]
     style EvalDataset fill:#bbf,stroke:#333,stroke-width:2px
     style Dashboard fill:#bbf,stroke:#333,stroke-width:2px
 ```
@@ -904,14 +904,14 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TB
-  Dev[Developer] -->|git push| GH[(GitHub)]
-  GH -->|build + host SPA| Vercel[Vercel: React SPA]
-  GH -->|deploy service| Render[Render: FastAPI + Postgres 16]
-  Render --> PG[(PostgreSQL 16)]
-  Render --> Disk1[(/app/chroma_db disk)]
-  Render --> Disk2[(/app/storage disk)]
+  Dev["Developer"] -->|git push| GH[("GitHub")]
+  GH -->|build + host SPA| Vercel["Vercel: React SPA"]
+  GH -->|deploy service| Render["Render: FastAPI + Postgres 16"]
+  Render --> PG[("PostgreSQL 16")]
+  Render --> Disk1[("/app/chroma_db disk")]
+  Render --> Disk2[("/app/storage disk")]
   Vercel -->|HTTPS /api/v1| Render
-  User[Browser] -->|static assets| Vercel
+  User["Browser"] -->|static assets| Vercel
   User -->|API calls| Render
 ```
 
@@ -999,25 +999,25 @@ sequenceDiagram
     participant S as Auth Service
     U->>S: Login
     S->>S: Issue access & refresh tokens
-    note right of S: Store last_refresh_jti
-    delay 1200
-    S->>U: 401 error (access token expired)
+    Note right of S: Store last_refresh_jti
+    Note over U,S: Access token expires (after 20m)
+    S-->>U: 401 error (access token expired)
     U->>S: Refresh request (with refresh token)
     S->>S: Decode refresh token, extract jti
     alt jti matches stored last_refresh_jti
         S->>S: Issue new access & refresh tokens
         S->>S: Update last_refresh_jti (rotate)
-        S->>U: New tokens
+        S-->>U: New tokens
     else jti does not match (replay)
-        S->>U: Reject (Unauthorized)
+        S-->>U: Reject (Unauthorized)
     end
     U->>S: Logout (with refresh token)
     S->>S: Decode refresh token, extract jti
     alt jti matches stored last_refresh_jti
         S->>S: Set last_refresh_jti = null
-        S->>U: Logout successful
+        S-->>U: Logout successful
     else
-        S->>U: Ignore (token already used/invalid)
+        S-->>U: Ignore (token already used/invalid)
     end
 ```
 
