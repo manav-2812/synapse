@@ -12,30 +12,33 @@ log = get_logger("llm.gemini")
 # Model name is read from settings so it can be overridden via GEMINI_MODEL env var.
 # No module-level _MODEL constant — the value is locked in at first _configure() call.
 _MAX_TOKENS = 4096
-_TEMPERATURE = 0.2
+_TEMPERATURE = 0.3
 _TIMEOUT_SECONDS = 60
 
 _configured = False
-_model = None
+_model: genai.GenerativeModel | None = None
 _lock = threading.Lock()
 
 
-def _configure() -> None:
+def _configure() -> genai.GenerativeModel:
     global _configured, _model
-    if not _configured:
+    if not _configured or _model is None:
         with _lock:
-            if not _configured:
+            if not _configured or _model is None:
                 genai.configure(api_key=settings.gemini_api_key)
                 _model = genai.GenerativeModel(settings.gemini_model)
                 _configured = True
+    if _model is None:
+        raise RuntimeError("Failed to configure Gemini GenerativeModel.")
+    return _model
 
 
 async def complete(system: str, user: str, max_tokens: int | None = None) -> str:
-    _configure()
+    model = _configure()
     prompt = f"{system}\n\n{user}"
     tokens = max_tokens if max_tokens is not None else _MAX_TOKENS
     resp = await asyncio.to_thread(
-        _model.generate_content,
+        model.generate_content,
         prompt,
         generation_config={
             "max_output_tokens": tokens,

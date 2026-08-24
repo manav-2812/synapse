@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=Google+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+
 :root {
   /* ----------------------------------------------------------------------
      Synapse — Notion-Style Aesthetic Design System
@@ -80,10 +82,10 @@
   --t-base: 180ms;
   --t-slow: 300ms;
 
-  /* Notion System Typography */
-  --font-sans: "Avenir Next", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-  --font-display: "Avenir Next", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  /* Typography — Exclusively Figtree & Google Sans */
+  --font-sans: 'Figtree', 'Google Sans', sans-serif;
+  --font-display: 'Google Sans', 'Figtree', sans-serif;
+  --font-mono: 'Figtree', 'Google Sans', monospace;
 
   font-family: var(--font-sans);
   font-size: 14.5px;

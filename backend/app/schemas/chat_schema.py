@@ -16,7 +16,14 @@ class ChatRequest(BaseModel):
         description=(
             "When True, bypass document retrieval entirely and go straight to "
             "web search. This is the manual override — the user explicitly wants "
-            "an answer from the public web regardless of their uploaded notes."
+            "an answer from the public web."
+        ),
+    )
+    insight_mode: bool = Field(
+        default=False,
+        description=(
+            "When True, strictly retrieve from uploaded documents (Insight Source) "
+            "without auto-falling back to web search."
         ),
     )
 

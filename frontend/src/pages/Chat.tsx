@@ -218,6 +218,7 @@ export default function Chat() {
   const [activeSource, setActiveSource] = useState<SourceResponse | null>(null);
   const [conversationsOpen, setConversationsOpen] = useState(true);
   const [webMode, setWebMode] = useState(false);
+  const [insightMode, setInsightMode] = useState(false);
 
   const [renamingConv, setRenamingConv] = useState<string | null>(null);
   const [convDraft, setConvDraft] = useState("");
@@ -776,6 +777,7 @@ export default function Chat() {
 
     const docScope = scopeIds;
     const currentWebMode = webMode;
+    const currentInsightMode = insightMode;
     const isNew = !activeId;
     const tempId = `temp-${Date.now()}`;
     const optimisticTitle = text.slice(0, 50) || "New Chat";
@@ -830,6 +832,7 @@ export default function Chat() {
           conversation_id: activeId || undefined,
           document_scope: docScope.length ? docScope : undefined,
           web_mode: currentWebMode,
+          insight_mode: currentInsightMode,
         },
         {
           onConversation: (convPayload) => {
@@ -1549,25 +1552,48 @@ export default function Chat() {
                 />
 
                 <div className="composer-bottom-bar">
-                  {/* ── Left Side: Hybrid Search Button + Web Search Toggle ── */}
+                  {/* ── Left Side: Insight Source + Web Source Toggles ── */}
                   <div className="composer-bottom-left">
                     <button
                       type="button"
-                      className="composer-hybrid-pill-btn"
-                      title="Semantic vector + BM25 keyword search"
+                      className={`composer-insight-pill-btn${insightMode ? " active" : ""}`}
+                      title={
+                        insightMode
+                          ? "Insight Source active — answers strictly from your uploaded documents (click to turn off)"
+                          : "Insight Source — answer strictly from uploaded documents"
+                      }
+                      aria-pressed={insightMode}
+                      onClick={() => {
+                        setInsightMode((prev) => {
+                          const next = !prev;
+                          if (next) setWebMode(false);
+                          return next;
+                        });
+                      }}
                     >
-                      <Icon name="search" size={13} />
-                      <span>Hybrid search</span>
+                      <Icon name="search" size={13} className="insight-pill-icon" />
+                      <span>Insight Source</span>
                     </button>
+
                     <button
                       type="button"
                       className={`composer-web-pill-btn${webMode ? " active" : ""}`}
-                      title={webMode ? "Web search is on — click to turn off" : "Turn on web search to answer from the internet"}
+                      title={
+                        webMode
+                          ? "Web Source active — answers from live web search (click to turn off)"
+                          : "Web Source — answer from live web search"
+                      }
                       aria-pressed={webMode}
-                      onClick={() => setWebMode((v) => !v)}
+                      onClick={() => {
+                        setWebMode((prev) => {
+                          const next = !prev;
+                          if (next) setInsightMode(false);
+                          return next;
+                        });
+                      }}
                     >
-                      <Icon name="externalLink" size={13} />
-                      <span>Web</span>
+                      <Icon name="globe" size={14} className="web-pill-globe-icon" />
+                      <span>Web Source</span>
                     </button>
                   </div>
 

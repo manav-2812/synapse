@@ -22,7 +22,7 @@ _MAX_TOKENS = 2048
 # detail", multi-part questions — not applied to every query so normal chat
 # stays fast and stays under Groq's free-tier TPM ceiling.
 _MAX_TOKENS_LONG = 4096
-_TEMPERATURE = 0.2
+_TEMPERATURE = 0.3
 
 # Shorter timeout for streaming/primary use so the fallback chain kicks in fast
 # rather than waiting the full 60s before trying Gemini.

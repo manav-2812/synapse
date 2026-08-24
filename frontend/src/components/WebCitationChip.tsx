@@ -48,15 +48,11 @@ export function WebCitationChip({ source, index }: WebCitationChipProps) {
         rel="noopener noreferrer"
         className="source-chip web-source-chip"
         aria-label={`Web source: ${title}`}
+        title={title ? `${title}${hostname ? ` (${hostname})` : ""}` : "Web Source"}
         onClick={(e) => !url && e.preventDefault()}
       >
-        <span className="sc-badge web-sc-badge">WEB</span>
-        <span className="sc-text">
-          {hostname || title}
-        </span>
-        {url && (
-          <Icon name="externalLink" size={10} className="web-chip-ext-icon" />
-        )}
+        <Icon name="globe" size={15} className="web-source-globe-icon" />
+        <span className="web-source-text">Web Source</span>
       </a>
 
       {showPopover && (

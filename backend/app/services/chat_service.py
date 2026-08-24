@@ -117,17 +117,25 @@ class ChatService:
         )
 
         # --- Retrieve grounded context ---
-        # Determine if we should go straight to web search (manual override) or try
-        # document retrieval first (default behaviour with auto-fallback).
+        # Determine retrieval strategy based on explicit mode selection:
+        # - web_mode = True: answer strictly from live web search
+        # - insight_mode = True OR neither selected (default): answer strictly from uploaded documents
         use_web_mode = payload.web_mode
         web_results = None  # populated if we run a web search
 
         if use_web_mode:
-            # Manual web mode: skip document retrieval entirely.
+            # Web Source mode: bypass document retrieval and query the live web directly.
             log.info("web_mode_forced", message_preview=payload.message[:120])
             chunks = []
             docs_relevant = False
+            should_web_search = True
         else:
+            # Insight Source mode OR Default mode: strictly retrieve and answer from uploaded documents.
+            log.info(
+                "document_retrieval_mode",
+                explicit_insight=payload.insight_mode,
+                message_preview=payload.message[:120],
+            )
             query_vector = await embed_query(payload.message)
             chunks = await retrieve(
                 query_vector,
@@ -136,19 +144,8 @@ class ChatService:
                 document_scope=payload.document_scope,
                 query=payload.message,
             )
-            # Auto-fallback: if document retrieval returned nothing relevant (and the user
-            # didn't force web mode, which already has web_results pending), try web search.
-            docs_relevant = relevant(chunks, threshold=settings.web_fallback_threshold)
-            if not docs_relevant:
-                log.warning(
-                    "low_relevance_retrieval",
-                    top_score=chunks[0]["score"] if chunks else None,
-                    threshold=settings.web_fallback_threshold,
-                    message_preview=payload.message[:120],
-                )
-
-        # Decide whether to run web search.
-        should_web_search = use_web_mode or not docs_relevant
+            docs_relevant = True
+            should_web_search = False
 
         web_error_message: str | None = None
         if should_web_search:
@@ -156,7 +153,7 @@ class ChatService:
                 web_results = await web_search(payload.message)
                 log.info(
                     "web_search_executed",
-                    reason="forced" if use_web_mode else "auto_fallback",
+                    reason="forced",
                     result_count=len(web_results) if web_results else 0,
                 )
             except Exception as exc:

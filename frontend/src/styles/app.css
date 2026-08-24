@@ -61,8 +61,9 @@
 .app-shell {
   display: grid;
   grid-template-columns: 240px 1fr;
-  grid-template-rows: 1fr;
-  height: 100svh;
+  grid-template-rows: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   background: var(--bg);
   transition: grid-template-columns var(--t-fast) var(--ease);
   position: relative;
@@ -130,16 +131,19 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 0;
   width: 240px;
   border-right: 1px solid var(--border);
   background: var(--bg);
-  overflow: visible;
+  overflow: hidden;
   user-select: none;
   transition: width var(--t-fast) var(--ease);
   flex-shrink: 0;
   position: relative;
   z-index: 100;
+  box-sizing: border-box;
 }
 .sidebar.sidebar-collapsed {
   width: 0px !important;
@@ -194,7 +198,7 @@
 }
 
 .sb-brand-name {
-  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 15px;
   letter-spacing: 0.07em;
@@ -612,15 +616,36 @@
 
 .syn-inbox-body {
   min-height: 180px;
-  max-height: 340px;
-  overflow-y: auto;
+  max-height: 380px;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(55, 53, 47, 0.28) transparent;
 }
 .syn-inbox-body::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
+  display: block;
+}
+.syn-inbox-body::-webkit-scrollbar-track {
+  background: transparent;
 }
 .syn-inbox-body::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
+  background: rgba(55, 53, 47, 0.28);
+  border-radius: 9999px;
+}
+.syn-inbox-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(55, 53, 47, 0.45);
+}
+
+:root[data-theme="dark"] .syn-inbox-body {
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+:root[data-theme="dark"] .syn-inbox-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+}
+:root[data-theme="dark"] .syn-inbox-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .syn-inbox-list {
@@ -796,10 +821,12 @@
 .sb-inbox-sidebar-view {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
   height: 100%;
+  max-height: 100%;
   width: 100%;
+  overflow: hidden;
   gap: 4px;
   animation: sb-inbox-fade 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -955,20 +982,42 @@
 .sb-inbox-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex: 1;
+  gap: 6px;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  flex: 1 1 0%;
   min-height: 0;
-  padding: 2px 2px 32px;
+  height: 0;
+  max-height: 100%;
+  padding: 4px 6px 48px 2px;
   scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(55, 53, 47, 0.4) transparent;
 }
+
 .sb-inbox-list::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
+  display: block;
+}
+.sb-inbox-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 .sb-inbox-list::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
+  background: rgba(55, 53, 47, 0.35);
+  border-radius: 9999px;
+}
+.sb-inbox-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(55, 53, 47, 0.55);
+}
+
+:root[data-theme="dark"] .sb-inbox-list {
+  scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
+}
+:root[data-theme="dark"] .sb-inbox-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+}
+:root[data-theme="dark"] .sb-inbox-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.55);
 }
 
 .sb-inbox-card {
@@ -1113,8 +1162,14 @@
   gap: 4px;
 }
 .sb-body.sb-body--inbox {
-  padding: 6px 6px 12px;
+  padding: 6px 6px 4px;
   overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
 }
 .sb-body::-webkit-scrollbar { width: 4px; }
 .sb-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -2315,7 +2370,7 @@ select.input { appearance: none; cursor: pointer; }
 }
 
 .toast-title {
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-display);
   font-weight: 600;
   color: var(--text-h);
   font-size: 13px;
@@ -2632,7 +2687,7 @@ select.input { appearance: none; cursor: pointer; }
   font-weight: 700;
   color: #1a1915 !important;
   letter-spacing: -0.025em;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: var(--font-display);
 }
 
 /* Headings */
@@ -2644,7 +2699,7 @@ select.input { appearance: none; cursor: pointer; }
   letter-spacing: -0.03em;
   color: #000000 !important;
   line-height: 1.2;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: var(--font-display);
 }
 
 .notion-sub-title,
@@ -2655,7 +2710,7 @@ select.input { appearance: none; cursor: pointer; }
   color: #8c8b88 !important;
   letter-spacing: -0.015em;
   line-height: 1.35;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* Error Banner */
@@ -9077,8 +9132,8 @@ textarea:focus-visible {
 }
 
 .bento-feature-tile {
-  border-radius: 24px;
-  padding: 18px 20px;
+  border-radius: 42px;
+  padding: 22px 22px;
   color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -9086,8 +9141,8 @@ textarea:focus-visible {
   width: 190px;
   min-width: 180px;
   max-width: 220px;
-  height: 175px;
-  min-height: 175px;
+  height: 180px;
+  min-height: 180px;
   position: relative;
   overflow: hidden;
   cursor: pointer;
@@ -9099,60 +9154,82 @@ textarea:focus-visible {
   transform: translateY(-3px);
 }
 
-/* Color Themes for Feature Tiles */
+/* Color Themes for Feature Tiles (Streak -> Chat -> Quiz -> Notes -> Flashcards -> Analytics -> Document) */
+.bento-feature-tile.tile-streak {
+  background: linear-gradient(145deg, #fb923c 0%, #ea580c 100%);
+  box-shadow: 0 6px 20px rgba(234, 88, 12, 0.28);
+}
+.bento-feature-tile.tile-streak:hover {
+  box-shadow: 0 12px 28px rgba(234, 88, 12, 0.42);
+}
+.bento-feature-tile.tile-streak .bento-feature-pill {
+  color: #ea580c;
+}
+
 .bento-feature-tile.tile-chat {
   background: linear-gradient(145deg, #6366f1 0%, #4338ca 100%);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.28);
 }
 .bento-feature-tile.tile-chat:hover {
-  box-shadow: 0 10px 26px rgba(99, 102, 241, 0.38);
+  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.42);
 }
 .bento-feature-tile.tile-chat .bento-feature-pill {
   color: #4338ca;
 }
 
-.bento-feature-tile.tile-docs {
-  background: linear-gradient(145deg, #059669 0%, #047857 100%);
-  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.25);
+.bento-feature-tile.tile-quiz {
+  background: linear-gradient(145deg, #10b981 0%, #047857 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.28);
 }
-.bento-feature-tile.tile-docs:hover {
-  box-shadow: 0 10px 26px rgba(5, 150, 105, 0.38);
+.bento-feature-tile.tile-quiz:hover {
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.42);
 }
-.bento-feature-tile.tile-docs .bento-feature-pill {
+.bento-feature-tile.tile-quiz .bento-feature-pill {
   color: #047857;
-}
-
-.bento-feature-tile.tile-cards {
-  background: linear-gradient(145deg, #8b5cf6 0%, #6d28d9 100%);
-  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.25);
-}
-.bento-feature-tile.tile-cards:hover {
-  box-shadow: 0 10px 26px rgba(139, 92, 246, 0.38);
-}
-.bento-feature-tile.tile-cards .bento-feature-pill {
-  color: #6d28d9;
 }
 
 .bento-feature-tile.tile-notes {
   background: linear-gradient(145deg, #ec4899 0%, #be185d 100%);
-  box-shadow: 0 6px 20px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 6px 20px rgba(236, 72, 153, 0.28);
 }
 .bento-feature-tile.tile-notes:hover {
-  box-shadow: 0 10px 26px rgba(236, 72, 153, 0.38);
+  box-shadow: 0 12px 28px rgba(236, 72, 153, 0.42);
 }
 .bento-feature-tile.tile-notes .bento-feature-pill {
   color: #be185d;
 }
 
+.bento-feature-tile.tile-cards {
+  background: linear-gradient(145deg, #8b5cf6 0%, #6d28d9 100%);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.28);
+}
+.bento-feature-tile.tile-cards:hover {
+  box-shadow: 0 12px 28px rgba(139, 92, 246, 0.42);
+}
+.bento-feature-tile.tile-cards .bento-feature-pill {
+  color: #6d28d9;
+}
+
 .bento-feature-tile.tile-analytics {
-  background: linear-gradient(145deg, #0ea5e9 0%, #0369a1 100%);
-  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.25);
+  background: linear-gradient(145deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.28);
 }
 .bento-feature-tile.tile-analytics:hover {
-  box-shadow: 0 10px 26px rgba(14, 165, 233, 0.38);
+  box-shadow: 0 12px 28px rgba(14, 165, 233, 0.42);
 }
 .bento-feature-tile.tile-analytics .bento-feature-pill {
-  color: #0369a1;
+  color: #0284c7;
+}
+
+.bento-feature-tile.tile-docs {
+  background: linear-gradient(145deg, #0d9488 0%, #0f766e 100%);
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.28);
+}
+.bento-feature-tile.tile-docs:hover {
+  box-shadow: 0 12px 28px rgba(13, 148, 136, 0.42);
+}
+.bento-feature-tile.tile-docs .bento-feature-pill {
+  color: #0f766e;
 }
 
 .bento-feature-watermark {
@@ -9194,6 +9271,329 @@ textarea:focus-visible {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* ── Bento Goal Progress Card (Matching Reference Design) ── */
+.bento-goal-card {
+  position: relative;
+  background: linear-gradient(135deg, #f4f6fe 0%, #edf0fd 100%);
+  border-radius: 50px;
+  padding: 26px 30px;
+  margin: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.05);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 220px;
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+
+[data-theme="dark"] .bento-goal-card {
+  background: linear-gradient(135deg, #191a2e 0%, #202340 100%);
+  border-color: var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bento-goal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 26px rgba(99, 102, 241, 0.10);
+}
+
+.bento-goal-trail-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bento-goal-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.bento-goal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #4b4870;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] .bento-goal-title-wrap {
+  color: #c7c9ee;
+}
+
+.bento-goal-xp-tag {
+  font-size: 14px;
+  font-weight: 600;
+  color: #55527a;
+}
+
+[data-theme="dark"] .bento-goal-xp-tag {
+  color: #a5a8db;
+}
+
+.bento-goal-content-split {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.bento-goal-metrics-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bento-goal-metric-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bento-goal-metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #2b284e;
+}
+
+[data-theme="dark"] .bento-goal-metric-header {
+  color: #e2e4f8;
+}
+
+.bento-goal-metric-left {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #58557c;
+}
+
+[data-theme="dark"] .bento-goal-metric-left {
+  color: #9ea2d8;
+}
+
+.bento-goal-bar-track {
+  width: 100%;
+  height: 9px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .bento-goal-bar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bento-goal-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #5046e5;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bento-goal-bar-fill.fill-dark {
+  background: #252248;
+}
+
+[data-theme="dark"] .bento-goal-bar-fill.fill-dark {
+  background: #7c74f5;
+}
+
+.bento-goal-circle-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 110px;
+  height: 110px;
+  flex-shrink: 0;
+}
+
+.bento-goal-circle-svg {
+  transform: rotate(-90deg);
+  width: 110px;
+  height: 110px;
+}
+
+.bento-goal-circle-bg {
+  stroke: rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="dark"] .bento-goal-circle-bg {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.bento-goal-circle-fg {
+  stroke: #4f46e5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bento-goal-circle-label {
+  position: absolute;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.bento-goal-circle-num {
+  font-size: 32px;
+  font-weight: 800;
+  color: #242149;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+[data-theme="dark"] .bento-goal-circle-num {
+  color: #f1f2fe;
+}
+
+.bento-goal-circle-pct {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4f46e5;
+  margin-left: 1px;
+}
+
+/* ── Study Time Trend Chart Card (Matching Reference Design) ── */
+.bento-chart-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  padding: 26px 30px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 220px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+
+.bento-chart-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.08);
+}
+
+.bento-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.bento-chart-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e1b4b;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+[data-theme="dark"] .bento-chart-title {
+  color: #f1f2fe;
+}
+
+.bento-chart-menu-btn {
+  background: none;
+  border: none;
+  color: #1e1b4b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--t-fast) var(--ease);
+}
+
+[data-theme="dark"] .bento-chart-menu-btn {
+  color: #c7c9ee;
+}
+
+.bento-chart-menu-btn:hover {
+  opacity: 0.7;
+}
+
+.bento-chart-body {
+  position: relative;
+  width: 100%;
+  height: 160px;
+}
+
+.bento-chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.bento-chart-axis-text {
+  font-size: 11.5px;
+  font-weight: 500;
+  fill: #8f92a1;
+  font-family: inherit;
+}
+
+[data-theme="dark"] .bento-chart-axis-text {
+  fill: #9ea2d8;
+}
+
+.bento-chart-grid-line {
+  stroke: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .bento-chart-grid-line {
+  stroke: rgba(255, 255, 255, 0.07);
+}
+
+.bento-chart-bar {
+  cursor: pointer;
+  transition: opacity var(--t-fast) var(--ease);
+}
+
+.bento-chart-bar:hover {
+  opacity: 0.85;
+}
+
+.bento-chart-dot {
+  cursor: pointer;
+  transition: r 0.2s ease, fill 0.2s ease;
+}
+
+.bento-chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: #000000;
+  color: #ffffff;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  z-index: 10;
+}
+
 /* ── Bento Study Deck (Matching User Reference) ── */
 .bento-deck-container {
   display: flex;
@@ -9217,8 +9617,8 @@ textarea:focus-visible {
 .bento-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 26px;
-  padding: 26px 28px;
+  border-radius: 50px;
+  padding: 26px 30px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -9254,9 +9654,45 @@ textarea:focus-visible {
   margin: 0;
 }
 
-/* Card 1: Total Note */
+/* Card 3: Study Notes */
 .bento-note-card {
-  gap: 20px;
+  gap: 16px;
+}
+
+.bento-note-icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.25);
+}
+
+.bento-note-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bento-note-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 999px;
+  transition: all var(--t-fast) var(--ease);
+}
+
+.bento-note-card:hover .bento-note-tag {
+  color: var(--text-h);
+  border-color: var(--border-strong);
 }
 
 .bento-label-muted {
@@ -9264,16 +9700,6 @@ textarea:focus-visible {
   font-weight: 500;
   color: var(--text-faint);
   margin: 0;
-}
-
-.bento-avatar-pill {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .bento-avatar-row {
@@ -11109,7 +11535,7 @@ textarea:focus-visible {
     color: #111827 !important;
     font-size: 11pt !important;
     line-height: 1.65 !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    font-family: var(--font-sans) !important;
   }
 
   .top-nav,
@@ -14974,79 +15400,146 @@ body {
   gap: 10px;
 }
 
-/* ── Hybrid Search Pill Button (Styled like Chat/Cowork toggle) ── */
-.composer-hybrid-pill-btn {
+/* ── Insight Source Pill Button ── */
+.composer-insight-pill-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 4px 11px;
   border-radius: 8px;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--text-h);
-  background: #ffffff;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   cursor: pointer;
-  transition: all 120ms ease;
+  transition: all 140ms ease;
+  user-select: none;
 }
 
-:root[data-theme="dark"] .composer-hybrid-pill-btn {
-  background: #2b2b2b;
-  border-color: rgba(255, 255, 255, 0.12);
+:root[data-theme="dark"] .composer-insight-pill-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.insight-pill-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: color 140ms ease;
+}
+
+.composer-insight-pill-btn:hover {
+  background: var(--surface-3);
+  color: var(--text-h);
+  border-color: var(--border-strong);
+}
+
+:root[data-theme="dark"] .composer-insight-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
   color: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
-.composer-hybrid-pill-btn:hover {
-  filter: brightness(0.97);
+.composer-insight-pill-btn:hover .insight-pill-icon {
+  color: #ffffff;
 }
 
-:root[data-theme="dark"] .composer-hybrid-pill-btn:hover {
-  filter: brightness(1.1);
+.composer-insight-pill-btn:active {
+  transform: scale(0.97);
 }
 
-/* ── Web Search Toggle Pill — sits next to Hybrid search pill ── */
+/* Active (Insight mode is on) */
+.composer-insight-pill-btn.active {
+  background: rgba(147, 51, 234, 0.09) !important;
+  border-color: #9333ea !important;
+  color: #7e22ce !important;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.2), 0 1px 3px rgba(147, 51, 234, 0.12) !important;
+}
+
+.composer-insight-pill-btn.active .insight-pill-icon {
+  color: #7e22ce !important;
+}
+
+:root[data-theme="dark"] .composer-insight-pill-btn.active {
+  background: rgba(168, 85, 247, 0.18) !important;
+  border-color: #c084fc !important;
+  color: #e9d5ff !important;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.3), 0 1px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-theme="dark"] .composer-insight-pill-btn.active .insight-pill-icon {
+  color: #e9d5ff !important;
+}
+
+/* ── Web Source Toggle Pill — sits next to Insight Source pill ── */
 .composer-web-pill-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 4px 11px;
   border-radius: 8px;
   font-size: 12.5px;
   font-weight: 500;
+  font-family: inherit;
   color: var(--text-muted);
-  background: #ffffff;
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   cursor: pointer;
-  transition: all 120ms ease;
+  transition: all 140ms ease;
+  user-select: none;
 }
 
 :root[data-theme="dark"] .composer-web-pill-btn {
-  background: #2b2b2b;
-  border-color: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.web-pill-globe-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: color 140ms ease, transform 140ms ease;
 }
 
 .composer-web-pill-btn:hover {
+  background: var(--surface-3);
   color: var(--text-h);
-  filter: brightness(0.97);
+  border-color: var(--border-strong);
 }
 
 :root[data-theme="dark"] .composer-web-pill-btn:hover {
-  filter: brightness(1.1);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
-/* Active (web mode is on) */
+.composer-web-pill-btn:hover .web-pill-globe-icon {
+  color: #ffffff;
+}
+
+.composer-web-pill-btn:active {
+  transform: scale(0.97);
+}
+
+/* Active (web source mode is on) */
 .composer-web-pill-btn.active {
-  background: rgba(37, 99, 235, 0.09) !important;
+  background: rgba(37, 99, 235, 0.1) !important;
   border-color: #3b82f6 !important;
   color: #2563eb !important;
   font-weight: 600;
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25), 0 1px 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+.composer-web-pill-btn.active .web-pill-globe-icon {
+  color: #2563eb !important;
 }
 
 :root[data-theme="dark"] .composer-web-pill-btn.active {
@@ -15055,6 +15548,10 @@ body {
   color: #93c5fd !important;
   font-weight: 600;
   box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 1px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-theme="dark"] .composer-web-pill-btn.active .web-pill-globe-icon {
+  color: #93c5fd !important;
 }
 
 /* ── Web answer badge (shown in msg-header when answer came from the web) ── */
@@ -15078,31 +15575,91 @@ body {
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* ── Web citation chip badge ── */
+/* ── Web citation chip (pill button with Globe icon & 'Web Source' label) ── */
+.web-source-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 5px 12px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  font-family: inherit !important;
+  color: #d4d4d8 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 150ms ease !important;
+  user-select: none !important;
+  line-height: 1.3 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+}
+
+.web-source-chip:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25) !important;
+  text-decoration: none !important;
+}
+
+.web-source-chip:active {
+  transform: scale(0.98) !important;
+}
+
+.web-source-globe-icon {
+  color: #a1a1aa !important;
+  flex-shrink: 0 !important;
+  transition: color 150ms ease !important;
+}
+
+.web-source-chip:hover .web-source-globe-icon {
+  color: #ffffff !important;
+}
+
+.web-source-text {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  white-space: nowrap !important;
+}
+
+:root[data-theme="light"] .web-source-chip {
+  background: #f1f2f4 !important;
+  border-color: #e2e4e8 !important;
+  color: #374151 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+:root[data-theme="light"] .web-source-chip:hover {
+  background: #e5e7eb !important;
+  border-color: #d1d5db !important;
+  color: #111827 !important;
+}
+
+:root[data-theme="light"] .web-source-globe-icon {
+  color: #6b7280 !important;
+}
+
+:root[data-theme="light"] .web-source-chip:hover .web-source-globe-icon {
+  color: #111827 !important;
+}
+
+/* ── Web citation chip badge in popovers ── */
 .web-sc-badge {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
   letter-spacing: 0.04em;
-  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
-  color: var(--text-muted);
-}
-
-.web-source-chip {
-  text-decoration: none !important;
-}
-.web-source-chip:hover {
-  text-decoration: none !important;
-}
-
-.web-chip-ext-icon {
-  opacity: 0.5;
-  flex-shrink: 0;
-}
-.web-source-chip:hover .web-chip-ext-icon {
-  opacity: 0.9;
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* ── Web citation popover extras ── */
@@ -15814,6 +16371,21 @@ body {
   border-color: var(--border-strong);
   color: var(--text-h);
   outline: none;
+}
+
+.md-web-cite-pill {
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+}
+
+:root[data-theme="light"] .md-web-cite-pill {
+  background: #f1f2f4;
+  border-color: #e2e4e8;
+  color: #374151;
 }
 
 .md-cite-preview {
@@ -16744,7 +17316,7 @@ body {
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   font-size: 10.5px;
   font-weight: 600;
   color: var(--text-h);

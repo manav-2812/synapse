@@ -98,8 +98,10 @@ function CitationPill({
 }) {
   const [open, setOpen] = useState(false);
   const sourceNumber = getSourceIndex(label);
+  const isWeb = source?.source_type === "web";
   const displayLabel = sourceNumber === null ? label : `Source ${sourceNumber + 1}`;
   const snippet = source?.chunk_text?.replace(/\s+/g, " ").trim();
+  const title = isWeb ? (source?.web_title || "Web Source") : (source?.document_name || displayLabel);
 
   return (
     <span
@@ -111,21 +113,47 @@ function CitationPill({
     >
       <button
         type="button"
-        className="md-cite-pill"
-        onClick={() => source && onClick?.(source)}
-        aria-label={source ? `View ${displayLabel}: ${source.document_name || "document"}` : displayLabel}
+        className={`md-cite-pill${isWeb ? " md-web-cite-pill" : ""}`}
+        onClick={() => {
+          if (isWeb && source?.web_url) {
+            window.open(source.web_url, "_blank", "noopener,noreferrer");
+          } else if (source) {
+            onClick?.(source);
+          }
+        }}
+        aria-label={source ? `View ${displayLabel}: ${title}` : displayLabel}
       >
+        {isWeb && (
+          <svg
+            width={11}
+            height={11}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ marginRight: 3, display: "inline-block", verticalAlign: "middle" }}
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+            <path d="M2 12h20" />
+          </svg>
+        )}
         {displayLabel}
       </button>
-      {open && source && snippet && (
+      {open && source && (
         <span className="md-cite-preview" role="tooltip">
           <span className="md-cite-preview-title">
-            {source.document_name || displayLabel}
+            {isWeb ? "🌐 " : ""}{title}
             {source.page_number ? ` · p. ${source.page_number}` : ""}
           </span>
-          <span className="md-cite-preview-text">
-            {snippet.slice(0, 220)}{snippet.length > 220 ? "…" : ""}
-          </span>
+          {snippet && (
+            <span className="md-cite-preview-text">
+              {snippet.slice(0, 220)}{snippet.length > 220 ? "…" : ""}
+            </span>
+          )}
         </span>
       )}
     </span>

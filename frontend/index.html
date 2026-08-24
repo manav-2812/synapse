@@ -6,14 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#6a5ae6" />
 
-    <!-- Type system: system font stack (see --font-* tokens in index.css).
-         The premium webfonts (Inter / Sora / JetBrains Mono) were intentionally
-         dropped to remove a third-party runtime dependency on the Google Fonts
-         CDN. No external font request means zero console errors and full
-         resilience when the CDN is unreachable/blocked. To restore the custom
-         type, self-host the woff2 files under public/fonts/ and add local
-         @font-face rules — do NOT reintroduce the googleapis <link>, which
-         surfaces a console error whenever the CDN is blocked. -->
+    <!-- Fonts: Figtree & Google Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=Google+Sans:ital,wght@0,400..700;1,400..700&display=swap"
+      rel="stylesheet"
+    />
     <title>Synapse — AI Study Assistant</title>
     <meta
       name="description"

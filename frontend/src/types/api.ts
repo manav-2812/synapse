@@ -135,6 +135,8 @@ export interface ChatRequest {
   document_scope?: string[] | null;
   /** When true, skip document retrieval and use Tavily web search directly. */
   web_mode?: boolean;
+  /** When true, retrieve strictly from uploaded documents without web fallback. */
+  insight_mode?: boolean;
 }
 export interface SourceResponse {
   document_id: string | null;

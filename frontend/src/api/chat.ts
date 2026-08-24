@@ -96,6 +96,7 @@ export const chatApi = {
       conversation_id: params.conversation_id || undefined,
       document_scope: params.document_scope || undefined,
       web_mode: Boolean(params.web_mode),
+      insight_mode: Boolean(params.insight_mode),
     };
 
     async function doFetch(token: string | null): Promise<Response> {

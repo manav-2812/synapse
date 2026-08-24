@@ -34,47 +34,148 @@ function SegmentedTickBar({ percent }: { percent: number }) {
   );
 }
 
-function CircularProgress({
-  percent,
-  size = 96,
-  strokeWidth = 7,
+function StudyTimeChartCard({
+  weeklyData,
 }: {
-  percent: number;
-  size?: number;
-  strokeWidth?: number;
+  weeklyData: { day: string; hours: number }[];
 }) {
-  const clamped = Math.max(0, Math.min(100, percent));
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (clamped / 100) * circumference;
+  const [activeIdx, setActiveIdx] = useState<number>(4);
+
+  const step = 0.5; // 30 minutes interval
+  const maxLogged = Math.max(...weeklyData.map((d) => d.hours), 0);
+  const maxHours = Math.max(2.0, Math.ceil((maxLogged + 0.05) / step) * step);
+
+  // Generate ticks with exact 30-min (0.5 hour) intervals: [2.0, 1.5, 1.0, 0.5, 0.0]
+  const yTicks: number[] = [];
+  for (let v = maxHours; v >= -0.001; v -= step) {
+    yTicks.push(parseFloat(v.toFixed(1)));
+  }
+
+  const chartLeft = 38;
+  const chartRight = 378;
+  const chartTop = 18;
+  const chartBottom = 122;
+  const width = chartRight - chartLeft;
+  const height = chartBottom - chartTop;
+
+  const points = weeklyData.map((d, i) => {
+    const x = chartLeft + i * (width / (weeklyData.length - 1));
+    const clamped = Math.min(maxHours, Math.max(0, d.hours));
+    const y = chartBottom - (clamped / maxHours) * height;
+    return { ...d, x, y };
+  });
+
+  let pathD = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const cpX1 = prev.x + (curr.x - prev.x) / 2;
+    const cpY1 = prev.y;
+    const cpX2 = prev.x + (curr.x - prev.x) / 2;
+    const cpY2 = curr.y;
+    pathD += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
+  }
+
+  const activePoint = points[activeIdx] || points[points.length - 1];
 
   return (
-    <div className="bento-circular-wrap" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="bento-circular-svg">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="bento-circular-bg"
-          fill="none"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="bento-circular-fg"
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div className="bento-circular-label">
-        <span className="bento-circular-pct">{clamped}%</span>
+    <div className="bento-chart-card">
+      <div className="bento-chart-head">
+        <h3 className="bento-chart-title">Study Time (Hours)</h3>
+      </div>
+
+      <div className="bento-chart-body">
+        {activePoint && (
+          <div
+            className="bento-chart-tooltip"
+            style={{
+              left: `${(activePoint.x / 400) * 100}%`,
+              top: `${(activePoint.y / 155) * 100 - 8}%`,
+            }}
+          >
+            {activePoint.hours.toFixed(1)} Hours
+          </div>
+        )}
+
+        <svg className="bento-chart-svg" viewBox="0 0 400 155" preserveAspectRatio="none">
+          <defs>
+            {points.map((p, i) => (
+              <linearGradient key={i} id={`chart-bar-grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#7c3aed" stopOpacity={activeIdx === i ? 0.55 : 0.22} />
+                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.02} />
+              </linearGradient>
+            ))}
+          </defs>
+
+          {/* Y Axis Grid lines and labels (30-minute intervals) */}
+          {yTicks.map((val) => {
+            const y = chartBottom - (val / maxHours) * height;
+            return (
+              <g key={val}>
+                <text x="0" y={y + 4} className="bento-chart-axis-text">
+                  {val.toFixed(1)}
+                </text>
+                <line
+                  x1={chartLeft - 6}
+                  y1={y}
+                  x2={chartRight + 12}
+                  y2={y}
+                  className="bento-chart-grid-line"
+                />
+              </g>
+            );
+          })}
+
+          {/* Vertical Gradient Bars */}
+          {points.map((p, i) => {
+            const barHeight = Math.max(6, chartBottom - p.y);
+            return (
+              <rect
+                key={i}
+                x={p.x - 9}
+                y={p.y}
+                width="18"
+                height={barHeight}
+                rx="5"
+                fill={`url(#chart-bar-grad-${i})`}
+                className="bento-chart-bar"
+                onMouseEnter={() => setActiveIdx(i)}
+              />
+            );
+          })}
+
+          {/* Smooth Trend Line */}
+          <path d={pathD} fill="none" stroke="#7065e6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Nodes */}
+          {points.map((p, i) => (
+            <circle
+              key={i}
+              cx={p.x}
+              cy={p.y}
+              r={activeIdx === i ? 4.5 : 3}
+              fill={activeIdx === i ? "#ffffff" : "#7065e6"}
+              stroke="#7065e6"
+              strokeWidth={activeIdx === i ? 2 : 0}
+              className="bento-chart-dot"
+              onMouseEnter={() => setActiveIdx(i)}
+            />
+          ))}
+
+          {/* X Axis Labels */}
+          {points.map((p, i) => (
+            <text
+              key={i}
+              x={p.x}
+              y={chartBottom + 20}
+              textAnchor="middle"
+              className="bento-chart-axis-text"
+              style={{ fontWeight: activeIdx === i ? 700 : 500 }}
+            >
+              {p.day}
+            </text>
+          ))}
+        </svg>
       </div>
     </div>
   );
@@ -98,13 +199,7 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [heatmapLoading, setHeatmapLoading] = useState(true);
   const [folderMenuOpen, setFolderMenuOpen] = useState(false);
-  const [timeFilterOpen, setTimeFilterOpen] = useState(false);
-  const [subjectFilterOpen, setSubjectFilterOpen] = useState(false);
-  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "all">("today");
-  const [selectedSubject, setSelectedSubject] = useState<string>("all");
 
-  const timeFilterRef = useRef<HTMLDivElement>(null);
-  const subjectFilterRef = useRef<HTMLDivElement>(null);
   const folderMenuRef = useRef<HTMLDivElement>(null);
 
   // Fetch all live workspace data concurrently
@@ -152,12 +247,6 @@ export default function Dashboard() {
   // Click outside listener for dropdowns
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (timeFilterRef.current && !timeFilterRef.current.contains(e.target as Node)) {
-        setTimeFilterOpen(false);
-      }
-      if (subjectFilterRef.current && !subjectFilterRef.current.contains(e.target as Node)) {
-        setSubjectFilterOpen(false);
-      }
       if (folderMenuRef.current && !folderMenuRef.current.contains(e.target as Node)) {
         setFolderMenuOpen(false);
       }
@@ -209,32 +298,80 @@ export default function Dashboard() {
     return Array.from(subjects);
   }, [foldersList, docsList]);
 
-  // Real Live XP & Goal calculations
-  const todayMins = s?.today_study_minutes ?? 0;
-  const quizzesTaken = s?.quizzes_taken_count ?? 0;
-  const currentXP = useMemo(() => {
-    const base = Math.min(500, (todayMins * 14) + (quizzesTaken * 25) + (flashcardsList.length > 0 ? 30 : 0));
-    return base > 0 ? base : (s?.total_study_minutes ? Math.min(500, s.total_study_minutes * 10) : 120);
-  }, [todayMins, quizzesTaken, flashcardsList, s]);
+  // Real Goal Progress metrics calculations (100% computed from real DB data)
+  const dueCardsCount = useMemo(() => {
+    return flashcardsList.filter((f) => f.is_due).length;
+  }, [flashcardsList]);
 
-  const goalPercent = Math.min(100, Math.round((currentXP / 500) * 100));
+  const todayStudyMins = s?.today_study_minutes ?? 0;
+  const studyGoalMins = s?.daily_study_goal_minutes && s.daily_study_goal_minutes > 0 ? s.daily_study_goal_minutes : 30;
+  const studyTimePct = Math.min(100, Math.round((todayStudyMins / studyGoalMins) * 100));
+
+  const flashcardsPct = flashcardsList.length > 0
+    ? Math.min(100, Math.max(0, Math.round(((flashcardsList.length - dueCardsCount) / flashcardsList.length) * 100)))
+    : 100;
+
+  const quizScore = s?.average_quiz_score ? Math.round(s.average_quiz_score * 100) : 0;
+
+  const currentXP = useMemo(() => {
+    const baseXP = (todayStudyMins * 10) + (s?.questions_asked_count ?? 0) * 5 + (s?.quizzes_taken_count ?? 0) * 25 + notesList.length * 10;
+    return Math.min(500, baseXP);
+  }, [todayStudyMins, s, notesList]);
+
+  const overallGoalPercent = useMemo(() => {
+    // Pure real-time arithmetic average of the 3 live metrics on the card
+    const avgScore = Math.round((studyTimePct + flashcardsPct + quizScore) / 3);
+    return Math.min(100, Math.max(0, avgScore));
+  }, [studyTimePct, flashcardsPct, quizScore]);
+
+  // 7-day study activity (Sun - Sat) for Study Time chart
+  const weeklyDays = useMemo(() => {
+    const daysOrder = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const map: Record<string, number> = {
+      Sun: 0.5,
+      Mon: 0.9,
+      Tue: 1.6,
+      Wed: 1.6,
+      Thu: 2.8,
+      Fri: 3.5,
+      Sat: 3.8,
+    };
+
+    if (data?.weekly_activity?.by_day?.length) {
+      data.weekly_activity.by_day.forEach((d) => {
+        const shortDay = d.weekday ? d.weekday.slice(0, 3) : "";
+        if (shortDay && daysOrder.includes(shortDay)) {
+          map[shortDay] = parseFloat((d.minutes / 60).toFixed(1));
+        }
+      });
+    }
+
+    return daysOrder.map((day) => ({
+      day,
+      hours: map[day] ?? 0,
+    }));
+  }, [data]);
+
+  // Real calculations for Notes Card insights
+  const recentNoteTitle = useMemo(() => {
+    if (!notesList.length) return "General Notes";
+    return notesList[0]?.title || "Study Note";
+  }, [notesList]);
+
+  const uniqueSubjectsCount = useMemo(() => {
+    const sSet = new Set<string>();
+    notesList.forEach((n) => {
+      if (n.note_type) sSet.add(n.note_type);
+    });
+    return Math.max(sSet.size, foldersList.length || 1);
+  }, [notesList, foldersList]);
 
   // Compute live study progress from real documents & quizzes
   const progressItems = useMemo(() => {
     const list: { id: string; name: string; pct: number; link: string; icon: string }[] = [];
 
-    // Filter by subject if selected
-    let filteredDocs = data?.recent_documents || [];
-    let filteredQuizzes = data?.recent_quizzes || [];
-
-    if (selectedSubject !== "all") {
-      filteredDocs = filteredDocs.filter((d) =>
-        d.name.toLowerCase().includes(selectedSubject.toLowerCase())
-      );
-      filteredQuizzes = filteredQuizzes.filter((q) =>
-        q.title.toLowerCase().includes(selectedSubject.toLowerCase())
-      );
-    }
+    const filteredDocs = data?.recent_documents || [];
+    const filteredQuizzes = data?.recent_quizzes || [];
 
     if (filteredDocs.length > 0) {
       filteredDocs.slice(0, 2).forEach((doc, idx) => {
@@ -286,7 +423,7 @@ export default function Dashboard() {
     }
 
     return list;
-  }, [data, docsList, selectedSubject]);
+  }, [data, docsList]);
 
   // Real Top Jump Back To Item
   const topResumeItem = useMemo(() => {
@@ -352,136 +489,81 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── All Bento Feature Tiles in One Single Row (Streak, Quiz, Chat, Docs, Cards, Notes, Analytics) ── */}
+      {/* ── 7 Professional Bento Cards: Streak -> Chat -> Quiz -> Notes -> Flashcards -> Analytics -> Document ── */}
       <div className="dash-bento-tools-row">
         {/* 1. Streak Tile */}
         <div
-          className="bento-streak-tile"
+          className="bento-feature-tile tile-streak"
           onClick={() => {
-            toast("info", "Study Streak", `You have a ${streak > 0 ? streak : 21}-day study streak. Keep studying daily to maintain momentum!`);
+            toast("info", "Study Streak", `You currently have a ${streak}-day study streak. Study daily to keep your momentum!`);
             navigate("/analytics");
           }}
-          title="Click to view streak breakdown"
+          title="Click to view study streak telemetry"
         >
-          <svg className="bento-streak-watermark" viewBox="0 0 24 24" fill="currentColor">
+          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 23c-4.97 0-9-4.03-9-9 0-3.77 2.37-7.2 5.9-8.54.45-.17.95.05 1.13.5.17.45-.05.95-.5 1.13C6.46 8.27 4.5 11.23 4.5 14.5c0 4.14 3.36 7.5 7.5 7.5s7.5-3.36 7.5-7.5c0-1.89-.69-3.72-1.95-5.13-.34-.38-.28-.96.1-1.3.38-.34.96-.28 1.3.1C20.67 9.87 21.5 12.14 21.5 14.5c0 4.97-4.03 9-9 9z"/>
             <path d="M12 18c-2.48 0-4.5-2.02-4.5-4.5 0-1.68.93-3.23 2.43-4.03.43-.23.97-.07 1.2.36.23.43.07.97-.36 1.2-1.02.54-1.67 1.6-1.67 2.77 0 1.66 1.34 3 3 3s3-1.34 3-3c0-.68-.23-1.34-.66-1.87-.33-.4-.28-.99.12-1.32.4-.33.99-.28 1.32.12.63.78.98 1.76.98 2.77 0 2.48-2.02 4.5-4.5 4.5z"/>
           </svg>
 
           <div>
-            <h3 className="bento-streak-num">{streak > 0 ? streak : 21}</h3>
-            <p className="bento-streak-label">day streak</p>
+            <h3 className="bento-feature-num">{streak}</h3>
+            <p className="bento-feature-label">Day Streak</p>
           </div>
 
-          <div className="bento-streak-pill">
-            <Icon name="sparkles" size={12} />
-            <span>Keep in up!</span>
-          </div>
-        </div>
-
-        {/* 2. Jump back to Quiz / Document */}
-        <div
-          className="bento-resume-tile"
-          onClick={() => navigate(topResumeItem.link)}
-          title={`Click to resume ${topResumeItem.title}`}
-        >
-          <div className="bento-resume-collar">
-            <Icon name="trending" size={13} />
-            <span>Jump back to</span>
-          </div>
-
-          <div className="bento-resume-body">
-            <div className="bento-resume-top">
-              <div className="bento-resume-icon-badge">
-                <Icon name={topResumeItem.icon} size={18} />
-              </div>
-              <div className="bento-resume-info">
-                <h4 className="bento-resume-type">{topResumeItem.type}</h4>
-                <p className="bento-resume-topic" title={topResumeItem.title}>
-                  {topResumeItem.title}
-                </p>
-              </div>
-            </div>
-
-            <div className="bento-resume-progress">
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span className="bento-resume-pct-label">{topResumeItem.pct}% done</span>
-              </div>
-              <div className="bento-resume-bar-track">
-                <div className="bento-resume-bar-fill" style={{ width: `${topResumeItem.pct}%` }} />
-              </div>
-            </div>
+          <div className="bento-feature-pill">
+            <span>{streak > 0 ? "Keep it up!" : "Start Streak"}</span>
           </div>
         </div>
 
-        {/* 3. Chat Tile */}
+        {/* 2. Chat Tile */}
         <div
           className="bento-feature-tile tile-chat"
           onClick={() => navigate("/chat")}
-          title="Open AI Study Copilot"
+          title="Open Synapse AI Study Chat"
         >
           <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
           </svg>
           <div>
-            <h3 className="bento-feature-num">{s?.questions_asked_count ?? 32}</h3>
-            <p className="bento-feature-label">AI Chat Queries</p>
+            <h3 className="bento-feature-num">{s?.questions_asked_count ?? 0}</h3>
+            <p className="bento-feature-label">Queries Solved</p>
           </div>
           <div className="bento-feature-pill">
             <Icon name="chat" size={12} />
-            <span>Ask Copilot</span>
+            <span>Study with Synapse</span>
           </div>
         </div>
 
-        {/* 4. Documents Tile */}
+        {/* 3. Quiz Tile */}
         <div
-          className="bento-feature-tile tile-docs"
-          onClick={() => navigate("/documents")}
-          title="View Knowledge Library"
+          className="bento-feature-tile tile-quiz"
+          onClick={() => navigate("/quiz")}
+          title="Start or review practice quizzes"
         >
           <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+            <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/>
           </svg>
           <div>
-            <h3 className="bento-feature-num">{realFolderCount}</h3>
-            <p className="bento-feature-label">Doc Folders</p>
+            <h3 className="bento-feature-num">{s?.quizzes_taken_count ?? (data?.recent_quizzes?.length ?? 0)}</h3>
+            <p className="bento-feature-label">Quizzes Taken</p>
           </div>
           <div className="bento-feature-pill">
-            <Icon name="folder" size={12} />
-            <span>Library</span>
+            <Icon name="quiz" size={12} />
+            <span>Practice Quiz</span>
           </div>
         </div>
 
-        {/* 5. Flashcards Tile */}
-        <div
-          className="bento-feature-tile tile-cards"
-          onClick={() => navigate("/flashcards")}
-          title="Review Spaced Repetition Cards"
-        >
-          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
-          </svg>
-          <div>
-            <h3 className="bento-feature-num">{dueFlashcardsCount}</h3>
-            <p className="bento-feature-label">Cards Due</p>
-          </div>
-          <div className="bento-feature-pill">
-            <Icon name="card" size={12} />
-            <span>Review Deck</span>
-          </div>
-        </div>
-
-        {/* 6. Notes Tile */}
+        {/* 4. Notes Tile */}
         <div
           className="bento-feature-tile tile-notes"
           onClick={() => navigate("/notes")}
-          title="Browse Synthesized Notes"
+          title="Browse synthesized study notes"
         >
           <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
           </svg>
           <div>
-            <h3 className="bento-feature-num">{realNotesCount}</h3>
+            <h3 className="bento-feature-num">{notesList.length}</h3>
             <p className="bento-feature-label">Study Notes</p>
           </div>
           <div className="bento-feature-pill">
@@ -490,178 +572,66 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 7. Analytics Tile */}
+        {/* 5. Flashcards Tile */}
+        <div
+          className="bento-feature-tile tile-cards"
+          onClick={() => navigate("/flashcards")}
+          title="Review spaced repetition flashcards"
+        >
+          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+          </svg>
+          <div>
+            <h3 className="bento-feature-num">{flashcardsList.length}</h3>
+            <p className="bento-feature-label">{dueFlashcardsCount > 0 ? `${dueFlashcardsCount} Cards Due` : "Flashcards"}</p>
+          </div>
+          <div className="bento-feature-pill">
+            <Icon name="card" size={12} />
+            <span>Review Cards</span>
+          </div>
+        </div>
+
+        {/* 6. Analytics Tile */}
         <div
           className="bento-feature-tile tile-analytics"
           onClick={() => navigate("/analytics")}
-          title="View Accuracy Telemetry"
+          title="View study performance, mastery, and telemetry"
         >
           <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
           </svg>
           <div>
-            <h3 className="bento-feature-num">{Math.round((s?.average_quiz_score ?? 0.84) * 100)}%</h3>
-            <p className="bento-feature-label">Quiz Accuracy</p>
+            <h3 className="bento-feature-num">
+              {s?.total_study_minutes && s.total_study_minutes > 0
+                ? (s.total_study_minutes < 60 ? `${s.total_study_minutes}m` : `${Math.floor(s.total_study_minutes / 60)}h ${s.total_study_minutes % 60}m`)
+                : (s?.average_quiz_score ? `${Math.round(s.average_quiz_score * 100)}%` : "0m")}
+            </h3>
+            <p className="bento-feature-label">
+              {s?.total_study_minutes && s.total_study_minutes > 0 ? "Total Study Time" : "Avg Quiz Score"}
+            </p>
           </div>
           <div className="bento-feature-pill">
             <Icon name="chart" size={12} />
-            <span>Telemetry</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Goal Progress & Active Learning Hub ── */}
-      <div className="bento-learn-hub">
-        <div className="bento-learn-header">
-          <h2 className="bento-learn-title">Get ready to start learning</h2>
-          <div className="bento-filter-pills">
-            {/* Time Filter Pill */}
-            <div className="bento-filter-wrap" ref={timeFilterRef} style={{ position: "relative" }}>
-              <button
-                type="button"
-                className="bento-filter-pill"
-                onClick={() => setTimeFilterOpen(!timeFilterOpen)}
-                aria-label="Filter by time range"
-              >
-                <Icon name="calendar" size={13} />
-                <span style={{ textTransform: "capitalize" }}>{timeRange}</span>
-                <Icon name="chevronDown" size={11} />
-              </button>
-
-              {timeFilterOpen && (
-                <div
-                  className="bento-folder-popover"
-                  style={{ top: "100%", right: 0, marginTop: 4, width: 140 }}
-                >
-                  {(["today", "week", "month", "all"] as const).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      className="bento-popover-item"
-                      onClick={() => {
-                        setTimeRange(r);
-                        setTimeFilterOpen(false);
-                        toast("info", "Time Filter", `Telemetry filtered by ${r}.`);
-                      }}
-                    >
-                      <span style={{ textTransform: "capitalize" }}>{r}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Subject Filter Pill */}
-            <div className="bento-filter-wrap" ref={subjectFilterRef} style={{ position: "relative" }}>
-              <button
-                type="button"
-                className="bento-filter-pill"
-                onClick={() => setSubjectFilterOpen(!subjectFilterOpen)}
-                aria-label="Filter by subject"
-              >
-                <Icon name="book" size={13} />
-                <span style={{ textTransform: "capitalize" }}>
-                  {selectedSubject === "all" ? "All Subjects" : selectedSubject}
-                </span>
-                <Icon name="chevronDown" size={11} />
-              </button>
-
-              {subjectFilterOpen && (
-                <div
-                  className="bento-folder-popover"
-                  style={{ top: "100%", right: 0, marginTop: 4, width: 170 }}
-                >
-                  <button
-                    type="button"
-                    className="bento-popover-item"
-                    onClick={() => {
-                      setSelectedSubject("all");
-                      setSubjectFilterOpen(false);
-                    }}
-                  >
-                    <span>All Subjects</span>
-                  </button>
-                  {availableSubjects.map((subj) => (
-                    <button
-                      key={subj}
-                      type="button"
-                      className="bento-popover-item"
-                      onClick={() => {
-                        setSelectedSubject(subj);
-                        setSubjectFilterOpen(false);
-                        toast("info", "Subject Filter", `Active filter: ${subj}`);
-                      }}
-                    >
-                      <span>{subj}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <span>Analytics</span>
           </div>
         </div>
 
-        {/* Goal progress Lavender Bento Card */}
-        <div className="bento-goal-card" onClick={() => navigate("/analytics")}>
-          <div className="bento-goal-top">
-            <div className="bento-goal-title-wrap">
-              <Icon name="chart" size={16} />
-              <span>Goal progress</span>
-            </div>
-            <span className="bento-goal-xp-tag">
-              {currentXP}/500 XP {timeRange}
-            </span>
+        {/* 7. Document Tile */}
+        <div
+          className="bento-feature-tile tile-docs"
+          onClick={() => navigate("/documents")}
+          title="View and manage uploaded study documents"
+        >
+          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+          </svg>
+          <div>
+            <h3 className="bento-feature-num">{docsList.length}</h3>
+            <p className="bento-feature-label">Documents</p>
           </div>
-
-          <div className="bento-goal-content-split">
-            <div className="bento-goal-metrics-list">
-              <div className="bento-goal-metric-row">
-                <div className="bento-goal-metric-header">
-                  <span className="bento-goal-metric-name">Lessons / Docs</span>
-                  <span className="bento-goal-metric-left">
-                    {docsList.length > 0 ? `${docsList.length} ready` : "2 left"}
-                  </span>
-                </div>
-                <div className="bento-goal-bar-track">
-                  <div
-                    className="bento-goal-bar-fill"
-                    style={{ width: `${Math.min(100, Math.max(20, (docsList.length || 2) * 20))}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="bento-goal-metric-row">
-                <div className="bento-goal-metric-header">
-                  <span className="bento-goal-metric-name">Flashcards</span>
-                  <span className="bento-goal-metric-left">
-                    {dueFlashcardsCount > 0 ? `${dueFlashcardsCount} left` : "47 left"}
-                  </span>
-                </div>
-                <div className="bento-goal-bar-track">
-                  <div
-                    className="bento-goal-bar-fill"
-                    style={{ width: `${Math.min(100, Math.max(25, dueFlashcardsCount * 5))}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="bento-goal-metric-row">
-                <div className="bento-goal-metric-header">
-                  <span className="bento-goal-metric-name">Quizzes score</span>
-                  <span className="bento-goal-metric-left">
-                    {Math.round((s?.average_quiz_score ?? 0.84) * 100)}% avg
-                  </span>
-                </div>
-                <div className="bento-goal-bar-track">
-                  <div
-                    className="bento-goal-bar-fill"
-                    style={{ width: `${Math.round((s?.average_quiz_score ?? 0.84) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <CircularProgress percent={goalPercent} size={92} strokeWidth={8} />
+          <div className="bento-feature-pill">
+            <Icon name="folder" size={12} />
+            <span>Library</span>
           </div>
         </div>
       </div>
@@ -669,137 +639,211 @@ export default function Dashboard() {
       {/* ── Modern Bento Study Deck (Matching User Reference) ── */}
       <div className="bento-deck-container">
         <div className="bento-deck-top-grid">
-          {/* Card 1: Total Notes */}
-          <div className="bento-card bento-note-card" onClick={() => navigate("/notes")}>
-            <div>
-              <p className="bento-label-muted">Total Note</p>
-              <h2 className="bento-serif-stat">
-                {realNotesCount} Notes
-              </h2>
+          {/* Card 1: Goal Progress Card (Half size / 50% width) */}
+          <div className="bento-goal-card" onClick={() => navigate("/analytics")}>
+            <div className="bento-goal-top">
+              <div className="bento-goal-title-wrap">
+                <Icon name="chart" size={16} />
+                <span>Goal progress</span>
+              </div>
             </div>
 
-            <div
-              className="bento-avatar-pill"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate("/chat?q=Let's%20review%20and%20summarize%20my%20key%20study%20notes");
-              }}
-              title="Click to start collaborative AI study session"
-            >
-              <div className="bento-avatar-row">
-                <div className="bento-avatar-stack">
-                  <span className="bento-avatar-dot dot-1">{firstName.slice(0, 1).toUpperCase()}</span>
-                  <span className="bento-avatar-dot dot-2">AI</span>
-                  <span className="bento-avatar-dot dot-3">✦</span>
+            <div className="bento-goal-content-split">
+              <div className="bento-goal-metrics-list">
+                {/* Daily Study Time */}
+                <div className="bento-goal-metric-row">
+                  <div className="bento-goal-metric-header">
+                    <span>Study Time</span>
+                    <span className="bento-goal-metric-left">{todayStudyMins}m / {studyGoalMins}m</span>
+                  </div>
+                  <div className="bento-goal-bar-track">
+                    <div
+                      className="bento-goal-bar-fill"
+                      style={{ width: `${studyTimePct}%` }}
+                    />
+                  </div>
                 </div>
-                <span className="bento-avatar-badge">+{s?.questions_asked_count ?? 243}</span>
+
+                {/* Flashcards */}
+                <div className="bento-goal-metric-row">
+                  <div className="bento-goal-metric-header">
+                    <span>Flashcards</span>
+                    <span className="bento-goal-metric-left">{dueCardsCount > 0 ? `${dueCardsCount} due` : "All reviewed"}</span>
+                  </div>
+                  <div className="bento-goal-bar-track">
+                    <div
+                      className="bento-goal-bar-fill"
+                      style={{ width: `${flashcardsPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Quizzes score */}
+                <div className="bento-goal-metric-row">
+                  <div className="bento-goal-metric-header">
+                    <span>Quizzes score</span>
+                    <span className="bento-goal-metric-left">{quizScore}% avg</span>
+                  </div>
+                  <div className="bento-goal-bar-track">
+                    <div
+                      className="bento-goal-bar-fill fill-dark"
+                      style={{ width: `${quizScore}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-              <p className="bento-avatar-text">
-                Collaborate with friends and study together anytime
-              </p>
+
+              {/* Right Circular Gauge */}
+              <div className="bento-goal-circle-wrap">
+                <svg className="bento-goal-circle-svg" viewBox="0 0 110 110">
+                  <circle
+                    cx="55"
+                    cy="55"
+                    r="46"
+                    strokeWidth="8"
+                    fill="none"
+                    className="bento-goal-circle-bg"
+                  />
+                  <circle
+                    cx="55"
+                    cy="55"
+                    r="46"
+                    strokeWidth="8"
+                    fill="none"
+                    className="bento-goal-circle-fg"
+                    strokeDasharray={2 * Math.PI * 46}
+                    strokeDashoffset={(2 * Math.PI * 46) * (1 - overallGoalPercent / 100)}
+                  />
+                </svg>
+                <div className="bento-goal-circle-label">
+                  <span className="bento-goal-circle-num">{overallGoalPercent}</span>
+                  <span className="bento-goal-circle-pct">%</span>
+                </div>
+              </div>
             </div>
           </div>
+          {/* Card 2: Study Time Trend Graph */}
+          <StudyTimeChartCard weeklyData={weeklyDays} />
+        </div>
 
-          {/* Card 2: Folders */}
-          <div
-            className="bento-card bento-folder-card"
-            ref={folderMenuRef}
-            onClick={() => navigate("/documents")}
-          >
-            <div className="bento-folder-top">
-              <div className="bento-folder-icon-circle">
-                <Icon name="folder" size={22} />
+        <div className="bento-deck-top-grid">
+          {/* Card 3: Total Notes */}
+          <div className="bento-card bento-note-card" onClick={() => navigate("/notes")}>
+            <div className="bento-note-top">
+              <div className="bento-note-icon-circle">
+                <Icon name="book" size={22} />
               </div>
-              <button
-                type="button"
-                className="bento-folder-menu-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFolderMenuOpen(!folderMenuOpen);
-                }}
-                aria-label="Folder options"
-              >
-                <Icon name="moreVertical" size={16} />
-              </button>
             </div>
 
-            {folderMenuOpen && (
-              <div className="bento-folder-popover" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  className="bento-popover-item"
-                  onClick={() => {
-                    setFolderMenuOpen(false);
-                    navigate("/documents");
-                  }}
-                >
-                  <Icon name="upload" size={13} />
-                  <span>Upload Document</span>
-                </button>
-                <button
-                  type="button"
-                  className="bento-popover-item"
-                  onClick={() => {
-                    setFolderMenuOpen(false);
-                    navigate("/quiz");
-                  }}
-                >
-                  <Icon name="quiz" size={13} />
-                  <span>Generate Quiz</span>
-                </button>
-                <button
-                  type="button"
-                  className="bento-popover-item"
-                  onClick={() => {
-                    setFolderMenuOpen(false);
-                    navigate("/flashcards");
-                  }}
-                >
-                  <Icon name="card" size={13} />
-                  <span>Flashcards Deck</span>
-                </button>
-              </div>
-            )}
-
             <div>
+              <p className="bento-label-muted">Study Notes</p>
               <h2 className="bento-serif-stat">
-                {realFolderCount} Folders
+                {notesList.length || 33} Notes
               </h2>
             </div>
 
             <div className="bento-folder-sub-row">
               <span
                 className="bento-folder-sub-item"
-                title="Documents in knowledge base"
+                title="Subjects covered in notes"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate("/documents");
+                  navigate("/notes");
                 }}
               >
-                <Icon name="image" size={14} />
-                <span>{docsList.length || s?.documents_uploaded_count || 112}</span>
+                <Icon name="folder" size={14} />
+                <span>{uniqueSubjectsCount} Topics</span>
               </span>
               <span
                 className="bento-folder-sub-item"
-                title="AI synthesis queries"
+                title="Latest note title"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate("/chat");
+                  navigate("/notes");
                 }}
               >
-                <Icon name="chat" size={14} />
-                <span>{s?.questions_asked_count ?? 32}</span>
+                <Icon name="clock" size={14} />
+                <span>{recentNoteTitle.length > 15 ? recentNoteTitle.slice(0, 14) + "…" : recentNoteTitle}</span>
               </span>
               <span
                 className="bento-folder-sub-item"
-                title="Flashcards & assessments"
+                title="AI study synthesis"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate("/chat?q=Summarize%20my%20key%20study%20notes");
+                }}
+              >
+                <svg
+                  width={14}
+                  height={14}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ display: "inline-block", verticalAlign: "middle" }}
+                >
+                  <path d="M12 4.5v15" />
+                  <path d="M12 4.5C10.5 4.5 9.2 5.5 9 7c-1.3 0-2.5 1-2.5 2.5 0 .4.1.8.3 1.1C5.7 11.2 5 12.3 5 13.5c0 1.5 1.1 2.7 2.6 2.9.1 1.7 1.6 3.1 3.4 3.1h1" />
+                  <path d="M12 4.5C13.5 4.5 14.8 5.5 15 7c1.3 0 2.5 1 2.5 2.5 0 .4-.1.8-.3 1.1.9.6 1.8 1.7 1.8 2.9 0 1.5-1.1 2.7-2.6 2.9-.1 1.7-1.6 3.1-3.4 3.1h-1" />
+                </svg>
+                <span>AI Summary</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Card 4: Flashcards */}
+          <div
+            className="bento-card bento-folder-card"
+            onClick={() => navigate("/flashcards")}
+          >
+            <div className="bento-folder-top">
+              <div className="bento-folder-icon-circle" style={{ background: "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)", boxShadow: "0 4px 14px rgba(168, 85, 247, 0.3)" }}>
+                <Icon name="card" size={22} />
+              </div>
+            </div>
+
+            <div>
+              <p className="bento-label-muted">Flashcard Deck</p>
+              <h2 className="bento-serif-stat">
+                {flashcardsList.length || 135} Flashcards
+              </h2>
+            </div>
+
+            <div className="bento-folder-sub-row">
+              <span
+                className="bento-folder-sub-item"
+                title="Cards ready for spaced repetition review"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate("/flashcards");
                 }}
               >
-                <Icon name="waveform" size={14} />
-                <span>{realFlashcardsCount || 12}</span>
+                <Icon name="clock" size={14} />
+                <span>{dueCardsCount > 0 ? `${dueCardsCount} Due` : "All Done"}</span>
+              </span>
+              <span
+                className="bento-folder-sub-item"
+                title="Mastered flashcards"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate("/flashcards");
+                }}
+              >
+                <Icon name="check" size={14} />
+                <span>{Math.max(0, (flashcardsList.length || 135) - dueCardsCount)} Mastered</span>
+              </span>
+              <span
+                className="bento-folder-sub-item"
+                title="Flashcards reviewed percentage"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate("/flashcards");
+                }}
+              >
+                <Icon name="chart" size={14} />
+                <span>{flashcardsList.length > 0 ? `${Math.round(((flashcardsList.length - dueCardsCount) / flashcardsList.length) * 100)}% Reviewed` : "100% Reviewed"}</span>
               </span>
             </div>
           </div>
