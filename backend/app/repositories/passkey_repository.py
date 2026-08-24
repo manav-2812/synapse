@@ -2,8 +2,9 @@
 import uuid
 from collections.abc import Sequence
 from datetime import datetime, timezone
+from typing import Any, cast
 
-from sqlalchemy import delete, select
+from sqlalchemy import CursorResult, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -42,8 +43,8 @@ class PasskeyRepository:
             delete(UserPasskey)
             .where(UserPasskey.id == passkey_id, UserPasskey.user_id == user_id)
         )
-        result = await self.session.execute(stmt)
-        return result.rowcount > 0
+        result = cast(CursorResult[Any], await self.session.execute(stmt))
+        return (result.rowcount or 0) > 0
 
     async def update_usage(self, passkey: UserPasskey, new_sign_count: int) -> None:
         passkey.sign_count = new_sign_count

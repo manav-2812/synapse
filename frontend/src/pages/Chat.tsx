@@ -8,6 +8,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useVoiceInput } from "../hooks/useVoiceInput";
+import { VoiceWaveform } from "../components/VoiceWaveform";
 import { chatApi } from "../api/chat";
 import { ApiError } from "../api/client";
 import { useToast } from "../hooks/useToast";
@@ -424,6 +426,78 @@ export default function Chat() {
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const shouldFollowLatestRef = useRef(true);
+
+  // ── Voice input ───────────────────────────────────────────────────────────
+  const {
+    isSupported: voiceSupported,
+    isListening,
+    audioStream,
+    error: voiceError,
+    startListening,
+    confirmListening,
+    cancelListening,
+    clearError: clearVoiceError,
+  } = useVoiceInput();
+
+  const voiceBaseInputRef = useRef<string>("");
+
+  /** Confirm current voice input, stop listening and focus textarea */
+  const handleVoiceConfirm = () => {
+    confirmListening();
+    setTimeout(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = ta.value.length;
+      }
+    }, 50);
+  };
+
+  /** Cancel voice input, revert back to previous text and focus textarea */
+  const handleVoiceCancel = () => {
+    cancelListening();
+    setInput(voiceBaseInputRef.current);
+    setTimeout(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = ta.value.length;
+      }
+    }, 50);
+  };
+
+  /** Toggle mic on/off; feeds transcripts directly into the input state */
+  const handleVoiceToggle = () => {
+    if (!voiceSupported) return;
+    if (isListening) {
+      handleVoiceConfirm();
+    } else {
+      clearVoiceError();
+      voiceBaseInputRef.current = input;
+      startListening((text) => {
+        const base = voiceBaseInputRef.current;
+        const prefix = base ? (base.endsWith(" ") ? base : base + " ") : "";
+        setInput(prefix + text);
+      });
+    }
+  };
+
+  // Keyboard shortcut support during active listening: Escape to cancel, Enter to confirm
+  useEffect(() => {
+    if (!isListening) return;
+    function handleVoiceKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleVoiceCancel();
+      } else if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleVoiceConfirm();
+      }
+    }
+    window.addEventListener("keydown", handleVoiceKey);
+    return () => window.removeEventListener("keydown", handleVoiceKey);
+  }, [isListening]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Close context menu on outside click or keyboard shortcut
   useEffect(() => {
@@ -1411,140 +1485,196 @@ export default function Chat() {
           )}
 
           <div className="composer-container">
-            <div className="composer">
-              <textarea
-                ref={textareaRef}
-                placeholder="How can I help you today?"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={onKey}
-                rows={1}
-                className="composer-textarea"
-              />
-
-              <div className="composer-bottom-bar">
-                {/* ── Left Side: Hybrid Search Button (styled like Chat/Cowork toggle) ── */}
-                <div className="composer-bottom-left">
-                  <button
-                    type="button"
-                    className="composer-hybrid-pill-btn"
-                    title="Semantic vector + BM25 keyword search"
-                  >
-                    <Icon name="search" size={13} />
-                    <span>Hybrid search</span>
-                  </button>
+            {isListening ? (
+              <div className="voice-dictation-card" role="region" aria-label="Voice input active">
+                <div className="voice-dictation-top">
+                  <span className="voice-dictation-label">Listening...</span>
                 </div>
-
-                {/* ── Right Side: Document Picker -> Model -> Mic -> Waveform -> Send ── */}
-                <div className="composer-bottom-right">
-                  {/* Select Document (styled same as model selector pill) */}
-                  <div className="composer-scope-wrapper">
-                    <DocumentScopePicker
-                      value={scopeIds}
-                      onChange={setScopeIds}
-                      allowUpload
-                      popupDirection="up"
-                      size="sm"
-                      minimal
-                    />
+                <div className="voice-dictation-body">
+                  <div className="voice-waveform-wrap">
+                    <VoiceWaveform audioStream={audioStream} isListening={isListening} />
                   </div>
-
-                  {/* Model Selector Pill */}
-                  <div ref={modelMenuRef} className="composer-model-dropdown-wrap">
+                  <div className="voice-dictation-actions">
                     <button
                       type="button"
-                      className="composer-model-pill"
-                      onClick={() => setShowModelMenu(!showModelMenu)}
-                      title="Select AI Model / Pipeline"
+                      className="voice-cancel-btn"
+                      onClick={handleVoiceCancel}
+                      title="Cancel voice input (Esc)"
+                      aria-label="Cancel voice input"
                     >
-                      <span>{selectedModel}</span>
-                      <Icon name="chevronDown" size={13} />
+                      <Icon name="close" size={17} />
                     </button>
-
-                    {showModelMenu && (
-                      <div className="composer-model-menu">
-                        {[
-                          {
-                            id: "synapse-hybrid",
-                            name: "Synapse Hybrid RAG",
-                            desc: "Dense Vector + BM25 keyword retrieval",
-                          },
-                          {
-                            id: "custom-models",
-                            name: "Custom Models (Coming Soon)",
-                            desc: "Fine-tuned domain models",
-                            disabled: true,
-                          },
-                        ].map((m) => (
-                          <button
-                            key={m.id}
-                            type="button"
-                            disabled={m.disabled}
-                            className={`cm-item ${selectedModel === m.name ? "active" : ""} ${m.disabled ? "disabled" : ""}`}
-                            onClick={() => {
-                              if (!m.disabled) {
-                                setSelectedModel(m.name);
-                                setShowModelMenu(false);
-                              }
-                            }}
-                          >
-                            <div className="cm-item-text">
-                              <span className="cm-item-title">{m.name}</span>
-                              <span className="cm-item-desc">{m.desc}</span>
-                            </div>
-                            {selectedModel === m.name && <Icon name="check" size={12} />}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Microphone Voice Button */}
-                  <button
-                    type="button"
-                    className="composer-voice-btn"
-                    title="Voice input (Coming soon)"
-                    aria-label="Voice input"
-                    onClick={() =>
-                      toast("info", "Voice Input", "Voice transcription module will be enabled soon.")
-                    }
-                  >
-                    <Icon name="mic" size={17} />
-                  </button>
-
-                  {/* Live Audio Waveform Button */}
-                  <button
-                    type="button"
-                    className="composer-voice-btn"
-                    title="Live voice mode (Coming soon)"
-                    aria-label="Live voice mode"
-                    onClick={() =>
-                      toast("info", "Live Voice Mode", "Real-time bidirectional speech mode is coming soon.")
-                    }
-                  >
-                    <Icon name="waveform" size={17} />
-                  </button>
-
-                  {/* Send Button */}
-                  {input.trim() && (
                     <button
                       type="button"
-                      className="composer-send-btn"
-                      onClick={() => void send()}
-                      disabled={busy || !input.trim()}
-                      title="Send (Enter)"
-                      aria-label="Send message"
+                      className="voice-confirm-btn"
+                      onClick={handleVoiceConfirm}
+                      title="Confirm voice input (Enter)"
+                      aria-label="Confirm voice input"
                     >
-                      {busy ? (
-                        <span className="spinner spinner-sm" />
-                      ) : (
-                        <Icon name="send" size={14} />
-                      )}
+                      <Icon name="check" size={17} />
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="composer">
+                <textarea
+                  ref={textareaRef}
+                  placeholder="How can I help you today?"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={onKey}
+                  rows={1}
+                  className="composer-textarea"
+                />
+
+                <div className="composer-bottom-bar">
+                  {/* ── Left Side: Hybrid Search Button (styled like Chat/Cowork toggle) ── */}
+                  <div className="composer-bottom-left">
+                    <button
+                      type="button"
+                      className="composer-hybrid-pill-btn"
+                      title="Semantic vector + BM25 keyword search"
+                    >
+                      <Icon name="search" size={13} />
+                      <span>Hybrid search</span>
+                    </button>
+                  </div>
+
+                  {/* ── Right Side: Document Picker -> Model -> Mic -> Send ── */}
+                  <div className="composer-bottom-right">
+                    {/* Select Document (styled same as model selector pill) */}
+                    <div className="composer-scope-wrapper">
+                      <DocumentScopePicker
+                        value={scopeIds}
+                        onChange={setScopeIds}
+                        allowUpload
+                        popupDirection="up"
+                        size="sm"
+                        minimal
+                      />
+                    </div>
+
+                    {/* Model Selector Pill */}
+                    <div ref={modelMenuRef} className="composer-model-dropdown-wrap">
+                      <button
+                        type="button"
+                        className="composer-model-pill"
+                        onClick={() => setShowModelMenu(!showModelMenu)}
+                        title="Select AI Model / Pipeline"
+                      >
+                        <span>{selectedModel}</span>
+                        <Icon name="chevronDown" size={13} />
+                      </button>
+
+                      {showModelMenu && (
+                        <div className="composer-model-menu">
+                          {[
+                            {
+                              id: "synapse-hybrid",
+                              name: "Synapse Hybrid RAG",
+                              desc: "Dense Vector + BM25 keyword retrieval",
+                            },
+                            {
+                              id: "custom-models",
+                              name: "Custom Models (Coming Soon)",
+                              desc: "Fine-tuned domain models",
+                              disabled: true,
+                            },
+                          ].map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              disabled={m.disabled}
+                              className={`cm-item ${selectedModel === m.name ? "active" : ""} ${m.disabled ? "disabled" : ""}`}
+                              onClick={() => {
+                                if (!m.disabled) {
+                                  setSelectedModel(m.name);
+                                  setShowModelMenu(false);
+                                }
+                              }}
+                            >
+                              <div className="cm-item-text">
+                                <span className="cm-item-title">{m.name}</span>
+                                <span className="cm-item-desc">{m.desc}</span>
+                              </div>
+                              {selectedModel === m.name && <Icon name="check" size={12} />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Microphone Voice Button */}
+                    <button
+                      type="button"
+                      className={`composer-voice-btn${!voiceSupported ? " is-disabled" : ""}`}
+                      title={
+                        !voiceSupported
+                          ? "Voice input isn't supported in this browser — try Chrome or Edge."
+                          : "Start voice input"
+                      }
+                      aria-label="Start voice input"
+                      disabled={!voiceSupported}
+                      onClick={handleVoiceToggle}
+                    >
+                      <Icon name="mic" size={17} />
+                    </button>
+
+                    {/* Send Button */}
+                    {input.trim() && (
+                      <button
+                        type="button"
+                        className="composer-send-btn"
+                        onClick={() => void send()}
+                        disabled={busy || !input.trim()}
+                        title="Send (Enter)"
+                        aria-label="Send message"
+                      >
+                        {busy ? (
+                          <span className="spinner spinner-sm" />
+                        ) : (
+                          <Icon name="send" size={14} />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Voice error feedback ── */}
+            {voiceError === "permission-denied" && (
+              <div className="voice-status-row voice-status-error" role="alert">
+                <Icon name="mic" size={13} />
+                <span>
+                  Microphone access was blocked. Enable it in your browser&rsquo;s site
+                  settings and try again.
+                </span>
+                <button
+                  type="button"
+                  className="voice-status-dismiss"
+                  aria-label="Dismiss"
+                  onClick={clearVoiceError}
+                >
+                  <Icon name="close" size={12} />
+                </button>
+              </div>
+            )}
+            {voiceError === "recognition-error" && (
+              <div className="voice-status-row voice-status-error" role="alert">
+                <Icon name="mic" size={13} />
+                <span>Voice input failed — please try again or type your question.</span>
+                <button
+                  type="button"
+                  className="voice-status-dismiss"
+                  aria-label="Dismiss"
+                  onClick={clearVoiceError}
+                >
+                  <Icon name="close" size={12} />
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
