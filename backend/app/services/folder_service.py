@@ -16,7 +16,11 @@ class FolderService:
 
     async def create(self, payload: FolderCreateRequest, user_id: uuid.UUID) -> Folder:
         if payload.parent_folder_id is not None:
-            parent = await self.repo.get_owned(uuid.UUID(payload.parent_folder_id), user_id)
+            try:
+                parent_uuid = uuid.UUID(payload.parent_folder_id)
+            except (TypeError, ValueError):
+                raise ValidationError("parent_folder_id must be a valid UUID.")
+            parent = await self.repo.get_owned(parent_uuid, user_id)
             if parent is None:
                 raise ValidationError("Invalid parent folder.")
         folder = Folder(user_id=user_id, name=payload.name, parent_folder_id=payload.parent_folder_id)

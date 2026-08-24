@@ -5,6 +5,7 @@ import uuid
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.rag import bm25 as bm25_mod
 from app.ai.vectorstore import chroma_client
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.logger import get_logger
@@ -50,8 +51,9 @@ class DocumentService:
         doc.filename = filename
         doc.storage_path = storage_path
         doc.file_size_bytes = size
-        await self.session.commit()
 
+        # Increment analytics in the same transaction as the document creation
+        # so a failure in either rolls back together. Commit once at the end.
         await UserRepository(self.session).increment_documents_uploaded(user_id)
         await self.session.commit()
 
@@ -95,6 +97,8 @@ class DocumentService:
             await chroma_client.delete_chunks(str(user_id), ids)
         except Exception as e:
             log.warning("chroma_delete_failed", document_id=str(doc.id), error=str(e))
+        # Invalidate BM25 cache so the next query rebuilds from the updated corpus.
+        bm25_mod.invalidate(str(user_id))
         if doc.storage_path and os.path.exists(doc.storage_path):
             try:
                 os.remove(doc.storage_path)

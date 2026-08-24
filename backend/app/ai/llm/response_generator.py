@@ -13,15 +13,17 @@ from app.core.logger import get_logger
 log = get_logger("llm.generator")
 
 
-async def stream_answer(system: str, user: str):
+async def stream_answer(system: str, user: str, max_tokens: int | None = None):
     """Yield provider/token events: Groq first, then Gemini, then OpenRouter.
 
     Groq uses a 15s timeout so failure is detected quickly and the fallback
-    chain kicks in without a 60s wait.
+    chain kicks in without a 60s wait.  ``max_tokens`` is threaded through to
+    whichever provider actually answers — None means each provider uses its
+    own default (fully backward-compatible).
     """
     groq_chunks = 0
     try:
-        async for chunk in groq_client.stream(system, user):
+        async for chunk in groq_client.stream(system, user, max_tokens=max_tokens):
             if groq_chunks == 0:
                 yield ("provider", "groq")
             groq_chunks += 1
@@ -42,7 +44,7 @@ async def stream_answer(system: str, user: str):
 
     gemini_chunks = 0
     try:
-        async for chunk in gemini_client.stream(system, user):
+        async for chunk in gemini_client.stream(system, user, max_tokens=max_tokens):
             if gemini_chunks == 0:
                 yield ("provider", "gemini")
             gemini_chunks += 1
@@ -62,7 +64,7 @@ async def stream_answer(system: str, user: str):
     if settings.openrouter_api_key:
         try:
             openrouter_chunks = 0
-            async for chunk in openrouter_client.stream(system, user):
+            async for chunk in openrouter_client.stream(system, user, max_tokens=max_tokens):
                 if openrouter_chunks == 0:
                     yield ("provider", "openrouter")
                 openrouter_chunks += 1

@@ -1,105 +1,94 @@
 :root {
   /* ----------------------------------------------------------------------
-     Synapse — premium design tokens
-     A calm, "intelligent" light canvas with a deep ink and a refined
-     violet→azure→cyan "aurora" accent that evokes synaptic signal flow.
+     Synapse — Notion-Style Aesthetic Design System
+     Calm, warm ivory paper canvas in light mode, deep slate in dark mode.
+     Crisp typography, minimal 4px-6px radii, and authentic Notion palettes.
      Theme is driven by data-theme on <html> (set by useTheme + index.html).
      ---------------------------------------------------------------------- */
 
-  /* Brand / accent (refined indigo-violet) */
-  --accent: #6a5ae6;
-  --accent-strong: #5848d6;
-  --accent-soft: #8073f0;
-  --accent-bg: rgba(106, 90, 230, 0.09);
-  --accent-border: rgba(106, 90, 230, 0.32);
-  --accent-glow: rgba(106, 90, 230, 0.28);
+  /* Brand / accent (Notion Blue & Ink) */
+  --accent: #2383e2;
+  --accent-strong: #0075db;
+  --accent-soft: #4799eb;
+  --accent-bg: rgba(35, 131, 226, 0.08);
+  --accent-border: rgba(35, 131, 226, 0.24);
+  --accent-glow: rgba(35, 131, 226, 0.12);
   --on-accent: #ffffff;
 
-  /* Aurora signature (low-opacity living light — synapses firing) */
-  --aurora-1: #7c6ff0; /* violet */
-  --aurora-2: #4f8bff; /* azure  */
-  --aurora-3: #34d6e0; /* cyan   */
-  --aurora: radial-gradient(
-      42% 52% at 18% 12%,
-      color-mix(in srgb, var(--aurora-1) 55%, transparent) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      40% 50% at 86% 8%,
-      color-mix(in srgb, var(--aurora-2) 50%, transparent) 0%,
-      transparent 62%
-    ),
-    radial-gradient(
-      54% 60% at 70% 96%,
-      color-mix(in srgb, var(--aurora-3) 42%, transparent) 0%,
-      transparent 64%
-    );
-  --aurora-intensity: 0.55;
+  /* Brand Seal Mark Tokens */
+  --syn-seal-ring: #1D1C2E;
+  --syn-seal-indigo: #4A4FE0;
+  --syn-seal-gold: #C9A227;
+  --syn-seal-root: #1D1C2E;
+  --syn-seal-inner-opacity: 0.35;
+  --syn-seal-line-opacity: 0.85;
 
-  /* Surfaces (cool, slightly blue to read as "clean tech") */
-  --bg: #f7f8fc;
-  --bg-soft: #eef0f7;
+  /* No aurora background in Notion aesthetic */
+  --aurora-1: transparent;
+  --aurora-2: transparent;
+  --aurora-3: transparent;
+  --aurora: none;
+  --aurora-intensity: 0;
+
+  /* Surfaces — Notion Warm Paper Light */
+  --bg: #fbfaf8;
+  --bg-soft: #f5f4f1;
   --surface: #ffffff;
-  --surface-2: #f3f4f9;
-  --surface-3: #eceef5;
-  --border: #e6e8f0;
-  --border-strong: #d6dae6;
+  --surface-2: #f1f1ef;
+  --surface-3: #e9e9e7;
+  --border: rgba(55, 53, 47, 0.11);
+  --border-strong: rgba(55, 53, 47, 0.2);
 
-  /* Text */
-  --text: #565a69;
-  --text-h: #14151c;
-  --text-faint: #8b8f9e;
+  /* Text — Crisp high-contrast */
+  --text-h: #1a1915;
+  --text: #2f2d28;
+  --text-faint: #6b6860;
 
   /* Status */
-  --ok: #16a34a;
-  --ok-bg: rgba(22, 163, 74, 0.12);
-  --warn: #c5861b;
-  --warn-bg: rgba(197, 134, 27, 0.13);
-  --danger: #e5484d;
-  --danger-bg: rgba(229, 72, 77, 0.12);
-  --info: #2d7ff0;
-  --info-bg: rgba(45, 127, 240, 0.12);
+  --ok: #0f7b6c;
+  --ok-bg: rgba(15, 123, 108, 0.1);
+  --warn: #d9730d;
+  --warn-bg: rgba(217, 115, 13, 0.1);
+  --danger: #e03e3e;
+  --danger-bg: rgba(224, 62, 62, 0.1);
+  --info: #0b6e99;
+  --info-bg: rgba(11, 110, 153, 0.1);
 
-  /* Radii */
-  --radius-sm: 10px;
-  --radius: 16px;
-  --radius-card: 20px; /* premium 18–20px card corners */
-  --radius-lg: 22px;
-  --radius-xl: 28px;
+  /* Radii — Notion Compact Precision */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-card: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
   --radius-pill: 999px;
 
-  /* Soft, layered, premium shadows */
-  --shadow-sm:
-    0 1px 2px rgba(20, 21, 28, 0.05), 0 1px 3px rgba(20, 21, 28, 0.06);
-  --shadow:
-    0 2px 6px rgba(20, 21, 28, 0.05), 0 10px 24px -10px rgba(20, 21, 28, 0.14);
-  --shadow-md:
-    0 4px 12px rgba(20, 21, 28, 0.06), 0 18px 40px -14px rgba(20, 21, 28, 0.18);
-  --shadow-lg:
-    0 8px 24px rgba(20, 21, 28, 0.08), 0 28px 60px -16px rgba(20, 21, 28, 0.2);
-  --shadow-xl:
-    0 12px 34px rgba(20, 21, 28, 0.1), 0 44px 90px -24px rgba(20, 21, 28, 0.26);
-  --inset-hairline: inset 0 0 0 1px rgba(20, 21, 28, 0.04);
-  /* Faint top inner highlight for glass/elevated surfaces */
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  /* Notion Clean Subtle Shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 15, 15, 0.06);
+  --shadow: 0 1px 3px rgba(15, 15, 15, 0.1), 0 0 0 1px rgba(15, 15, 15, 0.05);
+  --shadow-md: 0 4px 14px rgba(15, 15, 15, 0.1), 0 0 0 1px rgba(15, 15, 15, 0.06);
+  --shadow-lg: 0 12px 30px rgba(15, 15, 15, 0.14), 0 0 0 1px rgba(15, 15, 15, 0.07);
+  --shadow-xl: 0 20px 40px rgba(15, 15, 15, 0.16);
+  --inset-hairline: inset 0 0 0 1px rgba(55, 53, 47, 0.12);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 
-  /* Motion — smooth, slightly springy, Apple/Linear feel */
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Motion */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --t-fast: 140ms;
-  --t-base: 240ms;
-  --t-slow: 460ms;
+  --t-fast: 120ms;
+  --t-base: 180ms;
+  --t-slow: 300ms;
 
-  /* Type */
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Sora", "Inter Tight", "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Notion System Typography */
+  --font-sans: "Avenir Next", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-display: "Avenir Next", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
 
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.55;
-  letter-spacing: 0.1px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -109,96 +98,112 @@
   background: var(--bg);
 }
 
-/* ============================ DARK ============================ */
-/* Applies when OS prefers dark AND user hasn't forced light, or when the
-   toggle sets data-theme="dark". The toggle's attribute previously had no
-   effect because the sheet only listened to the OS media query. */
+/* ============================ DARK (OLED Deep Obsidian Black - COGNOS Style) ============================ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --accent: #8b7bf0;
-    --accent-strong: #a594ff;
-    --accent-soft: #9d8ff5;
-    --accent-bg: rgba(139, 123, 240, 0.14);
-    --accent-border: rgba(139, 123, 240, 0.4);
-    --accent-glow: rgba(139, 123, 240, 0.35);
+    --accent: #3b82f6;
+    --accent-strong: #60a5fa;
+    --accent-soft: #93c5fd;
+    --accent-bg: rgba(59, 130, 246, 0.15);
+    --accent-border: rgba(59, 130, 246, 0.35);
+    --accent-glow: rgba(59, 130, 246, 0.2);
     --on-accent: #ffffff;
 
-    --aurora-intensity: 0.7;
+    --aurora-intensity: 0;
+    --aurora: none;
 
-    --bg: #0a0b0f;
-    --bg-soft: #0f1117;
-    --surface: #14161e;
-    --surface-2: #1a1d27;
-    --surface-3: #222633;
-    --border: #262a36;
-    --border-strong: #333847;
+    /* Brand Seal Mark Tokens (Dark Mode) */
+    --syn-seal-ring: #ffffff;
+    --syn-seal-indigo: #6366f1;
+    --syn-seal-gold: #f59e0b;
+    --syn-seal-root: #ffffff;
+    --syn-seal-inner-opacity: 0.3;
+    --syn-seal-line-opacity: 0.95;
 
-    --text: #9aa0b0;
-    --text-h: #f2f3f7;
-    --text-faint: #7e859c;
+    /* True OLED Pitch Black (COGNOS Minimalist Aesthetic) */
+    --bg: #000000;
+    --bg-soft: #050505;
+    --surface: #0a0a0c;
+    --surface-2: #141417;
+    --surface-3: #1c1c20;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.18);
 
-    --ok: #3fcf75;
-    --ok-bg: rgba(63, 207, 117, 0.14);
-    --warn: #f5b34a;
-    --warn-bg: rgba(245, 179, 74, 0.15);
-    --danger: #ff6b70;
-    --danger-bg: rgba(255, 107, 112, 0.16);
-    --info: #6fa8ff;
-    --info-bg: rgba(111, 168, 255, 0.16);
+    /* Text */
+    --text-h: #ffffff;
+    --text: #f3f4f6;
+    --text-faint: #9ca3af;
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
-    --shadow:
-      0 2px 8px rgba(0, 0, 0, 0.45), 0 14px 30px -12px rgba(0, 0, 0, 0.65);
-    --shadow-md:
-      0 4px 14px rgba(0, 0, 0, 0.5), 0 20px 44px -14px rgba(0, 0, 0, 0.7);
-    --shadow-lg:
-      0 10px 30px rgba(0, 0, 0, 0.5), 0 30px 70px -18px rgba(0, 0, 0, 0.75);
-    --shadow-xl:
-      0 14px 40px rgba(0, 0, 0, 0.55), 0 48px 96px -24px rgba(0, 0, 0, 0.82);
-    --inset-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    /* Status */
+    --ok: #10b981;
+    --ok-bg: rgba(16, 185, 129, 0.15);
+    --warn: #f59e0b;
+    --warn-bg: rgba(245, 158, 11, 0.15);
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.15);
+    --info: #3b82f6;
+    --info-bg: rgba(59, 130, 246, 0.15);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.8);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.09);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.98), 0 0 0 1px rgba(255, 255, 255, 0.10);
+    --shadow-xl: 0 20px 48px rgba(0, 0, 0, 1);
+    --inset-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.10);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --accent: #8b7bf0;
-  --accent-strong: #a594ff;
-  --accent-soft: #9d8ff5;
-  --accent-bg: rgba(139, 123, 240, 0.14);
-  --accent-border: rgba(139, 123, 240, 0.4);
-  --accent-glow: rgba(139, 123, 240, 0.35);
+  --accent: #3b82f6;
+  --accent-strong: #60a5fa;
+  --accent-soft: #93c5fd;
+  --accent-bg: rgba(59, 130, 246, 0.15);
+  --accent-border: rgba(59, 130, 246, 0.35);
+  --accent-glow: rgba(59, 130, 246, 0.2);
   --on-accent: #ffffff;
 
-  --aurora-intensity: 0.7;
+  --aurora-intensity: 0;
+  --aurora: none;
 
-  --bg: #0a0b0f;
-  --bg-soft: #0f1117;
-  --surface: #14161e;
-  --surface-2: #1a1d27;
-  --surface-3: #222633;
-  --border: #262a36;
-  --border-strong: #333847;
+  /* Brand Seal Mark Tokens (Dark Mode) */
+  --syn-seal-ring: #ffffff;
+  --syn-seal-indigo: #6366f1;
+  --syn-seal-gold: #f59e0b;
+  --syn-seal-root: #ffffff;
+  --syn-seal-inner-opacity: 0.3;
+  --syn-seal-line-opacity: 0.95;
 
-  --text: #9aa0b0;
-  --text-h: #f2f3f7;
-  --text-faint: #7e859c;
+  /* True OLED Pitch Black (COGNOS Minimalist Aesthetic) */
+  --bg: #000000;
+  --bg-soft: #050505;
+  --surface: #0a0a0c;
+  --surface-2: #141417;
+  --surface-3: #1c1c20;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
 
-  --ok: #3fcf75;
-  --ok-bg: rgba(63, 207, 117, 0.14);
-  --warn: #f5b34a;
-  --warn-bg: rgba(245, 179, 74, 0.15);
-  --danger: #ff6b70;
-  --danger-bg: rgba(255, 107, 112, 0.16);
-  --info: #6fa8ff;
-  --info-bg: rgba(111, 168, 255, 0.16);
+  --text-h: #ffffff;
+  --text: #f3f4f6;
+  --text-faint: #9ca3af;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
-  --shadow:
-    0 2px 8px rgba(0, 0, 0, 0.45), 0 14px 30px -12px rgba(0, 0, 0, 0.65);
-  --shadow-lg:
-    0 10px 30px rgba(0, 0, 0, 0.5), 0 30px 70px -18px rgba(0, 0, 0, 0.75);
-  --inset-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --ok: #10b981;
+  --ok-bg: rgba(16, 185, 129, 0.15);
+  --warn: #f59e0b;
+  --warn-bg: rgba(245, 158, 11, 0.15);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.15);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.8);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.09);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.98), 0 0 0 1px rgba(255, 255, 255, 0.10);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 1);
+  --inset-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.10);
   color-scheme: dark;
 }
 
@@ -224,13 +229,6 @@ body {
   min-height: 100svh;
   background: var(--bg);
   color: var(--text);
-  /* faint vignette so the canvas feels composed, not flat */
-  background-image: radial-gradient(
-    120% 120% at 50% -10%,
-    color-mix(in srgb, var(--surface) 60%, var(--bg)) 0%,
-    var(--bg) 55%
-  );
-  background-attachment: fixed;
 }
 
 #root {
@@ -239,57 +237,64 @@ body {
   min-height: 100svh;
 }
 
+/* Typography elements */
 h1,
 h2,
 h3,
 h4,
-h5 {
+h5,
+h6 {
+  color: var(--text-h);
   font-family: var(--font-display);
   font-weight: 600;
-  color: var(--text-h);
-  line-height: 1.18;
   letter-spacing: -0.02em;
-  margin: 0;
+  margin: 0 0 0.4em;
 }
-h1 { font-size: 27px; letter-spacing: -0.03em; }
-h2 { font-size: 19px; }
-h3 { font-size: 16px; }
-h4 { font-size: 14px; }
 
-p { margin: 0; }
+p {
+  margin: 0 0 0.8em;
+}
 
 a {
-  color: var(--accent);
+  color: inherit;
   text-decoration: none;
 }
-a:hover { text-decoration: underline; }
 
-code {
-  font-family: var(--font-mono);
-  font-size: 0.86em;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: var(--surface-2);
-  color: var(--text-h);
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
 }
 
-button { font-family: inherit; }
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+/* Custom scrollbars — Notion style */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
 
 ::selection {
-  background: var(--accent-bg);
-  color: var(--text-h);
+  background: rgba(35, 131, 226, 0.28);
+  color: inherit;
 }
-
-/* Thin, unobtrusive scrollbars tuned to the surface */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
-}
-*::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 999px;
-  border: 3px solid transparent;
-  background-clip: content-box;
-}
-*::-webkit-scrollbar-thumb:hover { background: var(--text-faint); background-clip: content-box; }

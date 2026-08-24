@@ -25,3 +25,18 @@ class RefreshRequest(BaseModel):
 
 class LogoutRequest(BaseModel):
     refresh_token: str | None = None
+
+
+class GoogleOAuthRequest(BaseModel):
+    code: str | None = None
+    redirect_uri: str | None = None
+    credential: str | None = None
+
+
+class MicrosoftOAuthRequest(BaseModel):
+    code: str | None = None
+    access_token: str | None = None
+    redirect_uri: str | None = None
+    code_verifier: str | None = None
+
+

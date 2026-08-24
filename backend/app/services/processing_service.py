@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.embeddings.embedding_client import embed_texts
 from app.ai.loaders import load_document
 from app.ai.processing import chunker
+from app.ai.rag import bm25 as bm25_mod
 from app.ai.vectorstore import chroma_client
 from app.core.database import AsyncSessionLocal
 from app.core.exceptions import ProcessingError
@@ -71,8 +72,13 @@ async def process_document(document_id: str) -> None:
             await ChunkRepository(session).bulk_create(chunk_rows)
 
             doc.processing_status = "completed"
-            doc.page_count = max((c["page_number"] for c in chunks), default=0)
+            # Use the actual page count from extraction, not the highest chunk
+            # page number (which is lower when some pages produce no chunks).
+            doc.page_count = len(pages)
             doc.error_message = None
+            # Invalidate BM25 cache so next query rebuilds the index with the
+            # newly ingested chunks included.
+            bm25_mod.invalidate(str(doc.user_id))
             log.info("document_processed", document_id=str(doc.id), chunks=len(chunks))
         except Exception as e:
             doc.processing_status = "failed"
@@ -88,7 +94,8 @@ async def process_document(document_id: str) -> None:
 
 
 async def _extract(doc: Document) -> list[tuple[int, str]]:
-    pages = load_document(doc.storage_path, doc.file_type.value)
+    file_type = doc.file_type.value if hasattr(doc.file_type, "value") else str(doc.file_type)
+    pages = load_document(doc.storage_path, file_type)
     if not pages:
         raise ProcessingError("Document produced no pages.")
     return pages

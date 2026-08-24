@@ -15,6 +15,8 @@ interface Props {
   popupDirection?: "up" | "down";
   /** Button size. "sm" = compact pill (chat bar). "md" = taller, matches form inputs (default). */
   size?: "sm" | "md";
+  /** When true, renders without doc icon and without external chips, matching model dropdown pill */
+  minimal?: boolean;
 }
 
 interface PanelPos {
@@ -30,6 +32,7 @@ export function DocumentScopePicker({
   allowUpload,
   popupDirection = "down",
   size = "md",
+  minimal = false,
 }: Props) {
   const { toast } = useToast();
   const [docs, setDocs] = useState<DocumentResponse[]>([]);
@@ -68,10 +71,10 @@ export function DocumentScopePicker({
     }
   }, [open, popupDirection]);
 
-  // Close on click outside
+  // Close on click / tap outside
   useEffect(() => {
     if (!open) return;
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: MouseEvent | TouchEvent) {
       const target = e.target as Node;
       if (
         triggerRef.current?.contains(target) ||
@@ -81,7 +84,11 @@ export function DocumentScopePicker({
       setOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("touchstart", handleClick);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("touchstart", handleClick);
+    };
   }, [open]);
 
   // Close on Escape
@@ -125,78 +132,92 @@ export function DocumentScopePicker({
   );
   const selectedDocs = docs.filter((d) => value.includes(d.id));
 
+  const displayText =
+    value.length === 0
+      ? "All Documents"
+      : value.length === 1
+        ? selectedDocs[0]?.original_filename || "1 Document"
+        : `${value.length} Documents`;
+
   const panel = open && panelPos
     ? createPortal(
         <div
           ref={panelRef}
-          className={`scope-panel${popupDirection === "up" ? " scope-panel--up" : ""}`}
+          className="scope-dropdown-menu"
           role="listbox"
           aria-multiselectable="true"
           style={{
             position: "fixed",
-            top: panelPos.top,
-            bottom: panelPos.bottom,
-            left: panelPos.left,
-            minWidth: Math.max(panelPos.width, 220),
+            top: panelPos.top !== undefined ? `${panelPos.top}px` : "auto",
+            bottom: panelPos.bottom !== undefined ? `${panelPos.bottom}px` : "auto",
+            left: `${panelPos.left}px`,
+            right: "auto",
+            minWidth: Math.max(panelPos.width, 240),
+            maxWidth: 320,
+            zIndex: 99999,
           }}
         >
-          <div className="scope-panel-header">
-            <span className="scope-panel-title">Select documents</span>
-            <button
-              type="button"
-              className="scope-close-btn"
-              aria-label="Close document picker"
-              onClick={() => setOpen(false)}
-            >
-              <Icon name="close" size={14} />
-            </button>
-          </div>
+          {/* All Documents option */}
+          <button
+            type="button"
+            className={`cm-item ${value.length === 0 ? "active" : ""}`}
+            onClick={() => {
+              onChange([]);
+              setOpen(false);
+            }}
+          >
+            <div className="cm-item-text">
+              <span className="cm-item-title">All Documents</span>
+              <span className="cm-item-desc">Entire library ({completed.length} items)</span>
+            </div>
+            {value.length === 0 && <Icon name="check" size={12} />}
+          </button>
 
-          <div className="scope-list">
-            {completed.length === 0 ? (
-              <div className="muted" style={{ fontSize: 13, padding: "6px 10px" }}>
-                No processed documents yet.
-              </div>
-            ) : (
-              completed.map((d) => (
-                <label
-                  key={d.id}
-                  className="scope-opt"
-                  role="option"
-                  aria-selected={value.includes(d.id)}
-                >
-                  <input
-                    type="checkbox"
-                    checked={value.includes(d.id)}
-                    onChange={() => toggle(d.id)}
-                  />
-                  <span className="scope-opt-name" title={d.original_filename}>
-                    {d.original_filename}
+          {/* Document list */}
+          {completed.map((d) => {
+            const checked = value.includes(d.id);
+            return (
+              <button
+                key={d.id}
+                type="button"
+                className={`cm-item ${checked ? "active" : ""}`}
+                onClick={() => toggle(d.id)}
+              >
+                <div className="cm-item-text">
+                  <span className="cm-item-title">{d.original_filename}</span>
+                  <span className="cm-item-desc">
+                    {d.chunk_count ? `${d.chunk_count} passages` : "Ready for search"}
                   </span>
-                </label>
-              ))
-            )}
-          </div>
+                </div>
+                {checked && <Icon name="check" size={12} />}
+              </button>
+            );
+          })}
 
           {allowUpload && (
-            <div className="scope-panel-footer">
+            <>
+              <div className="cm-divider" />
               <button
                 type="button"
-                className="scope-upload"
-                onClick={() => fileRef.current?.click()}
+                className="cm-item"
                 disabled={busy}
+                onClick={() => fileRef.current?.click()}
               >
-                <Icon name="upload" size={14} />
-                {busy ? "Uploading…" : "Upload a document"}
+                <div className="cm-item-text">
+                  <span className="cm-item-title">
+                    {busy ? "Uploading document…" : "+ Upload a new document"}
+                  </span>
+                </div>
+                <Icon name="upload" size={12} />
               </button>
-            </div>
+            </>
           )}
 
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf,.docx,.txt,.png,.jpg,.jpeg"
-            hidden
+            accept=".pdf,.docx,.txt,.md"
+            style={{ display: "none" }}
             onChange={onUpload}
           />
         </div>,
@@ -209,23 +230,22 @@ export function DocumentScopePicker({
       <button
         ref={triggerRef}
         type="button"
-        className={`scope-trigger scope-trigger--${size}`}
+        className={`scope-trigger scope-trigger--${size} ${minimal ? "scope-trigger--minimal" : ""}`}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="listbox"
+        title={value.length === 1 ? selectedDocs[0]?.original_filename : undefined}
       >
-        <Icon name="doc" size={12} />
-        <span>
-          {value.length === 0
-            ? "All documents"
-            : `${value.length} document${value.length > 1 ? "s" : ""} selected`}
+        {!minimal && <Icon name="doc" size={12} />}
+        <span className="scope-trigger-text">
+          {displayText}
         </span>
-        <Icon name="chevron" size={12} className={`scope-chev ${open ? "open" : ""}`} />
+        <Icon name="chevronDown" size={13} className={`scope-chev ${open ? "open" : ""}`} />
       </button>
 
       {panel}
 
-      {value.length > 0 && (
+      {!minimal && value.length > 0 && (
         <div className="scope-chips">
           {selectedDocs.map((d) => (
             <span key={d.id} className="scope-chip">

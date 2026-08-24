@@ -255,6 +255,32 @@ class AnalyticsService:
             "per_day": [asdict(b) for b in series.values()],
         }
 
+    async def get_heatmap(self, user_id: uuid.UUID) -> list[dict]:
+        """Return daily study activity for the last 371 days (53 weeks).
+
+        Only days with recorded minutes are returned (sparse format).
+        Also counts document uploads and quiz attempts as activity days (1 count each).
+        """
+        today = datetime.now(timezone.utc).date()
+        since = today - timedelta(days=370)
+
+        activity = await StudyActivityRepository(self.session).get_since(user_id, since)
+        counts: dict[str, int] = {r.date.isoformat(): r.minutes for r in activity}
+
+        # Also count doc uploads and quiz creations as activity (min 1 per day)
+        docs = await DocumentRepository(self.session).list_by_user(user_id)
+        quizzes = await StudyRepository(self.session).list_quizzes(user_id)
+        for d in docs:
+            if d.created_at and d.created_at.date() >= since:
+                key = d.created_at.date().isoformat()
+                counts[key] = max(counts.get(key, 0), 1)
+        for q in quizzes:
+            if q.created_at and q.created_at.date() >= since:
+                key = q.created_at.date().isoformat()
+                counts[key] = max(counts.get(key, 0), 1)
+
+        return [{"date": k, "count": v} for k, v in sorted(counts.items()) if v > 0]
+
 
 def _compute_streak(active_days: set[date]) -> int:
     """Count consecutive active days ending today (or yesterday if today is idle)."""

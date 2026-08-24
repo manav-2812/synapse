@@ -1,28 +1,32 @@
 import {
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
-  type KeyboardEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { chatApi } from "../api/chat";
 import { ApiError } from "../api/client";
 import { useToast } from "../hooks/useToast";
+import { useTheme } from "../hooks/useTheme";
+import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
 import { Icon } from "../components/ui/Icon";
-import { BrandLogo } from "../components/ui/BrandLogo";
 import { Modal } from "../components/ui/Modal";
-import { EmptyState } from "../components/ui/EmptyState";
 import { Tip } from "../components/Tip";
 import { TIP } from "../components/tips";
 import { Skeleton } from "../components/ui/Skeleton";
 import { DocumentScopePicker } from "../components/DocumentScopePicker";
 import { MarkdownContent } from "../components/ui/MarkdownContent";
-import { formatDateTime } from "../lib/format";
+import { CitationChip } from "../components/CitationChip";
+import { MessageActionToolbar } from "../components/MessageActionToolbar";
 import type {
   ConversationListItem,
   SourceResponse,
+  UserMeResponse,
 } from "../types/api";
 
 interface ChatMessage {
@@ -32,16 +36,174 @@ interface ChatMessage {
   sources: SourceResponse[];
 }
 
-const SUGGESTION_CHIPS = [
-  "Summarize this document",
-  "Quiz me on the key concepts",
-  "What are the important definitions?",
-  "Explain this in simple terms",
-] as const;
+interface SuggestionItem {
+  icon: string;
+  cmd: string;
+  title: string;
+  desc: string;
+  prompt: string;
+}
+
+const NOTION_SUGGESTIONS: SuggestionItem[] = [
+  {
+    icon: "doc",
+    cmd: "/summarize",
+    title: "Executive Summary",
+    desc: "Key concepts, arguments & core takeaways",
+    prompt: "Provide a clear summary of the core concepts, main arguments, and key takeaways from my uploaded study documents.",
+  },
+  {
+    icon: "help",
+    cmd: "/quiz",
+    title: "Active Recall Quiz",
+    desc: "Test retention with 5 tailored questions",
+    prompt: "Generate a 5-question active recall quiz based on the key concepts in my study materials, including answers and explanations.",
+  },
+  {
+    icon: "lightbulb",
+    cmd: "/explain",
+    title: "Explain with Analogies",
+    desc: "Break down complex topics simply",
+    prompt: "Explain the most complex and foundational concepts in my documents using simple language and memorable analogies.",
+  },
+  {
+    icon: "layers",
+    cmd: "/compare",
+    title: "Compare & Contrast",
+    desc: "Connect themes and contrast related ideas",
+    prompt: "Analyze the relationships, similarities, and contrasts between the major themes covered in these documents.",
+  },
+];
+
+function groupConversations(list: ConversationListItem[]) {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86400000;
+  const sevenDaysStart = todayStart - 7 * 86400000;
+
+  const today: ConversationListItem[] = [];
+  const yesterday: ConversationListItem[] = [];
+  const previous7Days: ConversationListItem[] = [];
+  const earlier: ConversationListItem[] = [];
+
+  for (const item of list) {
+    const rawDate = item.updated_at || item.created_at;
+    const t = new Date(rawDate).getTime();
+    if (t >= todayStart) {
+      today.push(item);
+    } else if (t >= yesterdayStart) {
+      yesterday.push(item);
+    } else if (t >= sevenDaysStart) {
+      previous7Days.push(item);
+    } else {
+      earlier.push(item);
+    }
+  }
+
+  const groups: { label: string; items: ConversationListItem[] }[] = [];
+  if (today.length > 0) groups.push({ label: "Today", items: today });
+  if (yesterday.length > 0) groups.push({ label: "Yesterday", items: yesterday });
+  if (previous7Days.length > 0) groups.push({ label: "Previous 7 Days", items: previous7Days });
+  if (earlier.length > 0) groups.push({ label: "Earlier", items: earlier });
+  return groups;
+}
+
+interface TimeBlockConfig {
+  icon: string;
+  message: string;
+  color: string;
+}
+
+function extractFirstName(user?: UserMeResponse | null): string {
+  if (!user) return "";
+  if (user.full_name) {
+    const raw = user.full_name.trim().split(/\s+/)[0] || "";
+    return raw ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : "";
+  }
+  if (user.email) {
+    const handle = user.email.split("@")[0] || "";
+    // If handle is separated by dot/dash/underscore/digits (e.g. manav.baghel -> manav)
+    const namePart = handle.split(/[._\-\d]/)[0] || handle;
+    if (namePart.toLowerCase().startsWith("manav")) {
+      return "Manav";
+    }
+    return namePart ? namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase() : "";
+  }
+  return "";
+}
+
+function getTimeBlockConfig(firstName?: string): TimeBlockConfig {
+  const hour = new Date().getHours();
+
+  // 12am – 4am: Late-night grind (deep purple)
+  if (hour >= 0 && hour < 4) {
+    return {
+      icon: "✦",
+      message: firstName
+        ? `Late-night grind, ${firstName}. We've got you.`
+        : "Late-night grind. We've got you.",
+      color: "#a855f7",
+    };
+  }
+  // 4am – 8am: Early start (soft orange)
+  if (hour >= 4 && hour < 8) {
+    return {
+      icon: "✳",
+      message: firstName
+        ? `Early start, ${firstName}. Let's get ahead today.`
+        : "Early start. Let's get ahead today.",
+      color: "#f97316",
+    };
+  }
+  // 8am – 12pm: Peak focus hours (bright accent)
+  if (hour >= 8 && hour < 12) {
+    return {
+      icon: "◆",
+      message: firstName
+        ? `Peak focus hours, ${firstName}.`
+        : "Peak focus hours.",
+      color: "#0ea5e9",
+    };
+  }
+  // 12pm – 4pm: Midday review session (warm gold)
+  if (hour >= 12 && hour < 16) {
+    return {
+      icon: "●",
+      message: firstName
+        ? `Midday review session, ${firstName}.`
+        : "Midday review session.",
+      color: "#eab308",
+    };
+  }
+  // 4pm – 8pm: Wrapping up today's topics (teal)
+  if (hour >= 16 && hour < 20) {
+    return {
+      icon: "▲",
+      message: firstName
+        ? `Wrapping up today's topics, ${firstName}.`
+        : "Wrapping up today's topics.",
+      color: "#14b8a6",
+    };
+  }
+  // 8pm – 12am: Evening deep-dive mode (indigo)
+  return {
+    icon: "✦",
+    message: firstName
+      ? `Evening deep-dive mode, ${firstName}.`
+      : "Evening deep-dive mode.",
+    color: "#6366f1",
+  };
+}
 
 export default function Chat() {
+  const { user } = useAuth();
   const { toast } = useToast();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const firstName = extractFirstName(user);
+  const timeBlock = getTimeBlockConfig(firstName);
 
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -51,31 +213,389 @@ export default function Chat() {
   const [busy, setBusy] = useState(false);
   const [loadingConv, setLoadingConv] = useState(true);
   const [activeSource, setActiveSource] = useState<SourceResponse | null>(null);
+  const [conversationsOpen, setConversationsOpen] = useState(true);
 
   const [renamingConv, setRenamingConv] = useState<string | null>(null);
   const [convDraft, setConvDraft] = useState("");
   const [editingMsg, setEditingMsg] = useState<string | null>(null);
   const [msgDraft, setMsgDraft] = useState("");
   const [deleteConv, setDeleteConv] = useState<ConversationListItem | null>(null);
+  const [convSearch, setConvSearch] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("Synapse Hybrid RAG");
+  const [showModelMenu, setShowModelMenu] = useState(false);
+
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("synapse_pinned_conversations");
+      return saved ? new Set(JSON.parse(saved)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
+
+  const [unreadIds, setUnreadIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("synapse_unread_conversations");
+      return saved ? new Set(JSON.parse(saved)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
+
+  interface ChatGroup {
+    id: string;
+    name: string;
+  }
+
+  const [groups, setGroups] = useState<ChatGroup[]>(() => {
+    try {
+      const saved = localStorage.getItem("synapse_chat_groups_v1");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [convGroupMap, setConvGroupMap] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem("synapse_conv_group_map_v1");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [groupModalConvId, setGroupModalConvId] = useState<string | null>(null);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
+  const [groupDraftName, setGroupDraftName] = useState("");
+
+  const [menuGroupId, setMenuGroupId] = useState<string | null>(null);
+  const [menuGroupPos, setMenuGroupPos] = useState<{ top: number; left: number } | null>(null);
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(new Set());
+  const [chatsSectionCollapsed, setChatsSectionCollapsed] = useState(false);
+  const [pinnedSectionCollapsed, setPinnedSectionCollapsed] = useState(false);
+
+  const toggleCollapseGroup = (groupId: string) => {
+    setCollapsedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
+
+  const [menuConvId, setMenuConvId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  const togglePin = (convId: string) => {
+    setPinnedIds((prev) => {
+      const next = new Set(prev);
+      const isPinned = next.has(convId);
+      if (isPinned) {
+        next.delete(convId);
+        toast("info", "Unpinned", "Conversation removed from pinned.");
+      } else {
+        next.add(convId);
+        toast("info", "Pinned", "Conversation moved to Pinned section.");
+      }
+      localStorage.setItem("synapse_pinned_conversations", JSON.stringify(Array.from(next)));
+      return next;
+    });
+    setMenuConvId(null);
+  };
+
+  const toggleUnread = (convId: string) => {
+    setUnreadIds((prev) => {
+      const next = new Set(prev);
+      const isUnread = next.has(convId);
+      if (isUnread) {
+        next.delete(convId);
+        toast("info", "Marked as read", "Conversation marked as read.");
+      } else {
+        next.add(convId);
+        toast("info", "Marked as unread", "Conversation marked as unread.");
+      }
+      localStorage.setItem("synapse_unread_conversations", JSON.stringify(Array.from(next)));
+      return next;
+    });
+    setMenuConvId(null);
+  };
+
+  const createGroupAndMove = (convId: string, groupName: string) => {
+    const trimmed = groupName.trim();
+    if (!trimmed) return;
+    const newGroup: ChatGroup = {
+      id: `grp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name: trimmed,
+    };
+    const updatedGroups = [...groups, newGroup];
+    const updatedMap = { ...convGroupMap, [convId]: newGroup.id };
+    setGroups(updatedGroups);
+    setConvGroupMap(updatedMap);
+    localStorage.setItem("synapse_chat_groups_v1", JSON.stringify(updatedGroups));
+    localStorage.setItem("synapse_conv_group_map_v1", JSON.stringify(updatedMap));
+    setGroupModalConvId(null);
+    setNewGroupName("");
+    toast("info", `Moved to "${trimmed}"`, "Group created successfully.");
+  };
+
+  const moveToExistingGroup = (convId: string, groupId: string) => {
+    const updatedMap = { ...convGroupMap, [convId]: groupId };
+    setConvGroupMap(updatedMap);
+    localStorage.setItem("synapse_conv_group_map_v1", JSON.stringify(updatedMap));
+    setGroupModalConvId(null);
+    const grp = groups.find((g) => g.id === groupId);
+    toast("info", "Moved to group", `Moved to "${grp?.name || "Group"}".`);
+  };
+
+  const removeFromGroup = (convId: string) => {
+    const updatedMap = { ...convGroupMap };
+    delete updatedMap[convId];
+    setConvGroupMap(updatedMap);
+    localStorage.setItem("synapse_conv_group_map_v1", JSON.stringify(updatedMap));
+    setGroupModalConvId(null);
+    toast("info", "Removed from group", "Conversation removed from group.");
+  };
+
+  const renameGroup = (groupId: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      setRenamingGroupId(null);
+      return;
+    }
+    const updatedGroups = groups.map((g) => (g.id === groupId ? { ...g, name: trimmed } : g));
+    setGroups(updatedGroups);
+    localStorage.setItem("synapse_chat_groups_v1", JSON.stringify(updatedGroups));
+    setRenamingGroupId(null);
+    toast("info", "Group renamed", `Renamed to "${trimmed}".`);
+  };
+
+  const deleteGroup = (groupId: string) => {
+    const updatedGroups = groups.filter((g) => g.id !== groupId);
+    const updatedMap = { ...convGroupMap };
+    Object.keys(updatedMap).forEach((convId) => {
+      if (updatedMap[convId] === groupId) {
+        delete updatedMap[convId];
+      }
+    });
+    setGroups(updatedGroups);
+    setConvGroupMap(updatedMap);
+    localStorage.setItem("synapse_chat_groups_v1", JSON.stringify(updatedGroups));
+    localStorage.setItem("synapse_conv_group_map_v1", JSON.stringify(updatedMap));
+    toast("info", "Group deleted", "Chats moved back to main list.");
+  };
+
+  const { pinnedList, groupedSections, unpinnedList } = useMemo(() => {
+    const list = conversations.filter((c) =>
+      (c.title || "Untitled chat").toLowerCase().includes(convSearch.toLowerCase())
+    );
+
+    const pinned: ConversationListItem[] = [];
+    const inGroups: Record<string, ConversationListItem[]> = {};
+    const unpinned: ConversationListItem[] = [];
+
+    for (const c of list) {
+      if (pinnedIds.has(c.id)) {
+        pinned.push(c);
+      } else if (convGroupMap[c.id]) {
+        const gId = convGroupMap[c.id];
+        if (!inGroups[gId]) inGroups[gId] = [];
+        inGroups[gId].push(c);
+      } else {
+        unpinned.push(c);
+      }
+    }
+
+    const groupSecs = groups
+      .map((g) => ({
+        group: g,
+        items: inGroups[g.id] || [],
+      }))
+      .filter((s) => s.items.length > 0 || !convSearch);
+
+    return { pinnedList: pinned, groupedSections: groupSecs, unpinnedList: unpinned };
+  }, [conversations, convSearch, pinnedIds, convGroupMap, groups]);
 
   const threadRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const shouldFollowLatestRef = useRef(true);
+
+  // Close context menu on outside click or keyboard shortcut
+  useEffect(() => {
+    if (!menuConvId && !menuGroupId) return;
+    function handlePointerDown(e: MouseEvent | TouchEvent) {
+      const target = e.target as HTMLElement;
+      if (
+        !target.closest(".conv-context-menu") &&
+        !target.closest(".cbi-menu-trigger") &&
+        !target.closest(".group-action-btn")
+      ) {
+        setMenuConvId(null);
+        setMenuGroupId(null);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMenuConvId(null);
+        setMenuGroupId(null);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuConvId, menuGroupId]);
+
+  // Close model menu on tap / click outside or Escape
+  useEffect(() => {
+    if (!showModelMenu) return;
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
+        setShowModelMenu(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowModelMenu(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [showModelMenu]);
 
   useEffect(() => {
     void loadConversations();
   }, []);
 
   useEffect(() => {
-    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
+    const convParam = searchParams.get("conv");
+    const docParam = searchParams.get("doc");
+    const scopeParam = searchParams.get("scope");
+    const qParam = searchParams.get("q");
+
+    if (convParam) {
+      void openConversation(convParam);
+    }
+    if (scopeParam) {
+      setScopeIds(scopeParam.split(",").filter(Boolean));
+    } else if (docParam) {
+      setScopeIds([docParam]);
+    }
+    if (qParam) {
+      setInput(qParam);
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    }
+  }, [searchParams]);
+
+  // Keep the latest exchange in view while someone is actively chatting, but
+  // never pull readers away from earlier messages they have scrolled up to.
+  useLayoutEffect(() => {
+    const thread = threadRef.current;
+    if (!thread || !shouldFollowLatestRef.current) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [messages]);
 
-  // Auto-resize textarea as content grows
+  function handleThreadScroll() {
+    const thread = threadRef.current;
+    if (!thread) return;
+    shouldFollowLatestRef.current =
+      thread.scrollHeight - thread.scrollTop - thread.clientHeight < 96;
+  }
+
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+    ta.style.height = `${Math.min(ta.scrollHeight, 180)}px`;
   }, [input]);
+
+  const renderConvItem = (c: ConversationListItem) => {
+    const isRenaming = renamingConv === c.id;
+    const isPinned = pinnedIds.has(c.id);
+    const isUnread = unreadIds.has(c.id);
+    const isActive = activeId === c.id;
+
+    return (
+      <div
+        key={c.id}
+        className={`conv-bullet-item ${isActive ? "active" : ""} ${isUnread ? "is-unread" : ""} ${isPinned ? "is-pinned" : ""}`}
+      >
+        {isRenaming ? (
+          <input
+            className="conv-rename-input"
+            autoFocus
+            value={convDraft}
+            onChange={(e) => setConvDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void commitRenameConv(c.id);
+              if (e.key === "Escape") setRenamingConv(null);
+            }}
+            onBlur={() => void commitRenameConv(c.id)}
+          />
+        ) : (
+          <>
+            <button
+              type="button"
+              className="cbi-main"
+              onClick={() => void openConversation(c.id)}
+              title={c.title || "Untitled chat"}
+            >
+              <span className={`cbi-dot ${isPinned ? "is-pinned" : ""} ${isUnread ? "is-unread" : ""}`}>
+                {isPinned ? (
+                  <Icon name="pin" size={11} />
+                ) : isUnread ? (
+                  <span className="cbi-unread-circle" />
+                ) : (
+                  "○"
+                )}
+              </span>
+              <span className="cbi-title">
+                {c.title || "Untitled chat"}
+              </span>
+            </button>
+            <div className="cbi-actions">
+              <button
+                type="button"
+                className={`cbi-action-btn cbi-menu-trigger ${menuConvId === c.id ? "active" : ""}`}
+                aria-label={`Options for ${c.title}`}
+                title="More options"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setMenuPos({
+                    top: rect.bottom + 4,
+                    left: Math.max(8, Math.min(rect.left - 130, window.innerWidth - 200)),
+                  });
+                  setMenuConvId(menuConvId === c.id ? null : c.id);
+                }}
+              >
+                <Icon name="moreVertical" size={13} />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   async function loadConversations() {
     try {
@@ -94,7 +614,16 @@ export default function Chat() {
 
   async function openConversation(id: string) {
     if (id.startsWith("temp-")) return;
+    shouldFollowLatestRef.current = true;
     setActiveId(id);
+    if (unreadIds.has(id)) {
+      setUnreadIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        localStorage.setItem("synapse_unread_conversations", JSON.stringify(Array.from(next)));
+        return next;
+      });
+    }
     try {
       const detail = await chatApi.getConversation(id);
       setMessages(
@@ -116,6 +645,7 @@ export default function Chat() {
 
   function startNew() {
     if (busy) return;
+    shouldFollowLatestRef.current = true;
     setActiveId(null);
     setMessages([]);
   }
@@ -131,58 +661,36 @@ export default function Chat() {
     try {
       await chatApi.deleteConversation(c.id);
     } catch (err) {
-      toast("error", "Couldn't delete chat", err instanceof ApiError ? err.message : "Please try again.");
+      toast(
+        "error",
+        "Failed to delete conversation",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
       void loadConversations();
     }
   }
 
   function beginRenameConv(c: ConversationListItem) {
     setRenamingConv(c.id);
-    setConvDraft(c.title);
+    setConvDraft(c.title || "");
   }
 
   async function commitRenameConv(id: string) {
     const title = convDraft.trim();
     setRenamingConv(null);
     if (!title) return;
-    const prev = conversations.find((c) => c.id === id)?.title;
-    if (prev === title) return;
-    setConversations((cs) => cs.map((c) => (c.id === id ? { ...c, title } : c)));
+    setConversations((cs) =>
+      cs.map((c) => (c.id === id ? { ...c, title } : c)),
+    );
     try {
       await chatApi.renameConversation(id, title);
     } catch (err) {
-      toast("error", "Couldn't rename", err instanceof ApiError ? err.message : "Please try again.");
-      await loadConversations();
-    }
-  }
-
-  function beginEditMsg(m: ChatMessage) {
-    setEditingMsg(m.id);
-    setMsgDraft(m.content);
-  }
-
-  async function commitEditMsg(m: ChatMessage) {
-    const content = msgDraft.trim();
-    setEditingMsg(null);
-    if (!content || content === m.content) return;
-    const prev = m.content;
-    setMessages((ms) => ms.map((x) => (x.id === m.id ? { ...x, content } : x)));
-    try {
-      await chatApi.updateMessage(activeId!, m.id, content);
-    } catch (err) {
-      toast("error", "Couldn't edit", err instanceof ApiError ? err.message : "Please try again.");
-      setMessages((ms) => ms.map((x) => (x.id === m.id ? { ...x, content: prev } : x)));
-    }
-  }
-
-  async function removeMsg(m: ChatMessage) {
-    const prev = messages;
-    setMessages((ms) => ms.filter((x) => x.id !== m.id));
-    try {
-      await chatApi.deleteMessage(activeId!, m.id);
-    } catch (err) {
-      toast("error", "Couldn't delete", err instanceof ApiError ? err.message : "Please try again.");
-      setMessages(prev);
+      toast(
+        "error",
+        "Failed to rename",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
+      void loadConversations();
     }
   }
 
@@ -210,11 +718,13 @@ export default function Chat() {
       sources: [],
     };
 
+    // Sending is an intentional request for the newest response, so resume
+    // following. A subsequent manual scroll immediately opts back out.
+    shouldFollowLatestRef.current = true;
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
-    setInput("");
+    if (!overrideText) setInput("");
     setBusy(true);
 
-    // Optimistically insert new chat into sidebar immediately!
     if (isNew) {
       setConversations((prev) => [
         {
@@ -228,7 +738,6 @@ export default function Chat() {
       ]);
     }
 
-    // Patch by stable ID — never by index, which breaks with stale closures
     const patchAssistant = (patch: Partial<ChatMessage>) => {
       setMessages((prev) =>
         prev.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)),
@@ -239,7 +748,11 @@ export default function Chat() {
 
     try {
       await chatApi.sendMessage(
-        { message: text, conversation_id: activeId, document_scope: docScope },
+        {
+          message: text,
+          conversation_id: activeId || undefined,
+          document_scope: docScope.length ? docScope : undefined,
+        },
         {
           onConversation: (convPayload) => {
             if (convPayload.conversation_id) {
@@ -247,7 +760,9 @@ export default function Chat() {
               confirmedId = newId;
               setActiveId(newId);
               setConversations((prev) => {
-                const hasItem = prev.some((c) => c.id === newId || c.id === tempId || c.id.startsWith("temp-"));
+                const hasItem = prev.some(
+                  (c) => c.id === newId || c.id === tempId || c.id.startsWith("temp-"),
+                );
                 if (hasItem) {
                   return prev.map((c) =>
                     c.id === tempId || c.id === newId || c.id.startsWith("temp-")
@@ -284,32 +799,6 @@ export default function Chat() {
             if (payload?.conversation_id) {
               const finalId = payload.conversation_id;
               setActiveId(finalId);
-              setConversations((prev) => {
-                const found = prev.some((c) => c.id === finalId || c.id === tempId || c.id.startsWith("temp-"));
-                if (found) {
-                  return prev.map((c) =>
-                    c.id === finalId || c.id === tempId || c.id.startsWith("temp-")
-                      ? {
-                          ...c,
-                          id: finalId,
-                          title: payload.title || c.title,
-                          message_count: Math.max(c.message_count, 2),
-                          updated_at: new Date().toISOString(),
-                        }
-                      : c,
-                  );
-                }
-                return [
-                  {
-                    id: finalId,
-                    title: payload.title || optimisticTitle,
-                    created_at: nowIso,
-                    updated_at: nowIso,
-                    message_count: 2,
-                  },
-                  ...prev,
-                ];
-              });
               void loadConversations();
             }
           },
@@ -331,7 +820,64 @@ export default function Chat() {
     }
   }
 
-  function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
+  function beginEditMsg(m: ChatMessage) {
+    setEditingMsg(m.id);
+    setMsgDraft(m.content);
+  }
+
+  async function commitEditMsg(m: ChatMessage) {
+    if (!m.id || !activeId) return;
+    const content = msgDraft.trim();
+    if (!content || content === m.content) return;
+    setEditingMsg(null);
+    setMessages((prev) =>
+      prev.map((x) => (x.id === m.id ? { ...x, content } : x)),
+    );
+    try {
+      await chatApi.updateMessage(activeId, m.id, content);
+    } catch (err) {
+      toast(
+        "error",
+        "Failed to edit message",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
+    }
+  }
+
+  async function removeMsg(m: ChatMessage) {
+    setMessages((prev) => prev.filter((x) => x.id !== m.id));
+    if (m.id.startsWith("temp-") || !activeId) return;
+    try {
+      await chatApi.deleteMessage(activeId, m.id);
+    } catch (err) {
+      toast(
+        "error",
+        "Failed to delete message",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
+    }
+  }
+
+  function regenerateAssistantMessage(asstIdx: number) {
+    if (busy || asstIdx < 1) return;
+    const userMsg = messages[asstIdx - 1];
+    if (!userMsg || userMsg.role !== "user") return;
+    setMessages((prev) => prev.slice(0, asstIdx));
+    void send(userMsg.content);
+  }
+
+  function populatePrompt(text: string) {
+    setInput(text);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.selectionStart = text.length;
+        textareaRef.current.selectionEnd = text.length;
+      }
+    }, 40);
+  }
+
+  function onKey(e: ReactKeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void send();
@@ -340,9 +886,12 @@ export default function Chat() {
 
   function sendChip(text: string) {
     setInput(text);
-    // Use a microtask so input state is set before send() reads it
     setTimeout(() => void send(text), 0);
   }
+
+  const activeTitle = activeId
+    ? conversations.find((c) => c.id === activeId)?.title
+    : null;
 
   return (
     <>
@@ -354,282 +903,793 @@ export default function Chat() {
         Pick which documents a chat uses with the scope picker — answer
         from your whole library or just one file.
       </Tip>
-      <div className="chat-layout">
-      <aside className="conv-panel">
-        <div className="conv-panel-head spread">
-          <span>Conversations</span>
-          <button className="icon-btn" aria-label="New chat" onClick={startNew}>
-            <Icon name="plus" size={16} />
-          </button>
-        </div>
-        {loadingConv ? (
-          <div className="stack" style={{ padding: 12, gap: 10 }}>
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} height="38px" />
-            ))}
-          </div>
-        ) : (
-          <div className="conv-list">
-            {conversations.length === 0 && (
-              <div className="muted" style={{ padding: 12, fontSize: 13 }}>
-                No conversations yet.
-              </div>
-            )}
-            {conversations.map((c) => (
-              <div
-                key={c.id}
-                className={`conv-item ${activeId === c.id ? "active" : ""}`}
-              >
-                {renamingConv === c.id ? (
+
+      <div className={`chat-layout${conversationsOpen ? "" : " conversations-collapsed"}`}>
+
+        {/* ── Left Sidebar: New Chat + Search + Collapse -> Chats and Tasks ── */}
+        <aside className="conv-panel">
+          <div className="conv-sidebar-content">
+            {/* ── Top Bar: Tool Icons (Menu, Search, Collapse) ── */}
+            <div className="conv-top-action-bar">
+              {isSearching ? (
+                <div className="conv-inline-search-wrap">
+                  <Icon name="search" size={14} className="conv-search-icon" />
                   <input
-                    className="input conv-rename-input"
+                    ref={searchInputRef}
+                    type="text"
+                    className="conv-search-input"
+                    placeholder="Search chat history…"
+                    value={convSearch}
+                    onChange={(e) => setConvSearch(e.target.value)}
                     autoFocus
-                    value={convDraft}
-                    onChange={(e) => setConvDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void commitRenameConv(c.id);
-                      if (e.key === "Escape") setRenamingConv(null);
-                    }}
-                    onBlur={() => void commitRenameConv(c.id)}
                   />
-                ) : (
-                  <>
-                    <button
-                      className="ci-main"
-                      onClick={() => void openConversation(c.id)}
-                    >
-                      <div className="ci-title">{c.title || "Untitled chat"}</div>
-                      <div className="ci-sub">
-                        {c.message_count} messages · {formatDateTime(c.updated_at.toString())}
-                      </div>
-                    </button>
-                    <button
-                      className="icon-btn ci-rename"
-                      aria-label={`Rename ${c.title}`}
-                      onClick={() => beginRenameConv(c)}
-                    >
-                      <Icon name="edit" size={14} />
-                    </button>
-                    <button
-                      className="icon-btn ci-del"
-                      aria-label={`Delete ${c.title}`}
-                      onClick={() => setDeleteConv(c)}
-                    >
-                      <Icon name="trash" size={14} />
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </aside>
-
-      <section style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-        {messages.length === 0 ? (
-          <div style={{ margin: 16, flex: 1, display: "flex", flexDirection: "column" }}>
-            <EmptyState
-              icon="chat"
-              title="Ask anything about your documents."
-              hint="Optionally scope the answer to specific document IDs below."
-            />
-            <div className="chat-suggestion-chips">
-              {SUGGESTION_CHIPS.map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  className="chat-suggestion-chip"
-                  onClick={() => sendChip(chip)}
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="thread" ref={threadRef}>
-            {messages.map((m, idx) => (
-              <div
-                key={m.id}
-                className={`msg msg-${m.role}`}
-                style={{ "--i": idx } as CSSProperties}
-              >
-                <div className="msg-avatar">
-                  {m.role === "user" ? "You" : <BrandLogo />}
+                  <button
+                    type="button"
+                    className="conv-icon-btn"
+                    onClick={() => {
+                      setConvSearch("");
+                      setIsSearching(false);
+                    }}
+                    title="Close search"
+                    aria-label="Close search"
+                  >
+                    <Icon name="close" size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    className="conv-icon-btn"
+                    onClick={() => setConversationsOpen(false)}
+                    title="Collapse sidebar"
+                    aria-label="Collapse sidebar"
+                  >
+                    <Icon name="panelLeft" size={17} />
+                  </button>
                 </div>
-                <div className="msg-body">
-                  {editingMsg === m.id ? (
-                    <div className="msg-edit">
-                      <textarea
-                        className="input"
-                        autoFocus
-                        value={msgDraft}
-                        onChange={(e) => setMsgDraft(e.target.value)}
-                        rows={Math.min(12, Math.max(2, msgDraft.split("\n").length))}
-                      />
-                      <div className="row" style={{ gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
-                        <Button variant="ghost" className="btn-sm" onClick={() => setEditingMsg(null)}>
-                          Cancel
-                        </Button>
-                        <Button className="btn-sm" onClick={() => void commitEditMsg(m)}>
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="msg-bubble">
-                        {m.content ? (
-                          m.role === "assistant" ? (
-                            <MarkdownContent
-                              isStreaming={busy && idx === messages.length - 1}
-                            >
-                              {m.content}
-                            </MarkdownContent>
-                          ) : (
-                            m.content
-                          )
-                        ) : busy ? (
-                          <span className="typing" aria-label="Generating response">
-                            <span className="dot" />
-                            <span className="dot" />
-                            <span className="dot" />
-                          </span>
-                        ) : (
-                          ""
-                        )}
-                      </div>
-                      {m.sources.length > 0 && (
-                        <div className="source-chips">
-                          {m.sources.map((src, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              className="source-chip"
-                              title={src.chunk_text}
-                              onClick={() => setActiveSource(src)}
-                            >
-                              <Icon name="doc" size={12} />
-                              <span className="sc-text">
-                                {src.document_name || "Unknown source"}
-                                {src.page_number ? ` · p${src.page_number}` : ""}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {editingMsg !== m.id && (
-                    <div className="msg-actions">
-                      <button
-                        className="icon-btn"
-                        aria-label="Rename message"
-                        title="Rename message"
-                        onClick={() => beginEditMsg(m)}
-                      >
-                        <Icon name="edit" size={14} />
-                      </button>
-                      <button
-                        className="icon-btn"
-                        aria-label="Delete message"
-                        title="Delete message"
-                        onClick={() => void removeMsg(m)}
-                      >
-                        <Icon name="trash" size={14} />
-                      </button>
-                    </div>
-                  )}
+              ) : (
+                <div className="conv-top-bar-row">
+                  <button
+                    type="button"
+                    className="conv-icon-btn"
+                    onClick={() => window.dispatchEvent(new CustomEvent("synapse:toggle-app-sidebar"))}
+                    title="Open main navigation"
+                    aria-label="Open main navigation"
+                  >
+                    <Icon name="menu" size={20} />
+                  </button>
+                  <div className="conv-top-right-tools">
+                    <button
+                      type="button"
+                      className="conv-icon-btn"
+                      onClick={() => {
+                        setIsSearching(true);
+                        setTimeout(() => searchInputRef.current?.focus(), 50);
+                      }}
+                      title="Search chat history"
+                      aria-label="Search chat history"
+                    >
+                      <Icon name="search" size={19} />
+                    </button>
+                    <button
+                      type="button"
+                      className="conv-icon-btn"
+                      onClick={() => setConversationsOpen(false)}
+                      title="Collapse sidebar"
+                      aria-label="Collapse sidebar"
+                    >
+                      <Icon name="panelLeft" size={19} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="composer">
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-            <div className="composer-meta">
-              <span className="badge hybrid-badge" title="Retrieval blends semantic vector search with BM25 keyword search">
-                <Icon name="search" size={12} /> Hybrid search
-              </span>
-              <DocumentScopePicker value={scopeIds} onChange={setScopeIds} allowUpload popupDirection="up" size="sm" />
+              )}
             </div>
-            <textarea
-              ref={textareaRef}
-              placeholder="Message Synapse…"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKey}
-              rows={1}
-            />
-          </div>
-          <Button onClick={() => void send()} loading={busy} disabled={!input.trim()}>
-            <Icon name="chat" size={16} /> Send
-          </Button>
-        </div>
-      </section>
 
-      {activeSource && (
-        <div className="modal-overlay" onClick={() => setActiveSource(null)}>
-          <div
-            className="modal citation-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Citation source"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-head">
-              <div className="row" style={{ gap: 8, alignItems: "center" }}>
-                <Icon name="doc" size={16} />
-                <strong>{activeSource.document_name || "Unknown source"}</strong>
-                {activeSource.page_number && (
-                  <span className="badge">p{activeSource.page_number}</span>
-                )}
-              </div>
+            {/* ── Full-size New Chat Button on Next Line ── */}
+            <div className="conv-full-new-wrap">
               <button
-                className="icon-btn"
-                aria-label="Close"
-                onClick={() => setActiveSource(null)}
+                type="button"
+                className="conv-full-new-chat-btn"
+                onClick={startNew}
+                title="Start a new conversation"
               >
-                <Icon name="close" size={16} />
+                <span className="conv-full-new-icon-wrap">
+                  <Icon name="plus" size={16} />
+                </span>
+                <span>New chat</span>
               </button>
             </div>
-            <div className="citation-snippet">
-              {activeSource.chunk_text}
-            </div>
-            <div className="modal-foot">
-              <Button variant="ghost" onClick={() => setActiveSource(null)}>
-                Close
-              </Button>
-              <Button onClick={() => navigate("/documents")}>
-                <Icon name="doc" size={14} /> View full document
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {deleteConv && (
-        <Modal
-          open={!!deleteConv}
-          onClose={() => setDeleteConv(null)}
-          title="Delete conversation"
-        >
-          <p className="muted" style={{ marginTop: 0 }}>
-            Delete <strong>{deleteConv.title || "Untitled chat"}</strong>? This
-            removes all its messages and can't be undone.
-          </p>
-          <div className="row" style={{ marginTop: 16, justifyContent: "flex-end", gap: 8 }}>
-            <Button variant="ghost" onClick={() => setDeleteConv(null)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={() => void removeConv(deleteConv)}>
-              <Icon name="trash" size={14} /> Delete
-            </Button>
+            {/* ── Chats and Tasks Section ── */}
+            <div className="conv-chats-section">
+              {loadingConv ? (
+                <div className="stack" style={{ padding: "8px 4px", gap: 6 }}>
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} height="28px" />
+                  ))}
+                </div>
+              ) : (
+                <div className="conv-items-list">
+                  {pinnedList.length === 0 && unpinnedList.length === 0 && groupedSections.every((s) => s.items.length === 0) && (
+                    <div className="conv-empty-hint">
+                      {convSearch ? "No matching chats found" : "No chats yet"}
+                    </div>
+                  )}
+
+                  {/* ── Pinned Section ── */}
+                  {pinnedList.length > 0 && (
+                    <div className="conv-section-block">
+                      <div className="conv-section-header">
+                        <button
+                          type="button"
+                          className="conv-section-title conv-sec-collapse-btn"
+                          onClick={() => setPinnedSectionCollapsed(!pinnedSectionCollapsed)}
+                          title={`${pinnedSectionCollapsed ? "Expand" : "Collapse"} pinned chats`}
+                        >
+                          <Icon name="pin" size={11} className="conv-sec-pin-icon" />
+                          <span>Pinned</span>
+                          <Icon
+                            name="chevronDown"
+                            size={12}
+                            className={`conv-sec-chevron ${pinnedSectionCollapsed ? "collapsed" : ""}`}
+                          />
+                        </button>
+                      </div>
+                      {!pinnedSectionCollapsed && (
+                        <div className="conv-items-list-inner">
+                          {pinnedList.map((c) => renderConvItem(c))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Custom Groups Section ── */}
+                  {groupedSections.map(({ group, items }) => {
+                    const isCollapsed = collapsedGroupIds.has(group.id);
+                    return (
+                      <div key={group.id} className="conv-section-block">
+                        <div className="conv-section-header group-header">
+                          {renamingGroupId === group.id ? (
+                            <input
+                              className="group-rename-input"
+                              autoFocus
+                              value={groupDraftName}
+                              onChange={(e) => setGroupDraftName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") renameGroup(group.id, groupDraftName);
+                                if (e.key === "Escape") setRenamingGroupId(null);
+                              }}
+                              onBlur={() => renameGroup(group.id, groupDraftName)}
+                            />
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="conv-section-title group-title group-collapse-btn"
+                                onClick={() => toggleCollapseGroup(group.id)}
+                                title={`${isCollapsed ? "Expand" : "Collapse"} ${group.name}`}
+                              >
+                                <span>{group.name}</span>
+                                <Icon
+                                  name="chevronDown"
+                                  size={12}
+                                  className={`conv-sec-chevron ${isCollapsed ? "collapsed" : ""}`}
+                                />
+                              </button>
+                              <div className="group-header-actions">
+                                <button
+                                  type="button"
+                                  className={`group-action-btn ${menuGroupId === group.id ? "active" : ""}`}
+                                  title="Group settings"
+                                  aria-label={`Options for group ${group.name}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setMenuGroupPos({
+                                      top: rect.bottom + 4,
+                                      left: Math.max(8, Math.min(rect.left - 100, window.innerWidth - 170)),
+                                    });
+                                    setMenuGroupId(menuGroupId === group.id ? null : group.id);
+                                  }}
+                                >
+                                  <Icon name="tune" size={14} />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {!isCollapsed && (
+                          <div className="conv-items-list-inner">
+                            {items.map((c) => renderConvItem(c))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* ── Main Chats and Tasks Section ── */}
+                  <div className="conv-section-block">
+                    <div className="conv-section-header">
+                      <button
+                        type="button"
+                        className="conv-section-title conv-sec-collapse-btn"
+                        onClick={() => setChatsSectionCollapsed(!chatsSectionCollapsed)}
+                        title={`${chatsSectionCollapsed ? "Expand" : "Collapse"} chats and tasks`}
+                      >
+                        <span>Chats and tasks</span>
+                        <Icon
+                          name="chevronDown"
+                          size={12}
+                          className={`conv-sec-chevron ${chatsSectionCollapsed ? "collapsed" : ""}`}
+                        />
+                      </button>
+                    </div>
+                    {!chatsSectionCollapsed && (
+                      <div className="conv-items-list-inner">
+                        {unpinnedList.map((c) => renderConvItem(c))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </Modal>
-      )}
-    </div>
+        </aside>
+
+        {/* ── Group Options Context Menu (Rename, Delete) ── */}
+        {menuGroupId && menuGroupPos && (
+          <div
+            className="conv-context-menu group-context-menu"
+            style={{ top: `${menuGroupPos.top}px`, left: `${menuGroupPos.left}px` }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="conv-menu-item"
+              onClick={() => {
+                const grp = groups.find((g) => g.id === menuGroupId);
+                setMenuGroupId(null);
+                if (grp) {
+                  setRenamingGroupId(grp.id);
+                  setGroupDraftName(grp.name);
+                }
+              }}
+            >
+              <span className="cmi-icon"><Icon name="edit" size={14} /></span>
+              <span className="cmi-label">Rename</span>
+            </button>
+            <div className="conv-menu-divider" />
+            <button
+              type="button"
+              className="conv-menu-item cmi-danger"
+              onClick={() => {
+                const gId = menuGroupId;
+                setMenuGroupId(null);
+                deleteGroup(gId);
+              }}
+            >
+              <span className="cmi-icon"><Icon name="trash" size={14} /></span>
+              <span className="cmi-label">Delete</span>
+            </button>
+          </div>
+        )}
+
+        {/* ── Context Menu Popup (Pin, Mark as unread, Move to group, Rename, Delete) ── */}
+        {menuConvId && menuPos && (
+          <div
+            className="conv-context-menu"
+            style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="conv-menu-item"
+              onClick={() => togglePin(menuConvId)}
+            >
+              <span className="cmi-icon"><Icon name="pin" size={14} /></span>
+              <span className="cmi-label">{pinnedIds.has(menuConvId) ? "Unpin" : "Pin"}</span>
+            </button>
+            <button
+              type="button"
+              className="conv-menu-item"
+              onClick={() => toggleUnread(menuConvId)}
+            >
+              <span className="cmi-icon"><Icon name="eyeOff" size={14} /></span>
+              <span className="cmi-label">{unreadIds.has(menuConvId) ? "Mark as read" : "Mark as unread"}</span>
+            </button>
+            <button
+              type="button"
+              className="conv-menu-item"
+              onClick={() => {
+                setGroupModalConvId(menuConvId);
+                setMenuConvId(null);
+              }}
+            >
+              <span className="cmi-icon"><Icon name="folder" size={14} /></span>
+              <span className="cmi-label">Move to group</span>
+            </button>
+            <button
+              type="button"
+              className="conv-menu-item"
+              onClick={() => {
+                const conv = conversations.find((c) => c.id === menuConvId);
+                setMenuConvId(null);
+                if (conv) beginRenameConv(conv);
+              }}
+            >
+              <span className="cmi-icon"><Icon name="edit" size={14} /></span>
+              <span className="cmi-label">Rename</span>
+            </button>
+            <div className="conv-menu-divider" />
+            <button
+              type="button"
+              className="conv-menu-item cmi-danger"
+              onClick={() => {
+                const conv = conversations.find((c) => c.id === menuConvId);
+                setMenuConvId(null);
+                if (conv) setDeleteConv(conv);
+              }}
+            >
+              <span className="cmi-icon"><Icon name="trash" size={14} /></span>
+              <span className="cmi-label">Delete</span>
+            </button>
+          </div>
+        )}
+
+        <section className="chat-main">
+          <header className="chat-main-header">
+            {/* Only show when conv-panel is collapsed */}
+            {!conversationsOpen && (
+              <>
+                <button
+                  type="button"
+                  className="chat-corner-toggle-btn"
+                  onClick={() => window.dispatchEvent(new CustomEvent("synapse:toggle-app-sidebar"))}
+                  aria-label="Open main navigation"
+                  title="Open main navigation"
+                >
+                  <Icon name="menu" size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="chat-corner-toggle-btn"
+                  onClick={() => setConversationsOpen(true)}
+                  aria-label="Show chat history"
+                  title="Show chat history"
+                >
+                  <Icon name="panelLeft" size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="chat-corner-toggle-btn"
+                  onClick={() => {
+                    setConversationsOpen(true);
+                    setIsSearching(true);
+                    setTimeout(() => searchInputRef.current?.focus(), 60);
+                  }}
+                  aria-label="Search chat history"
+                  title="Search chat history"
+                >
+                  <Icon name="search" size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="chat-corner-toggle-btn"
+                  onClick={startNew}
+                  aria-label="New chat"
+                  title="New chat"
+                >
+                  <Icon name="plus" size={16} />
+                </button>
+              </>
+            )}
+          </header>
+
+          {messages.length === 0 ? (
+            <div className="chat-notion-empty-wrap">
+              <div className="chat-notion-empty">
+                <h1 className="chat-notion-title">
+                  <span className="time-block-icon" style={{ color: timeBlock.color }}>
+                    {timeBlock.icon}
+                  </span>{" "}
+                  {timeBlock.message}
+                </h1>
+
+                <div className="prompt-grid-header">
+                  <span className="prompt-grid-label">SUGGESTED STUDY ACTIONS</span>
+                </div>
+
+                <div className="prompt-cards-grid">
+                  {NOTION_SUGGESTIONS.map((s) => (
+                    <button
+                      key={s.cmd}
+                      type="button"
+                      className="prompt-card"
+                      onClick={() => populatePrompt(s.prompt)}
+                    >
+                      <div className="prompt-card-top">
+                        <div className="prompt-card-icon">
+                          <Icon name={s.icon} size={15} />
+                        </div>
+                        <span className="prompt-card-cmd">{s.cmd}</span>
+                      </div>
+                      <div className="prompt-card-body">
+                        <span className="prompt-card-title">{s.title}</span>
+                        <span className="prompt-card-desc">{s.desc}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="thread" ref={threadRef} onScroll={handleThreadScroll}>
+              {messages.map((m, idx) => {
+                const isStreamingThis = busy && idx === messages.length - 1 && m.role === "assistant";
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`msg msg-${m.role}${isStreamingThis ? " msg-streaming" : ""}`}
+                    style={{ "--i": idx } as CSSProperties}
+                  >
+                    <div className="msg-body">
+                      <div className="msg-header">
+                        <span className="msg-sender-label">
+                          {m.role === "user" ? "You" : "Synapse"}
+                        </span>
+                      </div>
+                      {editingMsg === m.id ? (
+                        <div className="msg-edit">
+                          <textarea
+                            className="input"
+                            autoFocus
+                            value={msgDraft}
+                            onChange={(e) => setMsgDraft(e.target.value)}
+                            rows={Math.min(12, Math.max(2, msgDraft.split("\n").length))}
+                          />
+                          <div className="row" style={{ gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                            <Button variant="ghost" className="btn-sm" onClick={() => setEditingMsg(null)}>
+                              Cancel
+                            </Button>
+                            <Button className="btn-sm" onClick={() => void commitEditMsg(m)}>
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="msg-bubble">
+                            {m.content ? (
+                              m.role === "assistant" ? (
+                                <MarkdownContent
+                                  isStreaming={isStreamingThis}
+                                  sources={m.sources}
+                                  onCitationClick={setActiveSource}
+                                >
+                                  {m.content}
+                                </MarkdownContent>
+                              ) : (
+                                m.content
+                              )
+                            ) : busy ? (
+                              <span className="typing" aria-label="Generating response">
+                                <span className="dot" />
+                                <span className="dot" />
+                                <span className="dot" />
+                              </span>
+                            ) : (
+                              ""
+                            )}
+                          </div>
+                          {m.sources.length > 0 && (
+                            <div className="source-chips">
+                              {m.sources.map((src, i) => (
+                                <CitationChip
+                                  key={i}
+                                  source={src}
+                                  onClick={() => setActiveSource(src)}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {editingMsg !== m.id && (
+                        <MessageActionToolbar
+                          role={m.role}
+                          content={m.content}
+                          scopeIds={scopeIds}
+                          onEdit={m.role === "user" ? () => beginEditMsg(m) : undefined}
+                          onDelete={() => void removeMsg(m)}
+                          onRegenerate={m.role === "assistant" ? () => regenerateAssistantMessage(idx) : undefined}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="composer-container">
+            <div className="composer">
+              <textarea
+                ref={textareaRef}
+                placeholder="How can I help you today?"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKey}
+                rows={1}
+                className="composer-textarea"
+              />
+
+              <div className="composer-bottom-bar">
+                {/* ── Left Side: Hybrid Search Button (styled like Chat/Cowork toggle) ── */}
+                <div className="composer-bottom-left">
+                  <button
+                    type="button"
+                    className="composer-hybrid-pill-btn"
+                    title="Semantic vector + BM25 keyword search"
+                  >
+                    <Icon name="search" size={13} />
+                    <span>Hybrid search</span>
+                  </button>
+                </div>
+
+                {/* ── Right Side: Document Picker -> Model -> Mic -> Waveform -> Send ── */}
+                <div className="composer-bottom-right">
+                  {/* Select Document (styled same as model selector pill) */}
+                  <div className="composer-scope-wrapper">
+                    <DocumentScopePicker
+                      value={scopeIds}
+                      onChange={setScopeIds}
+                      allowUpload
+                      popupDirection="up"
+                      size="sm"
+                      minimal
+                    />
+                  </div>
+
+                  {/* Model Selector Pill */}
+                  <div ref={modelMenuRef} className="composer-model-dropdown-wrap">
+                    <button
+                      type="button"
+                      className="composer-model-pill"
+                      onClick={() => setShowModelMenu(!showModelMenu)}
+                      title="Select AI Model / Pipeline"
+                    >
+                      <span>{selectedModel}</span>
+                      <Icon name="chevronDown" size={13} />
+                    </button>
+
+                    {showModelMenu && (
+                      <div className="composer-model-menu">
+                        {[
+                          {
+                            id: "synapse-hybrid",
+                            name: "Synapse Hybrid RAG",
+                            desc: "Dense Vector + BM25 keyword retrieval",
+                          },
+                          {
+                            id: "custom-models",
+                            name: "Custom Models (Coming Soon)",
+                            desc: "Fine-tuned domain models",
+                            disabled: true,
+                          },
+                        ].map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            disabled={m.disabled}
+                            className={`cm-item ${selectedModel === m.name ? "active" : ""} ${m.disabled ? "disabled" : ""}`}
+                            onClick={() => {
+                              if (!m.disabled) {
+                                setSelectedModel(m.name);
+                                setShowModelMenu(false);
+                              }
+                            }}
+                          >
+                            <div className="cm-item-text">
+                              <span className="cm-item-title">{m.name}</span>
+                              <span className="cm-item-desc">{m.desc}</span>
+                            </div>
+                            {selectedModel === m.name && <Icon name="check" size={12} />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Microphone Voice Button */}
+                  <button
+                    type="button"
+                    className="composer-voice-btn"
+                    title="Voice input (Coming soon)"
+                    aria-label="Voice input"
+                    onClick={() =>
+                      toast("info", "Voice Input", "Voice transcription module will be enabled soon.")
+                    }
+                  >
+                    <Icon name="mic" size={17} />
+                  </button>
+
+                  {/* Live Audio Waveform Button */}
+                  <button
+                    type="button"
+                    className="composer-voice-btn"
+                    title="Live voice mode (Coming soon)"
+                    aria-label="Live voice mode"
+                    onClick={() =>
+                      toast("info", "Live Voice Mode", "Real-time bidirectional speech mode is coming soon.")
+                    }
+                  >
+                    <Icon name="waveform" size={17} />
+                  </button>
+
+                  {/* Send Button */}
+                  {input.trim() && (
+                    <button
+                      type="button"
+                      className="composer-send-btn"
+                      onClick={() => void send()}
+                      disabled={busy || !input.trim()}
+                      title="Send (Enter)"
+                      aria-label="Send message"
+                    >
+                      {busy ? (
+                        <span className="spinner spinner-sm" />
+                      ) : (
+                        <Icon name="send" size={14} />
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {activeSource && (
+          <div className="modal-overlay" onClick={() => setActiveSource(null)}>
+            <div
+              className="modal citation-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Citation source"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-head">
+                <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                  <Icon name="doc" size={16} />
+                  <strong>{activeSource.document_name || "Unknown source"}</strong>
+                  {activeSource.page_number && (
+                    <span className="badge">p{activeSource.page_number}</span>
+                  )}
+                </div>
+                <button
+                  className="icon-btn"
+                  aria-label="Close"
+                  onClick={() => setActiveSource(null)}
+                >
+                  <Icon name="close" size={16} />
+                </button>
+              </div>
+              <div className="citation-snippet">
+                {activeSource.chunk_text}
+              </div>
+              <div className="modal-foot">
+                <Button variant="ghost" onClick={() => setActiveSource(null)}>
+                  Close
+                </Button>
+                <Button onClick={() => navigate("/documents")}>
+                  <Icon name="doc" size={14} /> View full document
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {deleteConv && (
+          <Modal
+            open={!!deleteConv}
+            onClose={() => setDeleteConv(null)}
+            title="Delete conversation"
+          >
+            <p className="muted" style={{ marginTop: 0 }}>
+              Delete <strong>{deleteConv.title || "Untitled chat"}</strong>? This
+              removes all its messages and cannot be undone.
+            </p>
+            <div className="row" style={{ marginTop: 16, justifyContent: "flex-end", gap: 8 }}>
+              <Button variant="ghost" onClick={() => setDeleteConv(null)}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={() => void removeConv(deleteConv)}>
+                <Icon name="trash" size={14} /> Delete
+              </Button>
+            </div>
+          </Modal>
+        )}
+
+        {groupModalConvId && (
+          <Modal
+            open={!!groupModalConvId}
+            title="Move to Group"
+            onClose={() => {
+              setGroupModalConvId(null);
+              setNewGroupName("");
+            }}
+          >
+            <div className="group-modal-body">
+              <p className="muted" style={{ marginTop: 0, fontSize: "13px" }}>
+                Organize your chats into custom project or study groups:
+              </p>
+
+              {convGroupMap[groupModalConvId] && (
+                <div className="group-current-box">
+                  <span style={{ fontSize: "12.5px" }}>
+                    Current group: <strong>{groups.find((g) => g.id === convGroupMap[groupModalConvId])?.name || "Group"}</strong>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    onClick={() => removeFromGroup(groupModalConvId)}
+                  >
+                    Remove from group
+                  </Button>
+                </div>
+              )}
+
+              {groups.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", marginBottom: 6 }}>
+                    Existing Groups:
+                  </label>
+                  <div className="group-picker-grid">
+                    {groups.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className={`group-pick-item ${convGroupMap[groupModalConvId] === g.id ? "active" : ""}`}
+                        onClick={() => moveToExistingGroup(groupModalConvId, g.id)}
+                      >
+                        <Icon name="folder" size={14} />
+                        <span style={{ flex: 1, textAlign: "left" }}>{g.name}</span>
+                        {convGroupMap[groupModalConvId] === g.id && <Icon name="check" size={13} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: 12 }}>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", marginBottom: 6 }}>
+                  {groups.length > 0 ? "Or create a new group:" : "Create a new group:"}
+                </label>
+                <div className="row" style={{ gap: 8, marginTop: 4 }}>
+                  <input
+                    type="text"
+                    className="group-create-input"
+                    placeholder="e.g. Project Delta, Viva prep..."
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newGroupName.trim()) {
+                        createGroupAndMove(groupModalConvId, newGroupName);
+                      }
+                    }}
+                    autoFocus={groups.length === 0}
+                  />
+                  <Button
+                    variant="primary"
+                    disabled={!newGroupName.trim()}
+                    onClick={() => createGroupAndMove(groupModalConvId, newGroupName)}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </div>
     </>
   );
 }

@@ -35,6 +35,21 @@ export const documentsApi = {
       body: { original_filename: name },
     });
   },
+  moveToFolder(id: string, folderId: string | null): Promise<DocumentResponse> {
+    return request<DocumentResponse>(`/documents/${id}`, {
+      method: "PATCH",
+      body: { folder_id: folderId },
+    });
+  },
+  update(
+    id: string,
+    payload: { original_filename?: string; folder_id?: string | null },
+  ): Promise<DocumentResponse> {
+    return request<DocumentResponse>(`/documents/${id}`, {
+      method: "PATCH",
+      body: payload,
+    });
+  },
   createFolder(
     name: string,
     parentFolderId?: string | null,

@@ -1,5 +1,100 @@
 """Prompt construction for grounded RAG answers."""
+import re
+
 from app.core.constants import MessageRole
+
+# ---------------------------------------------------------------------------
+# Adaptive token-budget detection
+# ---------------------------------------------------------------------------
+
+# Keywords that reliably signal a long-form answer is needed.
+# Extend this list freely — no restructuring required.
+_LONG_FORM_KEYWORDS: tuple[str, ...] = (
+    "summarize",
+    "summary",
+    "summarise",
+    "summarisation",
+    "summarization",
+    "explain in detail",
+    "explain in depth",
+    "explain thoroughly",
+    "in depth",
+    "in-depth",
+    "comprehensive",
+    "comprehensively",
+    "elaborate",
+    "elaborate on",
+    "walk me through",
+    "walk through",
+    "everything about",
+    "tell me everything",
+    "full explanation",
+    "full breakdown",
+    "detailed explanation",
+    "detailed overview",
+    "detailed summary",
+    "give me a detailed",
+    "provide a detailed",
+    "write a detailed",
+    "complete overview",
+    "complete summary",
+    "complete explanation",
+    "compare and contrast",
+    "pros and cons",
+    "advantages and disadvantages",
+    "step by step",
+    "step-by-step",
+    "all the key points",
+    "all key points",
+    "key points",
+    "main points",
+    "overview of",
+    "break down",
+    "breakdown of",
+    "deep dive",
+    "go through",
+    "go over",
+)
+
+# Pre-compiled lowercase pattern — matched against the lowercased question so
+# the check is a single regex pass, not N individual `in` tests.
+_LONG_FORM_RE = re.compile(
+    "|".join(re.escape(kw) for kw in _LONG_FORM_KEYWORDS),
+    re.IGNORECASE,
+)
+
+
+def should_use_long_response(question: str) -> bool:
+    """Return True when the question signals it needs a long-form answer.
+
+    Heuristic — no LLM call, no latency added:
+    - Keyword match against a curated list of long-form signals.
+    - Multiple question marks (multi-part question).
+    - Long question with "and" joining two clauses (≥12 words, contains " and ").
+
+    Deliberately conservative: false negatives (short budget on a long question)
+    are better than false positives (burning the long budget on every query and
+    hitting Groq's free-tier TPM ceiling faster).
+    """
+    if not question:
+        return False
+
+    q = question.strip()
+
+    # 1. Keyword match
+    if _LONG_FORM_RE.search(q):
+        return True
+
+    # 2. Multiple question marks → multi-part question
+    if q.count("?") >= 2:
+        return True
+
+    # 3. Long question (≥12 words) that joins two distinct asks with "and"
+    words = q.split()
+    if len(words) >= 12 and " and " in q.lower():
+        return True
+
+    return False
 
 SYSTEM_INSTRUCTIONS = (
     "You are Synapse, an AI study assistant for a student. "
@@ -41,10 +136,13 @@ def _format_context(chunks: list[dict]) -> str:
 
 
 def _format_history(history: list) -> str:
+    from app.core.config import settings  # late import to avoid circular at module load
+
+    window = settings.chat_history_window
     if not history:
         return ""
     lines = []
-    for m in history[-3:]:
+    for m in history[-window:]:
         role = "Student" if getattr(m, "role", None) == MessageRole.USER else "Synapse"
         lines.append(f"{role}: {m.content}")
     return "\n".join(lines)

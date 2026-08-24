@@ -18,6 +18,10 @@ _FALLBACK_MODEL = "openai/gpt-oss-20b"
 _STRUCTURED_MODEL = "openai/gpt-oss-20b"
 
 _MAX_TOKENS = 2048
+# Used only when the query needs a long-form answer — summaries, "explain in
+# detail", multi-part questions — not applied to every query so normal chat
+# stays fast and stays under Groq's free-tier TPM ceiling.
+_MAX_TOKENS_LONG = 4096
 _TEMPERATURE = 0.2
 
 # Shorter timeout for streaming/primary use so the fallback chain kicks in fast
@@ -84,16 +88,17 @@ def _messages(system: str, user: str) -> list[ChatCompletionMessageParam]:
 # Public API
 # ---------------------------------------------------------------------------
 
-async def complete(system: str, user: str) -> str:
+async def complete(system: str, user: str, max_tokens: int | None = None) -> str:
     """Chat completion with primary → fallback model, think-block stripped."""
     client = _get_complete_client()
+    tokens = max_tokens if max_tokens is not None else _MAX_TOKENS
     for model in (_MODEL, _FALLBACK_MODEL):
         try:
             resp = await client.chat.completions.create(
                 model=model,
                 messages=_messages(system, user),
                 temperature=_TEMPERATURE,
-                max_tokens=_MAX_TOKENS,
+                max_tokens=tokens,
             )
             return strip_think_block(resp.choices[0].message.content or "")
         except Exception as e:
@@ -103,16 +108,17 @@ async def complete(system: str, user: str) -> str:
     return ""
 
 
-async def complete_structured(system: str, user: str) -> str:
+async def complete_structured(system: str, user: str, max_tokens: int | None = None) -> str:
     """Completion for structured JSON generation (quiz / flashcards / notes)."""
     client = _get_complete_client()
+    tokens = max_tokens if max_tokens is not None else _MAX_TOKENS
     for model in (_STRUCTURED_MODEL, _MODEL):
         try:
             resp = await client.chat.completions.create(
                 model=model,
                 messages=_messages(system, user),
                 temperature=_TEMPERATURE,
-                max_tokens=_MAX_TOKENS,
+                max_tokens=tokens,
             )
             return strip_think_block(resp.choices[0].message.content or "")
         except Exception as e:
@@ -122,7 +128,7 @@ async def complete_structured(system: str, user: str) -> str:
     return ""
 
 
-async def stream(system: str, user: str):
+async def stream(system: str, user: str, max_tokens: int | None = None):
     """True streaming: yield text chunks as they arrive from the API.
 
     Think-block suppression uses a hold-back buffer: text inside a potential
@@ -131,13 +137,14 @@ async def stream(system: str, user: str):
     flushed). This avoids buffering the entire response.
     """
     client = _get_stream_client()
+    tokens = max_tokens if max_tokens is not None else _MAX_TOKENS
     for model in (_MODEL, _FALLBACK_MODEL):
         try:
             response_stream = await client.chat.completions.create(
                 model=model,
                 messages=_messages(system, user),
                 temperature=_TEMPERATURE,
-                max_tokens=_MAX_TOKENS,
+                max_tokens=tokens,
                 stream=True,
             )
             hold = ""          # buffer for potential <think> block

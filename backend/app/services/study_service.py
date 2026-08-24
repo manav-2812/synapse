@@ -12,6 +12,7 @@ from app.ai.study.prompts import (
     build_quiz_prompt,
 )
 from app.core.constants import Difficulty, NoteType, QuestionType
+from app.core.config import settings
 from app.core.exceptions import NotFoundError, ProcessingError, ValidationError
 from app.core.logger import get_logger
 from app.models.study import Flashcard, GeneratedNote, Question, Quiz
@@ -20,8 +21,6 @@ from app.repositories.study_repository import StudyRepository
 from app.repositories.user_repository import UserRepository
 
 log = get_logger("study")
-
-GEN_TOP_K = 5
 
 
 def _validate_enum(value: str, enum_cls, field: str):
@@ -39,8 +38,15 @@ class StudyService:
         self.repo = StudyRepository(session)
 
     async def _context(self, user_id: uuid.UUID, scope: list[str] | None) -> list[dict]:
-        qvec = await embed_query(_scope_query(scope))
-        return await retrieve(qvec, str(user_id), top_k=GEN_TOP_K, document_scope=scope)
+        query_text = _scope_query(scope)
+        qvec = await embed_query(query_text)
+        return await retrieve(
+            qvec,
+            str(user_id),
+            top_k=settings.study_top_k,
+            document_scope=scope,
+            query=query_text,
+        )
 
     async def _generate_json(self, system: str, user: str):
         """Generate study content and parse its JSON, raising a clean error.
@@ -85,18 +91,27 @@ class StudyService:
         diff = _validate_enum(difficulty, Difficulty, "difficulty")
         chunks = await self._context(user_id, scope)
         system, user = build_quiz_prompt(diff.value, count, chunks)
-        items = await self._generate_json(system, user)
+        data = await self._generate_json(system, user)
+
+        if isinstance(data, dict):
+            raw_title = str(data.get("title") or "").strip()
+            title = raw_title[:255] if raw_title else f"{diff.value.title()} Quiz"
+            items = data.get("questions") or []
+        elif isinstance(data, list):
+            title = f"{diff.value.title()} Quiz"
+            items = data
+        else:
+            raise ValidationError("Model did not return any quiz questions.")
+
         if not isinstance(items, list) or not items:
             raise ValidationError("Model did not return any quiz questions.")
 
-        quiz = Quiz(user_id=user_id, title=f"{diff.value.title()} Quiz", difficulty=diff, document_scope=scope or [])
+        quiz = Quiz(user_id=user_id, title=title, difficulty=diff, document_scope=scope or [])
         await self.repo.create_quiz(quiz)
         for i, item in enumerate(items):
             q = Question(
                 quiz_id=quiz.id,
-                question_type=_validate_enum(
-                    str(item.get("question_type", "short_answer")), QuestionType, "question_type"
-                ),
+                question_type=QuestionType.MCQ,
                 prompt=str(item.get("prompt", "")),
                 options=list(item.get("options") or []),
                 correct_answer=str(item.get("correct_answer", "")),
@@ -115,7 +130,9 @@ class StudyService:
         items = await self._generate_json(system, user)
         if not isinstance(items, list) or not items:
             raise ValidationError("Model did not return any flashcards.")
-        doc_id = uuid.UUID(scope[0]) if scope else None
+        # Only link to a specific document when the scope is exactly one document;
+        # with multiple documents in scope there's no correct single document_id.
+        doc_id = uuid.UUID(scope[0]) if scope and len(scope) == 1 else None
         from app.ai.study.sm2 import DEFAULT_EASE_FACTOR, due_date_from
 
         cards = [

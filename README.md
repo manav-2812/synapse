@@ -80,48 +80,29 @@ The system is built around two non-negotiable design goals:
 
 ## Features
 
-### Ingestion & retrieval
-- **Multi-format ingestion** — PDF, DOCX, TXT, and PNG/JPG. Scanned pages and
-  image-only PDFs are run through OCR (Tesseract by default, with an optional
-  vision-LLM fallback).
-- **Background processing pipeline** — parse → clean → chunk → embed → index, with
-  live `pending → processing → completed | failed` status polling and cancelable
-  uploads. A failed job stores a safe `error_message` and never hangs.
-- **Hybrid retrieval** — dense semantic search (Chroma) blended with a sparse
-  BM25 keyword index, so both conceptual queries ("what is photosynthesis") and
-  keyword queries ("Einstein 1905 photoelectric effect") rank correctly. Blend
-  weights are configurable and swept by the eval harness.
+### Authentication & Security
+- **Biometric Passkeys (WebAuthn / FIDO2)** — passwordless hardware-bound login via Touch ID, Face ID, Windows Hello, and security keys.
+- **OAuth 2.0 Social Logins** — one-click sign-in with Google and Microsoft accounts.
+- **Secure Token Lifecycle** — JWT authentication with single-use rotating refresh tokens, bcrypt password hashing, and CSRF-protected OAuth state.
 
-### Conversational study
-- **Streaming chat with grounded citations** — answers stream token-by-token over
-  Server-Sent Events (SSE). Every claim carries clickable source chips
-  (`document_name · page N`) that open the exact excerpt.
-- **Flexible scope** — chat within a single document or across the whole library.
+### Ingestion & Retrieval
+- **Multi-format Ingestion** — PDF, DOCX, TXT, and scanned PNG/JPG with OCR support (Tesseract with vision-LLM fallback).
+- **Background Processing Pipeline** — parse → clean → chunk → embed → index, with live status polling and cancelable uploads.
+- **Hybrid Retrieval** — dense semantic search (ChromaDB) blended with sparse BM25 keyword matching via Reciprocal Rank Fusion (RRF). Configurable weights swept by the evaluation harness.
 
-### Study tools
-- **Spaced-repetition flashcards (SM-2)** — each card carries full scheduling
-  state (`ease_factor`, `interval_days`, `repetitions`, `due_date`). A focused
-  "Due for review" session surfaces what is actually due.
-- **Quizzes** — MCQ and short-answer generation, auto-scored with explanations
-  that feed topic-level analytics.
-- **Notes** — summaries, exam answers, and formula sheets on demand.
+### Conversational Study & Notes
+- **Streaming Chat with Grounded Citations** — token-by-token streaming via Server-Sent Events (SSE) with interactive source citations.
+- **Interactive Note Reader** — structured summaries, exam answers, and formula sheets readable in a dedicated reader layout.
+- **Global Search (`/search`) & Command Palette (`⌘K`)** — instant cross-document search and quick navigation.
 
-### Insight & quality
-- **Analytics dashboard** — documents uploaded, questions asked, quizzes taken,
-  average score, weak/strong topics, and a **Usage & Cost** trend (tokens,
-  estimated cost, and cache-hit rate).
-- **Retrieval evaluation dashboard** — precision@k / recall@k / MRR / NDCG trended
-  across runs, answering *"how do we know the RAG actually retrieves the right
-  context?"*
-- **Query cache** — identical questions return instantly; every LLM call is
-  metered for cost.
+### Study Tools & Analytics
+- **Spaced-Repetition Flashcards (SM-2)** — adaptive memory scheduling with due-for-review filtering.
+- **Interactive Quizzes** — MCQ and short-answer generation with automatic scoring and explanations.
+- **Study Heatmap & Telemetry** — visual activity streak tracking, token and cost metering, cache-hit monitoring, and retrieval precision metrics.
 
-### Experience & platform
-- Light / dark themes, a command palette (⌘K), and byte-level upload progress.
-- Accessible (skip-link, focus styles, labelled controls, `prefers-reduced-motion`)
-  and SEO-ready (meta + Open Graph tags, `robots.txt`, `sitemap.xml`).
-- JWT authentication with rotating, single-use refresh tokens and bcrypt password
-  hashing.
+### Design & User Experience
+- **Ultra-Modern UI** — refined stadium pill navigation, real-time activity inbox drawer, and smooth 3-way theme toggle (Light / System / Dark).
+- **Accessibility & SEO** — keyboard shortcuts, ARIA standards, `prefers-reduced-motion` compliance, and complete Open Graph meta tags.
 
 ---
 

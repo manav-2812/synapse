@@ -3,6 +3,8 @@ import re
 
 from .text_cleaner import clean_text
 
+# Defaults — overridden at runtime by settings.chunk_tokens / settings.chunk_overlap
+# when chunk_document() is called without explicit arguments.
 # all-MiniLM-L6-v2 has max_seq_length=256. Keep chunks safely under that so the
 # embedder never silently truncates text. A 500-token chunk previously lost
 # roughly half its tokens to truncation, making that content unretrievable.
@@ -55,8 +57,13 @@ def _hard_window(pieces: list[str], max_tokens: int, overlap: int) -> list[str]:
     Window those runs into bounded, overlapping pieces.
     """
     out: list[str] = []
-    step = max(1, int(max_tokens * _FALLBACK_CHARS_PER_TOKEN * 0.9))
-    overlap_chars = overlap * _FALLBACK_CHARS_PER_TOKEN if overlap else 0
+    # Use token-aware step rather than char heuristic so the window never
+    # produces pieces that exceed max_tokens when tiktoken is available.
+    # We target 90% of max_tokens worth of chars to leave headroom for
+    # tokenisation variance (tiktoken chars/token ≈ 3.5, not always 4).
+    _SAFE_RATIO = 3  # conservative chars-per-token: ensures we stay under limit
+    step = max(1, max_tokens * _SAFE_RATIO)
+    overlap_chars = overlap * _SAFE_RATIO if overlap else 0
     advance = max(1, step - overlap_chars)
     for p in pieces:
         if _count_tokens(p) <= max_tokens:
@@ -77,10 +84,22 @@ def _hard_window(pieces: list[str], max_tokens: int, overlap: int) -> list[str]:
 
 def chunk_document(
     pages: list[tuple[int, str]],
-    chunk_tokens: int = CHUNK_TOKENS,
-    overlap: int = CHUNK_OVERLAP,
+    chunk_tokens: int | None = None,
+    overlap: int | None = None,
 ) -> list[dict]:
-    """Return list of {text, page_number, token_count} chunks."""
+    """Return list of {text, page_number, token_count} chunks.
+
+    ``chunk_tokens`` and ``overlap`` default to ``settings.chunk_tokens`` and
+    ``settings.chunk_overlap`` so they can be tuned via environment variables
+    without changing code.
+    """
+    from app.core.config import settings  # late import to avoid circular deps
+
+    if chunk_tokens is None:
+        chunk_tokens = settings.chunk_tokens
+    if overlap is None:
+        overlap = settings.chunk_overlap
+
     chunks: list[dict] = []
     index = 0
     for page_number, raw in pages:

@@ -10,15 +10,18 @@ from app.api.v1.analytics_routes import router as analytics_router
 from app.api.v1.auth_routes import router as auth_router
 from app.api.v1.chat_routes import router as chat_router
 from app.api.v1.document_routes import router as document_router
+from app.api.v1.eval_routes import router as eval_router
 from app.api.v1.folder_routes import router as folder_router
+from app.api.v1.passkey_routes import router as passkey_router
 from app.api.v1.study_routes import router as study_router
 from app.api.v1.user_routes import router as user_router
-from app.api.v1.eval_routes import router as eval_router
 from app.ai.ocr import log_tesseract_status
 from app.core.config import settings
+from app.core.database import Base, engine
 from app.core.exceptions import register_exception_handlers
 from app.core.limiter import limiter
 from app.core.logger import get_logger
+import app.models  # ensure all ORM models are registered
 
 log = get_logger("main")
 
@@ -27,6 +30,12 @@ log = get_logger("main")
 async def lifespan(app: FastAPI):
     for p in (settings.chroma_persist_path, settings.storage_path, settings.avatars_path):
         Path(p).resolve().mkdir(parents=True, exist_ok=True)
+    # Ensure database schema is present
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:
+        log.warning("db_schema_create_warning", error=str(exc))
     # Surface OCR availability once at startup (graceful degradation if missing).
     log_tesseract_status()
     log.info(
@@ -60,8 +69,9 @@ app.add_middleware(
 app.state.limiter = limiter
 register_exception_handlers(app)
 
-# Routers (Phase 1 + 2 + 3 + 4 + 5)
+# Routers (Phase 1 + 2 + 3 + 4 + 5 + Passkeys)
 app.include_router(auth_router)
+app.include_router(passkey_router)
 app.include_router(user_router)
 # Register folder routes BEFORE document routes: both live under
 # /api/v1/documents, and the document router's `/{document_id}` catch-all would

@@ -29,6 +29,9 @@ class User(Base, TimestampMixin):
     analytics: Mapped["Analytics | None"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
+    passkeys: Mapped[list["UserPasskey"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email}>"
@@ -37,3 +40,4 @@ class User(Base, TimestampMixin):
 # Imported here to satisfy type-checking / relationship references
 from app.models.user_profile import UserProfile  # noqa: E402
 from app.models.analytics import Analytics  # noqa: E402
+from app.models.passkey import UserPasskey  # noqa: E402

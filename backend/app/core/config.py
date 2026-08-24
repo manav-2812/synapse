@@ -28,6 +28,17 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 20
     refresh_token_expire_days: int = 7
 
+    # Google OAuth 2.0
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:5173/auth/callback/google"
+
+    # Microsoft OAuth 2.0
+    microsoft_client_id: str = ""
+    microsoft_tenant_id: str = "common"
+    microsoft_client_secret: str = ""
+    microsoft_redirect_uri: str = "http://localhost:5173/auth/callback/microsoft"
+
     # LLM providers
     groq_api_key: str = ""
     gemini_api_key: str = ""
@@ -80,6 +91,30 @@ class Settings(BaseSettings):
     # Combined score = hybrid_semantic_weight * semantic_norm + hybrid_bm25_weight * bm25_norm.
     hybrid_semantic_weight: float = 0.6
     hybrid_bm25_weight: float = 0.4
+
+    # Retrieval top-k values. chat_top_k is how many chunks are injected into
+    # the chat prompt; study_top_k for quiz/flashcard/notes generation.
+    # Increasing these improves coverage but grows the prompt (cost + latency).
+    chat_top_k: int = 6
+    study_top_k: int = 7
+
+    # Multiplier applied to top_k when pulling initial candidates for re-ranking.
+    retrieval_candidate_factor: int = 3
+
+    # Minimum hybrid score [0..1] a chunk must reach to be included in the
+    # prompt context. Chunks below this are excluded even if they rank in top_k.
+    # Set to 0.0 to disable (legacy behaviour — passes all retrieved chunks).
+    relevance_threshold: float = 0.15
+
+    # Chunking parameters. CHUNK_TOKENS should stay under the embedding model's
+    # max_seq_length (all-MiniLM-L6-v2 = 256 tokens). CHUNK_OVERLAP provides
+    # sentence-boundary continuity between adjacent chunks.
+    chunk_tokens: int = 240
+    chunk_overlap: int = 40
+
+    # How many recent conversation turns to include as history in the chat
+    # prompt. Each turn = 1 user + 1 assistant message pair.
+    chat_history_window: int = 6
 
     # LLM token pricing (USD per 1,000,000 tokens) for cost estimation/logging.
     groq_input_cost_per_1m: float = 0.59

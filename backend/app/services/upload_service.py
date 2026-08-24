@@ -42,20 +42,24 @@ async def save_upload(file: UploadFile, user_id: uuid.UUID, document_id: uuid.UU
     dest = os.path.join(user_dir, filename)
 
     size = 0
+    limit = settings.max_upload_size_mb * 1024 * 1024
+    over_limit = False
     with open(dest, "wb") as out:
         while True:
             chunk = await file.read(1024 * 1024)
             if not chunk:
                 break
+            # Check BEFORE writing so we never persist more than the limit.
+            if size + len(chunk) > limit:
+                over_limit = True
+                break
             out.write(chunk)
             size += len(chunk)
-            if size > settings.max_upload_size_mb * 1024 * 1024:
-                break
 
     # Close the file *before* removing it so the deletion succeeds on Windows
     # (removing an open handle raises PermissionError there), and so the
     # intended ValidationError reaches the client instead of a 500.
-    if size > settings.max_upload_size_mb * 1024 * 1024:
+    if over_limit:
         os.remove(dest)
         raise ValidationError(
             f"File exceeds max size of {settings.max_upload_size_mb}MB."

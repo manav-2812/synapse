@@ -47,22 +47,23 @@ def build_note_prompt(note_type: str, chunks: list[dict]) -> tuple[str, str]:
 
 def build_quiz_prompt(difficulty: str, count: int, chunks: list[dict]) -> tuple[str, str]:
     system = SYSTEM_STUDY + (
-        f"\nCreate {count} {difficulty}-difficulty quiz questions from the excerpts. "
-        "Mix multiple-choice (mcq) and short-answer questions. For mcq, provide 3-4 options "
-        "and set correct_answer to the exact option text. For short_answer, leave options empty "
-        "and set correct_answer to a concise reference answer. Every question and its answer "
-        "must be directly verifiable against a specific excerpt; do not invent facts. Incorrect "
-        "mcq options must be plausible but contradicted by or unsupported by the excerpts, never "
-        "random text. Each explanation must state which [Source N] supports the correct answer. "
-        "Return fewer questions rather than pad, duplicate, or invent content when the excerpts "
-        "do not support the requested count.\n"
-        "Output ONLY a valid JSON array matching this schema — no preamble, no markdown fences, "
-        "no <think> tags, no explanation outside the JSON:\n"
-        '[{"question_type":"mcq|short_answer","prompt":str,"options":[str],'
-        '"correct_answer":str,"explanation":str}]\n'
+        f"\nCreate a {difficulty}-difficulty assessment with {count} multiple-choice questions (MCQs) from the excerpts. "
+        "ALL questions MUST be multiple-choice ('mcq') with exactly 4 options. Do NOT generate subjective or short-answer questions. "
+        "Set 'correct_answer' to the exact text of the correct option. "
+        "Every question and answer must be directly verifiable against the excerpts. "
+        "Incorrect options must be plausible but contradicted by or unsupported by the excerpts. "
+        "Each explanation must state which source excerpt supports the correct answer. "
+        "Generate a descriptive, topic-specific title for this quiz based on the key subject matter (e.g. 'ITMS System Architecture & Security Quiz', 'Data Structures & Algorithmic Complexity Quiz').\n"
+        "Output ONLY a valid JSON object matching this schema — no preamble, no markdown fences, no <think> tags:\n"
+        '{\n'
+        '  "title": "Specific Topic Quiz Title",\n'
+        '  "questions": [\n'
+        '    {"question_type":"mcq", "prompt":"...", "options":["Option 1", "Option 2", "Option 3", "Option 4"], "correct_answer":"Option 1", "explanation":"..."}\n'
+        '  ]\n'
+        '}\n'
         'If you cannot produce the schema for any reason, output {"error": "reason"} instead of prose.'
     )
-    user = _context(chunks) + f"\nCreate {count} {difficulty} questions now."
+    user = _context(chunks) + f"\nCreate {count} {difficulty} multiple-choice questions now with an informative topic title."
     return system, user
 
 

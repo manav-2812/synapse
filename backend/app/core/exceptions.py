@@ -16,6 +16,10 @@ class NotFoundError(SynapseError):
     """Resource not found (404)."""
 
 
+class BadRequestError(SynapseError):
+    """Bad client request (400)."""
+
+
 class UnauthorizedError(SynapseError):
     """Missing or invalid credentials (401)."""
 
@@ -62,6 +66,11 @@ def register_exception_handlers(app: FastAPI) -> None:
                 status_code=status.HTTP_404_NOT_FOUND,
                 content=_error_body(str(exc) or "Not found", "not_found"),
             )
+        if isinstance(exc, BadRequestError):
+            return JSONResponse(
+                 status_code=status.HTTP_400_BAD_REQUEST,
+                 content=_error_body(str(exc) or "Bad request", "bad_request"),
+             )
         if isinstance(exc, UnauthorizedError):
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,

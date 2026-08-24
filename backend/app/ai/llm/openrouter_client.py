@@ -48,16 +48,17 @@ def _messages(system: str, user: str) -> list[ChatCompletionMessageParam]:
     ]
 
 
-async def complete(system: str, user: str) -> str:
+async def complete(system: str, user: str, max_tokens: int | None = None) -> str:
     """Complete with the Free Models Router, then NVIDIA Nemotron free."""
     client = _get_client()
+    tokens = max_tokens if max_tokens is not None else _MAX_TOKENS
     for model in (_MODEL, _FALLBACK_MODEL):
         try:
             response = await client.chat.completions.create(
                 model=model,
                 messages=_messages(system, user),
                 temperature=_TEMPERATURE,
-                max_tokens=_MAX_TOKENS,
+                max_tokens=tokens,
             )
             return strip_think_block(response.choices[0].message.content or "")
         except Exception as e:
@@ -67,8 +68,8 @@ async def complete(system: str, user: str) -> str:
     return ""
 
 
-async def stream(system: str, user: str):
+async def stream(system: str, user: str, max_tokens: int | None = None):
     """Generate fully, then yield word-by-word like the Gemini fallback client."""
-    text = await complete(system, user)
+    text = await complete(system, user, max_tokens=max_tokens)
     for word in text.split(" "):
         yield word + " "

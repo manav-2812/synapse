@@ -101,6 +101,7 @@ export interface DocumentResponse {
   file_size_bytes: number;
   processing_status: string;
   page_count: number | null;
+  chunk_count?: number | null;
   error_message: string | null;
   created_at: string;
 }
@@ -277,6 +278,11 @@ export interface FlashcardUpdateRequest {
 }
 
 /* ---------------- Analytics ---------------- */
+export interface HeatmapDay {
+  date: string;   // "YYYY-MM-DD"
+  count: number;  // study minutes that day
+}
+
 export interface AnalyticsSummary {
   documents_uploaded_count: number;
   questions_asked_count: number;

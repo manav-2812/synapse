@@ -10,7 +10,8 @@ from app.ai.embeddings.embedding_client import embed_query
 from app.ai.llm import cache as resp_cache
 from app.ai.llm import stream_answer
 from app.ai.llm import tokens as tok
-from app.ai.rag import build_prompt, retrieve
+from app.ai.rag import build_prompt, relevant, retrieve, should_use_long_response
+from app.ai.llm.groq_client import _MAX_TOKENS_LONG as _LONG_TOKEN_BUDGET
 from app.ai.study.generator import generate_title
 from app.core.config import settings
 from app.core.constants import MessageRole
@@ -26,7 +27,6 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.chat_schema import ChatRequest, ConversationListItem, SourceResponse
 
 log = get_logger("chat")
-TOP_K = 4
 
 
 async def _generate_title_background(
@@ -114,10 +114,19 @@ class ChatService:
         chunks = await retrieve(
             query_vector,
             str(user_id),
-            top_k=TOP_K,
+            top_k=settings.chat_top_k,
             document_scope=payload.document_scope,
             query=payload.message,
         )
+
+        # Log a warning when retrieval quality is low so it's diagnosable.
+        if not relevant(chunks):
+            log.warning(
+                "low_relevance_retrieval",
+                top_score=chunks[0]["score"] if chunks else None,
+                threshold=settings.relevance_threshold,
+                message_preview=payload.message[:120],
+            )
 
         # Resolve document names for only the chunks we retrieved (not all user docs)
         doc_ids = {uuid.UUID(c["document_id"]) for c in chunks if c.get("document_id")}
@@ -157,13 +166,27 @@ class ChatService:
         provider = "groq"
         full: list[str] = []
 
+        # Adaptive token budget: long-form questions (summaries, detailed
+        # explanations, multi-part questions) get a larger cap so the answer
+        # isn't truncated mid-way. Short factual questions stay at the default
+        # to keep latency low and stay well under Groq's free-tier TPM ceiling.
+        answer_max_tokens = (
+            _LONG_TOKEN_BUDGET if should_use_long_response(payload.message) else None
+        )
+        if answer_max_tokens:
+            log.info(
+                "long_response_budget",
+                message_preview=payload.message[:80],
+                max_tokens=answer_max_tokens,
+            )
+
         if cached_text is not None:
             resp_cache.record_access(hit=True)
             full.append(cached_text)
             yield _sse("token", cached_text)
         else:
             resp_cache.record_access(hit=False)
-            async for evt, val in stream_answer(system, user):
+            async for evt, val in stream_answer(system, user, max_tokens=answer_max_tokens):
                 if evt == "provider":
                     provider = val
                 elif evt == "token":
@@ -241,7 +264,7 @@ class ChatService:
         # HTTP stream closes immediately after done. The updated title will
         # appear next time the frontend calls loadConversations().
         if first_message:
-            asyncio.ensure_future(
+            asyncio.create_task(
                 _generate_title_background(conv.id, payload.message, answer_text)
             )
 

@@ -1,50 +1,73 @@
-import { useEffect, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
-import { TopNav } from "./TopNav";
-import { useTheme } from "../../hooks/useTheme";
+import { Icon } from "../ui/Icon";
 
-const TITLES: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/documents": "Documents",
-  "/chat": "Chat",
-  "/quiz": "Quiz",
-  "/flashcards": "Flashcards",
-  "/analytics": "Analytics",
-};
+const LS_KEY = "synapse_sidebar_v2";
 
 export function AppShell() {
-  const { theme, toggle } = useTheme();
   const { pathname } = useLocation();
-  const title = TITLES[pathname] || "Synapse";
+  const contentRef = useRef<HTMLElement>(null);
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    return localStorage.getItem("synapse_sidebar") === "collapsed";
+    try {
+      return localStorage.getItem(LS_KEY) === "1";
+    } catch {
+      return false;
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem("synapse_sidebar", collapsed ? "collapsed" : "expanded");
+    try {
+      localStorage.setItem(LS_KEY, collapsed ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
   }, [collapsed]);
 
+  useEffect(() => {
+    const handleToggle = () => setCollapsed((prev) => !prev);
+    const handleOpen = () => setCollapsed(false);
+    window.addEventListener("synapse:toggle-app-sidebar", handleToggle);
+    window.addEventListener("synapse:open-app-sidebar", handleOpen);
+    return () => {
+      window.removeEventListener("synapse:toggle-app-sidebar", handleToggle);
+      window.removeEventListener("synapse:open-app-sidebar", handleOpen);
+    };
+  }, []);
+
+  // Scroll content area to top on every navigation
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [pathname]);
+
   return (
-    <div className={`app-shell ${collapsed ? "collapsed" : ""}`}>
+    <>
       <a href="#main" className="skip-link">
         Skip to content
       </a>
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
-      <div className="app-main">
-        <div className="aurora" aria-hidden="true" />
-        <div className="app-header">
-          <TopNav title={title} theme={theme} onToggleTheme={toggle} />
-        </div>
-        <main className="app-content" id="main">
+      <div className={`app-shell${collapsed ? " sidebar-is-collapsed" : ""}`}>
+        {!collapsed && (
+          <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(true)} />
+        )}
+        <main className="app-content" id="main" ref={contentRef}>
+          {collapsed && (
+            <button
+              className="top-corner-hamburger-btn"
+              onClick={() => setCollapsed(false)}
+              title="Open sidebar (Ctrl+\)"
+              aria-label="Open sidebar"
+            >
+              <Icon name="menu" size={18} />
+            </button>
+          )}
           <div className="route-view" key={pathname}>
             <Outlet />
           </div>
         </main>
+        <BottomNav />
       </div>
-      <BottomNav />
-    </div>
+    </>
   );
 }

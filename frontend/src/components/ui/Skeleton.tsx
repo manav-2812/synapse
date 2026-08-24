@@ -1,16 +1,20 @@
+import type { CSSProperties } from "react";
+
 export function Skeleton({
   width = "100%",
   height = "12px",
   className = "",
+  style,
 }: {
   width?: string;
   height?: string;
   className?: string;
+  style?: CSSProperties;
 }) {
   return (
     <div
       className={`skeleton ${className}`}
-      style={{ width, height }}
+      style={{ width, height, ...style }}
       aria-hidden="true"
     />
   );

@@ -6,8 +6,10 @@ from app.api.deps import get_db
 from app.core.exceptions import UnauthorizedError
 from app.core.limiter import limiter
 from app.schemas.auth_schema import (
+    GoogleOAuthRequest,
     LoginRequest,
     LogoutRequest,
+    MicrosoftOAuthRequest,
     RefreshRequest,
     SignupRequest,
     TokenResponse,
@@ -17,14 +19,39 @@ from app.services.auth_service import AuthService
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
+@router.post("/oauth/google", response_model=TokenResponse)
+@limiter.limit("15/minute")
+async def oauth_google(
+    request: Request,
+    payload: GoogleOAuthRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    """Authenticate or register user via Google OAuth 2.0."""
+    service = AuthService(session)
+    _, access, refresh = await service.login_with_google(payload)
+    await session.commit()
+    return TokenResponse(access_token=access, refresh_token=refresh)
+
+
+@router.post("/oauth/microsoft", response_model=TokenResponse)
+@limiter.limit("15/minute")
+async def oauth_microsoft(
+    request: Request,
+    payload: MicrosoftOAuthRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    """Authenticate or register user via Microsoft OAuth 2.0."""
+    service = AuthService(session)
+    _, access, refresh = await service.login_with_microsoft(payload)
+    await session.commit()
+    return TokenResponse(access_token=access, refresh_token=refresh)
+
+
+
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def signup(payload: SignupRequest, session: AsyncSession = Depends(get_db)):
     service = AuthService(session)
-    user = await service.signup(payload)
-    # Issue tokens once and persist the matching jti so refresh works.
-    access, refresh, jti = service._issue_tokens(user)  # noqa: SLF001
-    user.last_refresh_jti = jti
-    await session.flush()
+    _, access, refresh = await service.signup(payload)
     await session.commit()
     return TokenResponse(access_token=access, refresh_token=refresh)
 

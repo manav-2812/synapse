@@ -72,6 +72,11 @@ def test_hybrid_outranks_pure_semantic_for_keyword_query(monkeypatch):
     ahead of 'a'.
     """
     from app.ai.rag import retrieve
+    from app.ai.rag import bm25 as bm25_mod
+
+    # Flush any cached BM25 index left over from earlier tests so that
+    # fake_get_all is actually called when the hybrid branch runs.
+    bm25_mod.invalidate("user-x")
 
     async def fake_query(user_id, qvec, top_k=5, document_scope=None):
         # 'a' is closer in vector space; 'b' only shares keywords.

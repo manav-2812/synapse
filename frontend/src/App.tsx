@@ -7,6 +7,8 @@ import { ShortcutsHelp } from "./components/ShortcutsHelp";
 import { useShortcuts } from "./hooks/useShortcuts";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import GoogleCallback from "./pages/auth/GoogleCallback";
+import MicrosoftCallback from "./pages/auth/MicrosoftCallback";
 
 // Route-level code splitting keeps the initial bundle small (Phase 4 / perf).
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -15,9 +17,11 @@ const Chat = lazy(() => import("./pages/Chat"));
 const Quiz = lazy(() => import("./pages/Quiz"));
 const Flashcards = lazy(() => import("./pages/Flashcards"));
 const Notes = lazy(() => import("./pages/Notes"));
+const NoteReader = lazy(() => import("./pages/NoteReader"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const EvalDashboard = lazy(() => import("./pages/EvalDashboard"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Search = lazy(() => import("./pages/Search"));
 
 function RouteFallback() {
   return (
@@ -43,6 +47,8 @@ export default function App() {
         {/* Public */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/auth/callback/google" element={<GoogleCallback />} />
+        <Route path="/auth/callback/microsoft" element={<MicrosoftCallback />} />
 
         {/* Protected (rendered inside the app shell via <Outlet/>) */}
         <Route
@@ -57,6 +63,14 @@ export default function App() {
             element={
               <Suspense fallback={<RouteFallback />}>
                 <Dashboard />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/search"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <Search />
               </Suspense>
             }
           />
@@ -101,6 +115,14 @@ export default function App() {
             }
           />
           <Route
+            path="/notes/:id"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <NoteReader />
+              </Suspense>
+            }
+          />
+          <Route
             path="/analytics"
             element={
               <Suspense fallback={<RouteFallback />}>
@@ -130,8 +152,10 @@ export default function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
 
-      {/* Global command palette (Ctrl/Cmd+K) + shortcuts help (?) */}
+      {/* Global Command Palette (Ctrl+K) */}
       <CommandPalette />
+
+      {/* Shortcuts help (?) */}
       <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
     </>
   );

@@ -24,3 +24,17 @@ async def usage(
 ):
     """LLM token/cost usage over the trailing window, bucketed per day."""
     return await AnalyticsService(session).get_usage(current_user.id, days)
+
+
+@router.get("/heatmap")
+async def heatmap(
+    current_user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Return daily activity counts for the past 371 days (53 full weeks).
+
+    Each entry is ``{date: "YYYY-MM-DD", count: int}`` where count is the
+    number of study-minutes recorded that day (intensity is scaled client-side).
+    Days with zero activity are omitted to keep the payload compact.
+    """
+    return await AnalyticsService(session).get_heatmap(current_user.id)

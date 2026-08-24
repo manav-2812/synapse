@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../api/auth";
+import { authenticateWithPasskey } from "../api/passkey";
 import {
   clearTokens,
   getToken,
@@ -18,6 +19,7 @@ interface AuthState {
   user: UserMeResponse | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithPasskey: () => Promise<void>;
   signup: (
     email: string,
     password: string,
@@ -71,6 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(await authApi.me());
   };
 
+  const loginWithPasskey = async () => {
+    await authenticateWithPasskey();
+    setUser(await authApi.me());
+  };
+
   const signup = async (
     email: string,
     password: string,
@@ -97,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, signup, logout, refreshUser }}
+      value={{ user, loading, login, loginWithPasskey, signup, logout, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

@@ -3,10 +3,10 @@ import { evalApi } from "../api/eval";
 import { ApiError } from "../api/client";
 import { useToast } from "../hooks/useToast";
 import { Icon } from "../components/ui/Icon";
-import { Skeleton } from "../components/ui/Skeleton";
 import { Spinner } from "../components/ui/Spinner";
 import { Sparkline } from "../components/ui/Sparkline";
-import { StatValue } from "../components/ui/StatValue";
+import { Button } from "../components/ui/Button";
+import { EmptyState } from "../components/ui/EmptyState";
 import { formatDateTime } from "../lib/format";
 import type { EvalRunItem, EvalRunResponse, RunEvalResponse } from "../types/api";
 
@@ -18,39 +18,15 @@ const TREND_LEGEND = [
   { key: "mrr", color: "var(--info)", label: "MRR" },
 ] as const;
 
-function StatCard({
-  label,
-  value,
-  sub,
-  count,
-  format,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  /** When provided, the value counts up to this number on scroll-into-view. */
-  count?: number;
-  format?: (n: number) => string;
-}) {
-  return (
-    <div className="stat-tile">
-      <div className="stat-label">{label}</div>
-      {count != null ? (
-        <StatValue value={count} format={format} />
-      ) : (
-        <div className="stat-value">{value}</div>
-      )}
-      {sub && <div className="muted" style={{ fontSize: 12 }}>{sub}</div>}
-    </div>
-  );
-}
-
 export default function EvalDashboard() {
   const { toast } = useToast();
   const [run, setRun] = useState<RunEvalResponse | null>(null);
   const [history, setHistory] = useState<EvalRunResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [tableFilter, setTableFilter] = useState("");
+  const [historyCollapsed, setHistoryCollapsed] = useState(false);
+  const [resultsCollapsed, setResultsCollapsed] = useState(false);
 
   async function loadHistory() {
     try {
@@ -88,7 +64,7 @@ export default function EvalDashboard() {
           recall: r.aggregate_scores.recall_at_k,
           mrr: r.aggregate_scores.mrr,
         })),
-    [history],
+    [history]
   );
 
   async function runEval() {
@@ -98,7 +74,11 @@ export default function EvalDashboard() {
       const res = await evalApi.run();
       setRun(res);
       await loadHistory();
-      toast("success", "Evaluation complete", `Passed ${res.aggregate.n_passed}/${res.aggregate.n_evaluated}`);
+      toast(
+        "success",
+        "Evaluation complete",
+        `Passed ${res.aggregate.n_passed}/${res.aggregate.n_evaluated} questions`
+      );
     } catch (err) {
       toast("error", "Evaluation failed", err instanceof ApiError ? err.message : "Please try again.");
     } finally {
@@ -108,65 +88,102 @@ export default function EvalDashboard() {
 
   const agg = run?.aggregate;
 
+  // Filtered per-question results
+  const filteredResults = useMemo(() => {
+    if (!run) return [];
+    if (!tableFilter.trim()) return run.results;
+    const q = tableFilter.toLowerCase().trim();
+    return run.results.filter(
+      (r) =>
+        r.question.toLowerCase().includes(q) ||
+        r.expected_answer.toLowerCase().includes(q)
+    );
+  }, [run, tableFilter]);
+
   return (
-    <div className="stack">
-      <div className="page-head spread">
-        <div>
-          <h1>Retrieval Evaluation</h1>
-          <p className="page-sub muted">
-            Measured retrieval quality over a hand-written question set — not assumed.
+    <div className="eval-page-layout">
+      {/* ── Page Header ── */}
+      <div className="eval-head">
+        <div className="eval-head-text">
+          <h1 className="eval-head-title">Retrieval Evaluation & Accuracy</h1>
+          <p className="eval-head-sub">
+            Empirical quality and semantic retrieval precision measured across benchmark test sets.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={runEval} disabled={running}>
-          {running ? <Spinner /> : <Icon name="chart" size={16} />}
-          {running ? "Running…" : "Run Evaluation"}
-        </button>
+
+        <Button onClick={() => void runEval()} disabled={running} className="btn-upload-hero">
+          {running ? <Spinner /> : <Icon name="target" size={16} />}
+          <span>{running ? "Evaluating…" : "Run Evaluation"}</span>
+        </Button>
       </div>
 
-      {loading ? (
-        <div className="grid grid-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="stat-tile">
-              <Skeleton height="14px" />
-              <Skeleton height="34px" />
-            </div>
-          ))}
+      {/* ── 3-Metric Core Benchmarks Strip ── */}
+      <div className="eval-stats-strip">
+        <div className="eval-stat-item">
+          <div className="eval-stat-top">
+            <span className="eval-stat-lbl">Precision@k</span>
+            <span style={{ color: "var(--accent)" }}><Icon name="target" size={16} /></span>
+          </div>
+          <span className="eval-stat-val">
+            {loading ? "…" : agg ? `${(agg.precision_at_k * 100).toFixed(1)}%` : "—"}
+          </span>
+          <span className="eval-stat-sub">
+            {agg ? `Top-${run?.k} retrieval relevance` : "Run benchmark to calculate"}
+          </span>
         </div>
-      ) : (
-        <div className="grid grid-3">
-          <StatCard
-            label="Precision@k"
-            value={agg ? `${(agg.precision_at_k * 100).toFixed(1)}%` : "—"}
-            sub={agg ? `of top-${run?.k} results` : "Run an evaluation"}
-            count={agg ? agg.precision_at_k * 100 : undefined}
-            format={(n) => `${n.toFixed(1)}%`}
-          />
-          <StatCard
-            label="Recall@k"
-            value={agg ? `${(agg.recall_at_k * 100).toFixed(1)}%` : "—"}
-            sub={agg ? `${agg.n_evaluated} questions` : ""}
-            count={agg ? agg.recall_at_k * 100 : undefined}
-            format={(n) => `${n.toFixed(1)}%`}
-          />
-          <StatCard
-            label="MRR"
-            value={agg ? agg.mrr.toFixed(3) : "—"}
-            sub={agg ? `passed ${agg.n_passed}` : ""}
-            count={agg ? agg.mrr * 1000 : undefined}
-            format={(n) => (n / 1000).toFixed(3)}
-          />
-        </div>
-      )}
 
-      <section className="card">
-        <h2 className="section-title">Score trends</h2>
-        {loading ? (
-          <Skeleton height="200px" />
-        ) : trends.length >= 2 ? (
+        <div className="eval-stat-item">
+          <div className="eval-stat-top">
+            <span className="eval-stat-lbl">Recall@k</span>
+            <span style={{ color: "var(--ok)" }}><Icon name="checkCircle" size={16} /></span>
+          </div>
+          <span className="eval-stat-val">
+            {loading ? "…" : agg ? `${(agg.recall_at_k * 100).toFixed(1)}%` : "—"}
+          </span>
+          <span className="eval-stat-sub">
+            {agg ? `${agg.n_passed} of ${agg.n_evaluated} questions passed` : "Grounded retrieval coverage"}
+          </span>
+        </div>
+
+        <div className="eval-stat-item">
+          <div className="eval-stat-top">
+            <span className="eval-stat-lbl">Mean Reciprocal Rank (MRR)</span>
+            <span style={{ color: "var(--info)" }}><Icon name="layers" size={16} /></span>
+          </div>
+          <span className="eval-stat-val">
+            {loading ? "…" : agg ? agg.mrr.toFixed(3) : "—"}
+          </span>
+          <span className="eval-stat-sub">
+            {agg ? `Passed ${agg.n_passed} benchmark probes` : "First relevant rank position"}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Score Trends Chart ── */}
+      <div className="analytics-card">
+        <div className="analytics-card-head">
+          <div>
+            <h2 className="analytics-card-title">Historical Accuracy Trends</h2>
+            <p className="analytics-card-sub">
+              Precision, Recall, and MRR trajectory tracked over successive benchmark iterations.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            {TREND_LEGEND.map((l) => (
+              <span key={l.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, color: "var(--text-faint)" }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: l.color }} />
+                {l.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {trends.length >= 2 ? (
           <div>
             <Sparkline
-              width={640}
-              height={200}
+              width={720}
+              height={180}
               yMin={0}
               yMax={1}
               yTicks={[0, 0.25, 0.5, 0.75, 1]}
@@ -177,95 +194,156 @@ export default function EvalDashboard() {
                 values: trends.map((p) => p[l.key]),
               }))}
             />
-            <div className="legend">
-              {TREND_LEGEND.map((l) => (
-                <span key={l.key} className="legend-item">
-                  <span className="swatch" style={{ background: l.color }} /> {l.label}
-                </span>
-              ))}
-            </div>
           </div>
         ) : (
-          <div className="empty">
-            <span className="empty-icon">
-              <Icon name="chart" size={22} />
-            </span>
-            <span>Run at least two evaluations to see trends.</span>
+          <div style={{ padding: "20px 0" }}>
+            <EmptyState icon="chart" title="Execute at least two evaluations to visualize trend analytics." />
           </div>
         )}
-      </section>
+      </div>
 
-      <section className="card">
-        <h2 className="section-title">Per-question results</h2>
-        {run ? (
-          run.results.length === 0 ? (
-            <div className="empty">
-              <span>No eval questions found.</span>
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <table className="eval-table">
-                <thead>
-                  <tr>
-                    <th>Question</th>
-                    <th>Expected answer</th>
-                    <th className="num">P@k</th>
-                    <th className="num">R@k</th>
-                    <th className="num">MRR</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {run.results.map((r: EvalRunItem) => (
-                    <tr key={r.id} className={r.skipped ? "skipped" : r.hit ? "pass" : "fail"}>
-                      <td>{r.question}</td>
-                      <td className="muted">{r.expected_answer}</td>
-                      <td className="num">{(r.precision_at_k * 100).toFixed(0)}%</td>
-                      <td className="num">{(r.recall_at_k * 100).toFixed(0)}%</td>
-                      <td className="num">{r.mrr.toFixed(2)}</td>
-                      <td>
-                        {r.skipped ? (
-                          <span className="badge">No source doc</span>
-                        ) : r.hit ? (
-                          <span className="badge status-completed">Pass</span>
-                        ) : (
-                          <span className="badge status-failed">Miss</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-        ) : (
-          <div className="empty">
-            <span className="empty-icon">
-              <Icon name="chart" size={22} />
+      {/* ── Per-Question Results Table Container ── */}
+      <div className={`doc-collapsible-box${resultsCollapsed ? " is-collapsed" : ""}`}>
+        <div className="doc-collapsible-header" onClick={() => setResultsCollapsed((prev) => !prev)}>
+          <div className="doc-collapsible-left">
+            <button
+              type="button"
+              className="doc-collapse-toggle-btn"
+              aria-label={resultsCollapsed ? "Expand questions" : "Collapse questions"}
+            >
+              <Icon name={resultsCollapsed ? "chevronRight" : "chevronDown"} size={14} />
+            </button>
+            <span className="doc-collapsible-title">Benchmark Probe Results</span>
+            <span className="doc-collapsible-badge">
+              {run ? `${agg?.n_passed ?? 0}/${agg?.n_evaluated ?? 0} Passed` : "0 Probes"}
             </span>
-            <span>Run an evaluation to see per-question results.</span>
           </div>
-        )}
-      </section>
 
-      {history.length > 0 && (
-        <section className="card">
-          <h2 className="section-title">Past runs</h2>
-          <div className="list">
-            {history.slice(0, 10).map((h) => (
-              <div key={h.id} className="list-item">
-                <div className="li-main">
-                  <div className="li-title">{formatDateTime(h.timestamp)}</div>
-                  <div className="li-sub muted">
-                    P {(h.aggregate_scores.precision_at_k * 100).toFixed(0)}% · R{" "}
-                    {(h.aggregate_scores.recall_at_k * 100).toFixed(0)}% · MRR{" "}
-                    {h.aggregate_scores.mrr.toFixed(2)}
-                  </div>
-                </div>
+          {run && (
+            <div className="doc-collapsible-right" onClick={(e) => e.stopPropagation()}>
+              <div className="quiz-search-wrap">
+                <Icon name="search" size={13} className="quiz-search-icon" />
+                <input
+                  type="text"
+                  className="quiz-search-input"
+                  placeholder="Filter questions..."
+                  value={tableFilter}
+                  onChange={(e) => setTableFilter(e.target.value)}
+                />
+                {tableFilter && (
+                  <button
+                    type="button"
+                    className="quiz-search-clear"
+                    onClick={() => setTableFilter("")}
+                    title="Clear filter"
+                  >
+                    <Icon name="close" size={11} />
+                  </button>
+                )}
               </div>
-            ))}
+            </div>
+          )}
+        </div>
+
+        {!resultsCollapsed && (
+          <div className="doc-collapsible-body" style={{ padding: 0 }}>
+            {run ? (
+              filteredResults.length === 0 ? (
+                <div style={{ padding: 24 }}>
+                  <EmptyState icon="search" title="No questions matching the search filter." />
+                </div>
+              ) : (
+                <div className="eval-table-wrap">
+                  <table className="eval-table-custom">
+                    <thead>
+                      <tr>
+                        <th style={{ width: "35%" }}>Probe Question</th>
+                        <th style={{ width: "35%" }}>Expected Ground Truth</th>
+                        <th>P@k</th>
+                        <th>R@k</th>
+                        <th>MRR</th>
+                        <th>Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredResults.map((r: EvalRunItem) => (
+                        <tr key={r.id}>
+                          <td style={{ fontWeight: 500, color: "var(--text-h)" }}>{r.question}</td>
+                          <td style={{ color: "var(--text-faint)" }}>{r.expected_answer}</td>
+                          <td style={{ fontWeight: 600 }}>{(r.precision_at_k * 100).toFixed(0)}%</td>
+                          <td style={{ fontWeight: 600 }}>{(r.recall_at_k * 100).toFixed(0)}%</td>
+                          <td style={{ fontWeight: 600 }}>{r.mrr.toFixed(2)}</td>
+                          <td>
+                            {r.skipped ? (
+                              <span className="eval-status-pill skip">No Source</span>
+                            ) : r.hit ? (
+                              <span className="eval-status-pill pass">
+                                <Icon name="checkCircle" size={10} /> Pass
+                              </span>
+                            ) : (
+                              <span className="eval-status-pill miss">
+                                <Icon name="close" size={10} /> Miss
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : (
+              <div style={{ padding: 32 }}>
+                <EmptyState icon="target" title="Run an evaluation above to inspect per-question precision breakdown." />
+              </div>
+            )}
           </div>
-        </section>
+        )}
+      </div>
+
+      {/* ── Past Runs History Container ── */}
+      {history.length > 0 && (
+        <div className={`doc-collapsible-box${historyCollapsed ? " is-collapsed" : ""}`}>
+          <div className="doc-collapsible-header" onClick={() => setHistoryCollapsed((prev) => !prev)}>
+            <div className="doc-collapsible-left">
+              <button
+                type="button"
+                className="doc-collapse-toggle-btn"
+                aria-label={historyCollapsed ? "Expand history" : "Collapse history"}
+              >
+                <Icon name={historyCollapsed ? "chevronRight" : "chevronDown"} size={14} />
+              </button>
+              <span className="doc-collapsible-title">Evaluation Run History</span>
+              <span className="doc-collapsible-badge">{history.length}</span>
+            </div>
+          </div>
+
+          {!historyCollapsed && (
+            <div className="doc-collapsible-body" style={{ padding: 0 }}>
+              <div className="note-lib-list">
+                {history.slice(0, 10).map((h) => (
+                  <div key={h.id} className="note-lib-row" style={{ cursor: "default" }}>
+                    <div className="note-lib-row-left">
+                      <div className="note-lib-icon">
+                        <Icon name="clock" size={14} />
+                      </div>
+                      <div className="note-lib-row-info">
+                        <span className="note-lib-row-title">{formatDateTime(h.timestamp)}</span>
+                        <div className="note-lib-row-meta">
+                          <span>Precision: <strong>{(h.aggregate_scores.precision_at_k * 100).toFixed(1)}%</strong></span>
+                          <span>·</span>
+                          <span>Recall: <strong>{(h.aggregate_scores.recall_at_k * 100).toFixed(1)}%</strong></span>
+                          <span>·</span>
+                          <span>MRR: <strong>{h.aggregate_scores.mrr.toFixed(3)}</strong></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

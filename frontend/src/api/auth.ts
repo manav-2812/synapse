@@ -24,6 +24,22 @@ export const authApi = {
     setTokens(data.access_token, data.refresh_token);
     return data;
   },
+  async loginWithGoogle(payload: { code?: string; redirect_uri?: string; credential?: string }): Promise<TokenResponse> {
+    const data = await request<TokenResponse>("/auth/oauth/google", {
+      method: "POST",
+      body: payload,
+    });
+    setTokens(data.access_token, data.refresh_token);
+    return data;
+  },
+  async loginWithMicrosoft(payload: { code: string; redirect_uri?: string; code_verifier?: string }): Promise<TokenResponse> {
+    const data = await request<TokenResponse>("/auth/oauth/microsoft", {
+      method: "POST",
+      body: payload,
+    });
+    setTokens(data.access_token, data.refresh_token);
+    return data;
+  },
   async me(): Promise<UserMeResponse> {
     return request<UserMeResponse>("/users/me");
   },

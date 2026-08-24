@@ -30,14 +30,15 @@ def _configure() -> None:
                 _configured = True
 
 
-async def complete(system: str, user: str) -> str:
+async def complete(system: str, user: str, max_tokens: int | None = None) -> str:
     _configure()
     prompt = f"{system}\n\n{user}"
+    tokens = max_tokens if max_tokens is not None else _MAX_TOKENS
     resp = await asyncio.to_thread(
         _model.generate_content,
         prompt,
         generation_config={
-            "max_output_tokens": _MAX_TOKENS,
+            "max_output_tokens": tokens,
             "temperature": _TEMPERATURE,
         },
         request_options={"timeout": _TIMEOUT_SECONDS},
@@ -45,8 +46,8 @@ async def complete(system: str, user: str) -> str:
     return resp.text or ""
 
 
-async def stream(system: str, user: str):
+async def stream(system: str, user: str, max_tokens: int | None = None):
     """Fallback streaming: generate fully, then yield word-by-word."""
-    text = await complete(system, user)
+    text = await complete(system, user, max_tokens=max_tokens)
     for word in text.split(" "):
         yield word + " "
