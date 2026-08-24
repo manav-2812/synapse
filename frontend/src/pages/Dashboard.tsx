@@ -6,10 +6,10 @@ import { documentsApi } from "../api/documents";
 import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/useToast";
+import { useCountUp } from "../hooks/useCountUp";
 import { Icon } from "../components/ui/Icon";
 import { Button } from "../components/ui/Button";
 import { StudyHeatmap } from "../components/ui/StudyHeatmap";
-import { formatDate } from "../lib/format";
 import type {
   DashboardResponse,
   HeatmapDay,
@@ -19,19 +19,11 @@ import type {
   DocumentResponse,
 } from "../types/api";
 
-function SegmentedTickBar({ percent }: { percent: number }) {
-  const totalTicks = 44;
-  const activeTicks = Math.round((Math.max(0, Math.min(100, percent)) / 100) * totalTicks);
-  return (
-    <div className="bento-tick-track" title={`${percent}% completed`}>
-      {Array.from({ length: totalTicks }).map((_, i) => (
-        <span
-          key={i}
-          className={`bento-tick ${i < activeTicks ? "active" : ""}`}
-        />
-      ))}
-    </div>
-  );
+/** Animates a number from 0 on first mount — no bounce on re-renders */
+function AnimatedNum({ value, suffix = "", asHours = false }: { value: number; suffix?: string; asHours?: boolean }) {
+  const raw = useCountUp(value);
+  const display = asHours && value >= 60 ? Math.floor(raw / 60) : raw;
+  return <>{display}{suffix}</>;
 }
 
 function StudyTimeChartCard({
@@ -39,7 +31,8 @@ function StudyTimeChartCard({
 }: {
   weeklyData: { day: string; hours: number }[];
 }) {
-  const [activeIdx, setActiveIdx] = useState<number>(4);
+  const todayDayIdx = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const [activeIdx, setActiveIdx] = useState<number>(todayDayIdx);
 
   const step = 0.5; // 30 minutes interval
   const maxLogged = Math.max(...weeklyData.map((d) => d.hours), 0);
@@ -57,6 +50,7 @@ function StudyTimeChartCard({
   const chartBottom = 122;
   const width = chartRight - chartLeft;
   const height = chartBottom - chartTop;
+  const colWidth = width / Math.max(1, weeklyData.length - 1);
 
   const points = weeklyData.map((d, i) => {
     const x = chartLeft + i * (width / (weeklyData.length - 1));
@@ -76,7 +70,15 @@ function StudyTimeChartCard({
     pathD += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
   }
 
-  const activePoint = points[activeIdx] || points[points.length - 1];
+  const activePoint = points[activeIdx] ?? points[points.length - 1];
+
+  const formatHoursTooltip = (hrs: number) => {
+    if (hrs <= 0) return "0.0 Hours";
+    if (hrs < 1) return `${Math.round(hrs * 60)} mins`;
+    const h = Math.floor(hrs);
+    const m = Math.round((hrs - h) * 60);
+    return m > 0 ? `${h}h ${m}m` : `${h} hr${h > 1 ? "s" : ""}`;
+  };
 
   return (
     <div className="bento-chart-card">
@@ -90,10 +92,10 @@ function StudyTimeChartCard({
             className="bento-chart-tooltip"
             style={{
               left: `${(activePoint.x / 400) * 100}%`,
-              top: `${(activePoint.y / 155) * 100 - 8}%`,
+              top: `${Math.max(10, (activePoint.y / 155) * 100 - 10)}%`,
             }}
           >
-            {activePoint.hours.toFixed(1)} Hours
+            {activePoint.day} · {formatHoursTooltip(activePoint.hours)}
           </div>
         )}
 
@@ -139,7 +141,7 @@ function StudyTimeChartCard({
                 rx="5"
                 fill={`url(#chart-bar-grad-${i})`}
                 className="bento-chart-bar"
-                onMouseEnter={() => setActiveIdx(i)}
+                style={{ "--bar-i": i } as React.CSSProperties}
               />
             );
           })}
@@ -153,12 +155,12 @@ function StudyTimeChartCard({
               key={i}
               cx={p.x}
               cy={p.y}
-              r={activeIdx === i ? 4.5 : 3}
+              r={activeIdx === i ? 5 : 3}
               fill={activeIdx === i ? "#ffffff" : "#7065e6"}
               stroke="#7065e6"
               strokeWidth={activeIdx === i ? 2 : 0}
               className="bento-chart-dot"
-              onMouseEnter={() => setActiveIdx(i)}
+              style={{ "--dot-i": i } as React.CSSProperties}
             />
           ))}
 
@@ -174,6 +176,20 @@ function StudyTimeChartCard({
             >
               {p.day}
             </text>
+          ))}
+
+          {/* Transparent Column Hitboxes for Precise Hovering */}
+          {points.map((p, i) => (
+            <rect
+              key={`hitbox-${i}`}
+              x={p.x - colWidth / 2}
+              y={0}
+              width={colWidth}
+              height={155}
+              fill="transparent"
+              style={{ cursor: "pointer" }}
+              onMouseEnter={() => setActiveIdx(i)}
+            />
           ))}
         </svg>
       </div>
@@ -256,7 +272,6 @@ export default function Dashboard() {
   }, []);
 
   const s = data?.summary;
-  const trends = data?.metric_trends;
   const firstName = (user?.full_name || user?.email || "there").split(" ")[0];
 
   const now = new Date();
@@ -313,11 +328,6 @@ export default function Dashboard() {
 
   const quizScore = s?.average_quiz_score ? Math.round(s.average_quiz_score * 100) : 0;
 
-  const currentXP = useMemo(() => {
-    const baseXP = (todayStudyMins * 10) + (s?.questions_asked_count ?? 0) * 5 + (s?.quizzes_taken_count ?? 0) * 25 + notesList.length * 10;
-    return Math.min(500, baseXP);
-  }, [todayStudyMins, s, notesList]);
-
   const overallGoalPercent = useMemo(() => {
     // Pure real-time arithmetic average of the 3 live metrics on the card
     const avgScore = Math.round((studyTimePct + flashcardsPct + quizScore) / 3);
@@ -328,13 +338,13 @@ export default function Dashboard() {
   const weeklyDays = useMemo(() => {
     const daysOrder = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const map: Record<string, number> = {
-      Sun: 0.5,
-      Mon: 0.9,
-      Tue: 1.6,
-      Wed: 1.6,
-      Thu: 2.8,
-      Fri: 3.5,
-      Sat: 3.8,
+      Sun: 0,
+      Mon: 0,
+      Tue: 0,
+      Wed: 0,
+      Thu: 0,
+      Fri: 0,
+      Sat: 0,
     };
 
     if (data?.weekly_activity?.by_day?.length) {
@@ -352,6 +362,20 @@ export default function Dashboard() {
     }));
   }, [data]);
 
+  // Formats a timestamp into a human-readable recency string
+  function timeAgo(isoString: string | null | undefined): string {
+    if (!isoString) return "";
+    const diff = Date.now() - new Date(isoString).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 2) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return `${Math.floor(days / 7)}w ago`;
+  }
+
   // Real calculations for Notes Card insights
   const recentNoteTitle = useMemo(() => {
     if (!notesList.length) return "General Notes";
@@ -366,96 +390,6 @@ export default function Dashboard() {
     return Math.max(sSet.size, foldersList.length || 1);
   }, [notesList, foldersList]);
 
-  // Compute live study progress from real documents & quizzes
-  const progressItems = useMemo(() => {
-    const list: { id: string; name: string; pct: number; link: string; icon: string }[] = [];
-
-    const filteredDocs = data?.recent_documents || [];
-    const filteredQuizzes = data?.recent_quizzes || [];
-
-    if (filteredDocs.length > 0) {
-      filteredDocs.slice(0, 2).forEach((doc, idx) => {
-        list.push({
-          id: `doc-${doc.id}`,
-          name: doc.name,
-          pct: idx === 0 ? 85 : 50,
-          link: `/documents?doc=${doc.id}`,
-          icon: "doc",
-        });
-      });
-    } else if (docsList.length > 0) {
-      list.push({
-        id: `doc-${docsList[0].id}`,
-        name: docsList[0].original_filename,
-        pct: 75,
-        link: `/documents?doc=${docsList[0].id}`,
-        icon: "doc",
-      });
-    } else {
-      list.push({
-        id: "default-doc",
-        name: "Biology Notes · Cellular Respiration",
-        pct: 45,
-        link: "/documents",
-        icon: "doc",
-      });
-    }
-
-    if (filteredQuizzes.length > 0) {
-      filteredQuizzes.slice(0, 2).forEach((q) => {
-        const scorePct = q.score != null ? Math.round(q.score * 100) : 80;
-        list.push({
-          id: `quiz-${q.id}`,
-          name: `${q.title} (${q.difficulty} Quiz)`,
-          pct: scorePct,
-          link: "/quiz",
-          icon: "quiz",
-        });
-      });
-    } else {
-      list.push({
-        id: "default-quiz",
-        name: "Mathematics Quiz · Discrete Structures",
-        pct: 80,
-        link: "/quiz",
-        icon: "quiz",
-      });
-    }
-
-    return list;
-  }, [data, docsList]);
-
-  // Real Top Jump Back To Item
-  const topResumeItem = useMemo(() => {
-    if (data?.recent_quizzes && data.recent_quizzes.length > 0) {
-      const q = data.recent_quizzes[0];
-      return {
-        type: "Quiz",
-        title: q.title,
-        pct: q.score != null ? Math.round(q.score * 100) : 48,
-        link: "/quiz",
-        icon: "quiz",
-      };
-    }
-    if (data?.recent_documents && data.recent_documents.length > 0) {
-      const d = data.recent_documents[0];
-      return {
-        type: "Document",
-        title: d.name,
-        pct: 65,
-        link: `/documents?doc=${d.id}`,
-        icon: "doc",
-      };
-    }
-    return {
-      type: "Quiz",
-      title: "DNA Replication & Genetics",
-      pct: 48,
-      link: "/quiz",
-      icon: "quiz",
-    };
-  }, [data]);
-
   return (
     <div className="dashboard-page-layout">
       {/* ── Modern Greeting Hero (Large & Focused with Live Refresh) ── */}
@@ -464,174 +398,157 @@ export default function Dashboard() {
           <p className="dash-head-date">{dateLabel}</p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <h1 className="dash-head-greeting-large">Good {part}, {firstName}!</h1>
-            <button
-              type="button"
-              className="sb-quick-btn"
-              onClick={() => loadDashboardData(true)}
-              title="Refresh live telemetry"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                display: "grid",
-                placeItems: "center",
-                cursor: "pointer",
-                transition: "transform 200ms ease",
-                transform: refreshing ? "rotate(180deg)" : "none",
-              }}
-            >
-              <Icon name="waveform" size={14} />
-            </button>
           </div>
-          <p className="dash-head-sub-large">Get ready to start learning</p>
         </div>
       </div>
 
-      {/* ── 7 Professional Bento Cards: Streak -> Chat -> Quiz -> Notes -> Flashcards -> Analytics -> Document ── */}
-      <div className="dash-bento-tools-row">
-        {/* 1. Streak Tile */}
+      {/* ── Metric Hierarchy: Hero Metric Card + Categorized Secondary Groups ── */}
+      <div className="dash-metrics-hierarchy-deck">
+        {/* Flagship Hero Metric Card: Streak & Daily Momentum */}
         <div
-          className="bento-feature-tile tile-streak"
+          className="bento-hero-metric-tile"
           onClick={() => {
             toast("info", "Study Streak", `You currently have a ${streak}-day study streak. Study daily to keep your momentum!`);
             navigate("/analytics");
           }}
-          title="Click to view study streak telemetry"
+          title="Click to view study streak and momentum telemetry"
         >
-          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
+          <svg className="bento-hero-watermark" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 23c-4.97 0-9-4.03-9-9 0-3.77 2.37-7.2 5.9-8.54.45-.17.95.05 1.13.5.17.45-.05.95-.5 1.13C6.46 8.27 4.5 11.23 4.5 14.5c0 4.14 3.36 7.5 7.5 7.5s7.5-3.36 7.5-7.5c0-1.89-.69-3.72-1.95-5.13-.34-.38-.28-.96.1-1.3.38-.34.96-.28 1.3.1C20.67 9.87 21.5 12.14 21.5 14.5c0 4.97-4.03 9-9 9z"/>
             <path d="M12 18c-2.48 0-4.5-2.02-4.5-4.5 0-1.68.93-3.23 2.43-4.03.43-.23.97-.07 1.2.36.23.43.07.97-.36 1.2-1.02.54-1.67 1.6-1.67 2.77 0 1.66 1.34 3 3 3s3-1.34 3-3c0-.68-.23-1.34-.66-1.87-.33-.4-.28-.99.12-1.32.4-.33.99-.28 1.32.12.63.78.98 1.76.98 2.77 0 2.48-2.02 4.5-4.5 4.5z"/>
           </svg>
 
-          <div>
-            <h3 className="bento-feature-num">{streak}</h3>
-            <p className="bento-feature-label">Day Streak</p>
+          <div className="bento-hero-top">
+            <div className="bento-hero-badge">
+              <span className="bento-hero-badge-dot" />
+              <span>{streak > 0 ? "Daily Momentum" : "Start Today"}</span>
+            </div>
+            <span className="bento-hero-goal-pill">
+              {todayStudyMins}m / {studyGoalMins}m Goal
+            </span>
           </div>
 
-          <div className="bento-feature-pill">
-            <span>{streak > 0 ? "Keep it up!" : "Start Streak"}</span>
-          </div>
-        </div>
-
-        {/* 2. Chat Tile */}
-        <div
-          className="bento-feature-tile tile-chat"
-          onClick={() => navigate("/chat")}
-          title="Open Synapse AI Study Chat"
-        >
-          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-          </svg>
-          <div>
-            <h3 className="bento-feature-num">{s?.questions_asked_count ?? 0}</h3>
-            <p className="bento-feature-label">Queries Solved</p>
-          </div>
-          <div className="bento-feature-pill">
-            <Icon name="chat" size={12} />
-            <span>Study with Synapse</span>
-          </div>
-        </div>
-
-        {/* 3. Quiz Tile */}
-        <div
-          className="bento-feature-tile tile-quiz"
-          onClick={() => navigate("/quiz")}
-          title="Start or review practice quizzes"
-        >
-          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/>
-          </svg>
-          <div>
-            <h3 className="bento-feature-num">{s?.quizzes_taken_count ?? (data?.recent_quizzes?.length ?? 0)}</h3>
-            <p className="bento-feature-label">Quizzes Taken</p>
-          </div>
-          <div className="bento-feature-pill">
-            <Icon name="quiz" size={12} />
-            <span>Practice Quiz</span>
-          </div>
-        </div>
-
-        {/* 4. Notes Tile */}
-        <div
-          className="bento-feature-tile tile-notes"
-          onClick={() => navigate("/notes")}
-          title="Browse synthesized study notes"
-        >
-          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-          </svg>
-          <div>
-            <h3 className="bento-feature-num">{notesList.length}</h3>
-            <p className="bento-feature-label">Study Notes</p>
-          </div>
-          <div className="bento-feature-pill">
-            <Icon name="note" size={12} />
-            <span>Open Notes</span>
-          </div>
-        </div>
-
-        {/* 5. Flashcards Tile */}
-        <div
-          className="bento-feature-tile tile-cards"
-          onClick={() => navigate("/flashcards")}
-          title="Review spaced repetition flashcards"
-        >
-          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
-          </svg>
-          <div>
-            <h3 className="bento-feature-num">{flashcardsList.length}</h3>
-            <p className="bento-feature-label">{dueFlashcardsCount > 0 ? `${dueFlashcardsCount} Cards Due` : "Flashcards"}</p>
-          </div>
-          <div className="bento-feature-pill">
-            <Icon name="card" size={12} />
-            <span>Review Cards</span>
-          </div>
-        </div>
-
-        {/* 6. Analytics Tile */}
-        <div
-          className="bento-feature-tile tile-analytics"
-          onClick={() => navigate("/analytics")}
-          title="View study performance, mastery, and telemetry"
-        >
-          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-          </svg>
-          <div>
-            <h3 className="bento-feature-num">
-              {s?.total_study_minutes && s.total_study_minutes > 0
-                ? (s.total_study_minutes < 60 ? `${s.total_study_minutes}m` : `${Math.floor(s.total_study_minutes / 60)}h ${s.total_study_minutes % 60}m`)
-                : (s?.average_quiz_score ? `${Math.round(s.average_quiz_score * 100)}%` : "0m")}
-            </h3>
-            <p className="bento-feature-label">
-              {s?.total_study_minutes && s.total_study_minutes > 0 ? "Total Study Time" : "Avg Quiz Score"}
+          <div className="bento-hero-main">
+            <div className="bento-hero-num-row">
+              <h2 className="bento-hero-num"><AnimatedNum value={streak} /></h2>
+              <span className="bento-hero-unit">Day Streak</span>
+            </div>
+            <p className="bento-hero-sub">
+              {streak > 0
+                ? (todayStudyMins >= studyGoalMins
+                    ? "Daily goal achieved! Streak secured for today."
+                    : `${Math.max(0, studyGoalMins - todayStudyMins)}m needed to maintain momentum today.`)
+                : "Complete a study session today to start your streak."}
             </p>
           </div>
-          <div className="bento-feature-pill">
-            <Icon name="chart" size={12} />
-            <span>Analytics</span>
+
+          <div className="bento-hero-footer">
+            <div className="bento-hero-progress-track">
+              <div
+                className="bento-hero-progress-fill"
+                style={{ width: `${Math.min(100, Math.round((todayStudyMins / studyGoalMins) * 100))}%` }}
+              />
+            </div>
+            <div className="bento-hero-cta">
+              <span>{streak > 0 ? "Keep Momentum" : "Start Session →"}</span>
+            </div>
           </div>
         </div>
 
-        {/* 7. Document Tile */}
-        <div
-          className="bento-feature-tile tile-docs"
-          onClick={() => navigate("/documents")}
-          title="View and manage uploaded study documents"
-        >
-          <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-          </svg>
-          <div>
-            <h3 className="bento-feature-num">{docsList.length}</h3>
-            <p className="bento-feature-label">Documents</p>
+        {/* Secondary Categorized Metric Columns */}
+        <div className="dash-secondary-metrics-groups">
+          {/* Row 1: Knowledge & Library (Notes, Flashcards, Documents) */}
+          <div className="dash-metric-category-block">
+            <div className="dash-category-cards-grid">
+              {/* Notes */}
+              <div className="bento-compact-tile tile-notes" onClick={() => navigate("/notes")}>
+                <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                </svg>
+                <div className="bento-compact-top">
+                  <span className="bento-compact-lbl">Notes</span>
+                  <Icon name="note" size={13} />
+                </div>
+                <div className="bento-compact-num"><AnimatedNum value={notesList.length} /></div>
+                <div className="bento-compact-sub">{uniqueSubjectsCount} Topics</div>
+              </div>
+
+              {/* Flashcards */}
+              <div className="bento-compact-tile tile-cards" onClick={() => navigate("/flashcards")}>
+                <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+                </svg>
+                <div className="bento-compact-top">
+                  <span className="bento-compact-lbl">Flashcards</span>
+                  <Icon name="card" size={13} />
+                </div>
+                <div className="bento-compact-num"><AnimatedNum value={flashcardsList.length} /></div>
+                <div className="bento-compact-sub">{dueFlashcardsCount > 0 ? `${dueFlashcardsCount} Due` : "All Done"}</div>
+              </div>
+
+              {/* Documents */}
+              <div className="bento-compact-tile tile-docs" onClick={() => navigate("/documents")}>
+                <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                </svg>
+                <div className="bento-compact-top">
+                  <span className="bento-compact-lbl">Documents</span>
+                  <Icon name="folder" size={13} />
+                </div>
+                <div className="bento-compact-num"><AnimatedNum value={docsList.length} /></div>
+                <div className="bento-compact-sub">Indexed</div>
+              </div>
+            </div>
           </div>
-          <div className="bento-feature-pill">
-            <Icon name="folder" size={12} />
-            <span>Library</span>
+
+          {/* Row 2: Practice & Mastery (Quizzes, AI Synthesis, Analytics) */}
+          <div className="dash-metric-category-block">
+            <div className="dash-category-cards-grid">
+              {/* Quizzes */}
+              <div className="bento-compact-tile tile-quiz" onClick={() => navigate("/quiz")}>
+                <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/>
+                </svg>
+                <div className="bento-compact-top">
+                  <span className="bento-compact-lbl">Quizzes</span>
+                  <Icon name="quiz" size={13} />
+                </div>
+                <div className="bento-compact-num"><AnimatedNum value={s?.quizzes_taken_count ?? 0} /></div>
+                <div className="bento-compact-sub">{quizScore}% Avg Score</div>
+              </div>
+
+              {/* AI Chat */}
+              <div className="bento-compact-tile tile-chat" onClick={() => navigate("/chat")}>
+                <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                </svg>
+                <div className="bento-compact-top">
+                  <span className="bento-compact-lbl">AI Queries</span>
+                  <Icon name="chat" size={13} />
+                </div>
+                <div className="bento-compact-num"><AnimatedNum value={s?.questions_asked_count ?? 0} /></div>
+                <div className="bento-compact-sub">Solved</div>
+              </div>
+
+              {/* Analytics */}
+              <div className="bento-compact-tile tile-analytics" onClick={() => navigate("/analytics")}>
+                <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                </svg>
+                <div className="bento-compact-top">
+                  <span className="bento-compact-lbl">Study Time</span>
+                  <Icon name="chart" size={13} />
+                </div>
+                <div className="bento-compact-num">
+                  <AnimatedNum
+                    value={s?.total_study_minutes ?? 0}
+                    asHours={true}
+                    suffix={s?.total_study_minutes && s.total_study_minutes >= 60 ? "h" : "m"}
+                  />
+                </div>
+                <div className="bento-compact-sub">Total Logged</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -641,6 +558,12 @@ export default function Dashboard() {
         <div className="bento-deck-top-grid">
           {/* Card 1: Goal Progress Card (Half size / 50% width) */}
           <div className="bento-goal-card" onClick={() => navigate("/analytics")}>
+            {/* Watermark rings — decorative background pattern */}
+            <svg className="bento-goal-trail-svg" viewBox="0 0 400 220" preserveAspectRatio="xMaxYMid meet" aria-hidden="true">
+              <circle cx="310" cy="110" r="90" fill="none" stroke="rgba(130,120,200,0.13)" strokeWidth="38" />
+              <circle cx="310" cy="110" r="140" fill="none" stroke="rgba(130,120,200,0.08)" strokeWidth="28" />
+              <circle cx="370" cy="40" r="55" fill="none" stroke="rgba(130,120,200,0.09)" strokeWidth="22" />
+            </svg>
             <div className="bento-goal-top">
               <div className="bento-goal-title-wrap">
                 <Icon name="chart" size={16} />
@@ -695,20 +618,19 @@ export default function Dashboard() {
 
               {/* Right Circular Gauge */}
               <div className="bento-goal-circle-wrap">
-                <svg className="bento-goal-circle-svg" viewBox="0 0 110 110">
+                <svg className="bento-goal-circle-svg" viewBox="0 0 120 120">
                   <circle
-                    cx="55"
-                    cy="55"
-                    r="46"
-                    strokeWidth="8"
-                    fill="none"
+                    cx="60"
+                    cy="60"
+                    r="52"
+                    strokeWidth="0"
                     className="bento-goal-circle-bg"
                   />
                   <circle
-                    cx="55"
-                    cy="55"
+                    cx="60"
+                    cy="60"
                     r="46"
-                    strokeWidth="8"
+                    strokeWidth="5"
                     fill="none"
                     className="bento-goal-circle-fg"
                     strokeDasharray={2 * Math.PI * 46}
@@ -716,7 +638,7 @@ export default function Dashboard() {
                   />
                 </svg>
                 <div className="bento-goal-circle-label">
-                  <span className="bento-goal-circle-num">{overallGoalPercent}</span>
+                  <span className="bento-goal-circle-num"><AnimatedNum value={overallGoalPercent} /></span>
                   <span className="bento-goal-circle-pct">%</span>
                 </div>
               </div>
@@ -729,20 +651,27 @@ export default function Dashboard() {
         <div className="bento-deck-top-grid">
           {/* Card 3: Total Notes */}
           <div className="bento-card bento-note-card" onClick={() => navigate("/notes")}>
-            <div className="bento-note-top">
+            {/* Watermark — decorative background blobs */}
+            <svg style={{ position: "absolute", top: 0, right: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }} viewBox="0 0 400 220" preserveAspectRatio="xMaxYMid meet" aria-hidden="true">
+              {/* Wave arcs */}
+              <path d="M 180 260 Q 250 160 320 200 Q 390 240 430 140" fill="none" stroke="rgba(120,110,220,0.13)" strokeWidth="28" strokeLinecap="round" />
+              <path d="M 200 280 Q 280 170 360 215 Q 420 250 460 130" fill="none" stroke="rgba(120,110,220,0.08)" strokeWidth="20" strokeLinecap="round" />
+              <path d="M 300 20 Q 360 80 340 140 Q 320 190 380 200" fill="none" stroke="rgba(120,110,220,0.10)" strokeWidth="16" strokeLinecap="round" />
+            </svg>
+            <div className="bento-note-top" style={{ position: "relative", zIndex: 1 }}>
               <div className="bento-note-icon-circle">
                 <Icon name="book" size={22} />
               </div>
             </div>
 
-            <div>
+            <div style={{ position: "relative", zIndex: 1 }}>
               <p className="bento-label-muted">Study Notes</p>
               <h2 className="bento-serif-stat">
-                {notesList.length || 33} Notes
+                <AnimatedNum value={notesList.length} /> Notes
               </h2>
             </div>
 
-            <div className="bento-folder-sub-row">
+            <div className="bento-folder-sub-row" style={{ position: "relative", zIndex: 1 }}>
               <span
                 className="bento-folder-sub-item"
                 title="Subjects covered in notes"
@@ -756,14 +685,14 @@ export default function Dashboard() {
               </span>
               <span
                 className="bento-folder-sub-item"
-                title="Latest note title"
+                title="Last note created"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate("/notes");
                 }}
               >
                 <Icon name="clock" size={14} />
-                <span>{recentNoteTitle.length > 15 ? recentNoteTitle.slice(0, 14) + "…" : recentNoteTitle}</span>
+                <span>{notesList[0]?.created_at ? timeAgo(notesList[0].created_at) : recentNoteTitle.length > 15 ? recentNoteTitle.slice(0, 14) + "…" : recentNoteTitle}</span>
               </span>
               <span
                 className="bento-folder-sub-item"
@@ -798,20 +727,26 @@ export default function Dashboard() {
             className="bento-card bento-folder-card"
             onClick={() => navigate("/flashcards")}
           >
-            <div className="bento-folder-top">
+            {/* Watermark — stacked card shapes */}
+            <svg style={{ position: "absolute", top: 0, right: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }} viewBox="0 0 400 220" preserveAspectRatio="xMaxYMid meet" aria-hidden="true">
+              <rect x="260" y="60" width="130" height="85" rx="14" fill="none" stroke="rgba(148,100,240,0.14)" strokeWidth="10" transform="rotate(-12 325 102)" />
+              <rect x="275" y="75" width="130" height="85" rx="14" fill="none" stroke="rgba(148,100,240,0.10)" strokeWidth="8" transform="rotate(-4 340 117)" />
+              <rect x="288" y="88" width="130" height="85" rx="14" fill="none" stroke="rgba(148,100,240,0.07)" strokeWidth="6" transform="rotate(5 353 130)" />
+            </svg>
+            <div className="bento-folder-top" style={{ position: "relative", zIndex: 1 }}>
               <div className="bento-folder-icon-circle" style={{ background: "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)", boxShadow: "0 4px 14px rgba(168, 85, 247, 0.3)" }}>
                 <Icon name="card" size={22} />
               </div>
             </div>
 
-            <div>
+            <div style={{ position: "relative", zIndex: 1 }}>
               <p className="bento-label-muted">Flashcard Deck</p>
               <h2 className="bento-serif-stat">
-                {flashcardsList.length || 135} Flashcards
+                <AnimatedNum value={flashcardsList.length} /> Flashcards
               </h2>
             </div>
 
-            <div className="bento-folder-sub-row">
+            <div className="bento-folder-sub-row" style={{ position: "relative", zIndex: 1 }}>
               <span
                 className="bento-folder-sub-item"
                 title="Cards ready for spaced repetition review"
@@ -825,14 +760,21 @@ export default function Dashboard() {
               </span>
               <span
                 className="bento-folder-sub-item"
-                title="Mastered flashcards"
+                title="Last reviewed"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate("/flashcards");
                 }}
               >
-                <Icon name="check" size={14} />
-                <span>{Math.max(0, (flashcardsList.length || 135) - dueCardsCount)} Mastered</span>
+                <Icon name="clock" size={14} />
+                {(() => {
+                  const lastReviewed = flashcardsList
+                    .map(f => f.last_reviewed_at)
+                    .filter(Boolean)
+                    .sort()
+                    .reverse()[0];
+                  return <span>{lastReviewed ? `Reviewed ${timeAgo(lastReviewed)}` : `${Math.max(0, flashcardsList.length - dueCardsCount)} Mastered`}</span>;
+                })()}
               </span>
               <span
                 className="bento-folder-sub-item"
@@ -849,243 +791,40 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Card 3: Your Study Progress */}
-        <div className="bento-card bento-progress-card">
-          <div className="bento-progress-head">
-            <div>
-              <h2 className="bento-serif-title">Your Study Progress</h2>
-              <p className="bento-progress-sub">Weekly Learning Metrics</p>
-            </div>
-            <Button
-              variant="secondary"
-              className="btn-sm"
-              onClick={() => navigate("/analytics")}
-              style={{ fontSize: 11.5, padding: "4px 10px" }}
-            >
-              <Icon name="chart" size={12} /> Detailed Stats
-            </Button>
-          </div>
+        {/* Card 3: Study Consistency Heatmap (Transformed into Bento Card) */}
+        <div className="bento-card bento-heatmap-card">
+          {/* Subtle decorative watermark pattern */}
+          <svg className="bento-heatmap-watermark-svg" viewBox="0 0 500 240" preserveAspectRatio="xMaxYMid meet" aria-hidden="true">
+            <circle cx="430" cy="120" r="105" fill="none" stroke="rgba(99,102,241,0.08)" strokeWidth="36" />
+            <circle cx="430" cy="120" r="170" fill="none" stroke="rgba(99,102,241,0.05)" strokeWidth="26" />
+            <path d="M 320 220 Q 390 140 460 175 Q 530 210 570 120" fill="none" stroke="rgba(99,102,241,0.06)" strokeWidth="22" strokeLinecap="round" />
+          </svg>
 
-          <div className="bento-progress-rows">
-            {progressItems.map((item) => (
-              <div
-                key={item.id}
-                className="bento-progress-item"
-                onClick={() => navigate(item.link)}
-                title={`Click to open ${item.name}`}
-              >
-                <div className="bento-progress-item-top">
-                  <span className="bento-progress-item-name">
-                    <Icon name={item.icon} size={14} />
-                    <span>{item.name}</span>
-                  </span>
-                  <span className="bento-progress-item-pct">{item.pct}%</span>
-                </div>
-                <SegmentedTickBar percent={item.pct} />
+          <div className="bento-heatmap-head">
+            <div className="bento-heatmap-head-left">
+              <div>
+                <h2 className="bento-serif-title">Study Consistency</h2>
+                <p className="bento-progress-sub">Daily learning frequency and spaced repetition momentum</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Study Consistency Heatmap ── */}
-      <div className="analytics-card">
-        <div className="analytics-card-head">
-          <div>
-            <h2 className="analytics-card-title">Study Consistency Heatmap</h2>
-            <p className="analytics-card-sub">Daily learning frequency and spaced repetition momentum.</p>
-          </div>
-          <button
-            type="button"
-            className="search-category-view-all"
-            onClick={() => navigate("/analytics")}
-          >
-            Full Analytics <Icon name="chevronRight" size={11} />
-          </button>
-        </div>
-        <StudyHeatmap data={heatmapData} streak={streak} loading={heatmapLoading} />
-      </div>
-
-      {/* ── 4-Tile Executive KPI Cards ── */}
-      <div className="dash-stats-grid">
-        <div className="dash-stat-tile" onClick={() => navigate("/documents")}>
-          <div className="dash-stat-top">
-            <div className="dash-stat-icon-wrap">
-              <Icon name="doc" size={16} />
             </div>
-            {trends && <InlineTrend trend={trends.documents} />}
-          </div>
-          <div className="dash-stat-val">
-            {loading ? "…" : docsList.length || s?.documents_uploaded_count || 0}
-          </div>
-          <div className="dash-stat-bottom">
-            <span className="dash-stat-lbl">Documents Indexed</span>
-            <span className="dash-stat-sub">in knowledge base</span>
-          </div>
-        </div>
 
-        <div className="dash-stat-tile" onClick={() => navigate("/chat")}>
-          <div className="dash-stat-top">
-            <div className="dash-stat-icon-wrap">
-              <Icon name="chat" size={16} />
+            <div className="bento-heatmap-head-right">
+              <Button
+                variant="secondary"
+                className="btn-sm"
+                onClick={() => navigate("/analytics")}
+                style={{ fontSize: 11.5, padding: "5px 12px", borderRadius: 999 }}
+              >
+                <Icon name="chart" size={12} /> Full Analytics
+              </Button>
             </div>
-            {trends && <InlineTrend trend={trends.questions} />}
-          </div>
-          <div className="dash-stat-val">
-            {loading ? "…" : s?.questions_asked_count ?? 0}
-          </div>
-          <div className="dash-stat-bottom">
-            <span className="dash-stat-lbl">Questions Asked</span>
-            <span className="dash-stat-sub">AI synthesis queries</span>
-          </div>
-        </div>
-
-        <div className="dash-stat-tile" onClick={() => navigate("/quiz")}>
-          <div className="dash-stat-top">
-            <div className="dash-stat-icon-wrap">
-              <Icon name="quiz" size={16} />
-            </div>
-            {trends && <InlineTrend trend={trends.quizzes} />}
-          </div>
-          <div className="dash-stat-val">
-            {loading ? "…" : s?.quizzes_taken_count ?? 0}
-          </div>
-          <div className="dash-stat-bottom">
-            <span className="dash-stat-lbl">Quizzes Completed</span>
-            <span className="dash-stat-sub">practice rounds</span>
-          </div>
-        </div>
-
-        <div className="dash-stat-tile" onClick={() => navigate("/analytics")}>
-          <div className="dash-stat-top">
-            <div className="dash-stat-icon-wrap">
-              <Icon name="target" size={16} />
-            </div>
-            {trends && (
-              <span className="eval-status-pill pass" style={{ fontSize: 10 }}>
-                {s && s.average_quiz_score >= 0.7 ? "Strong" : "Calibrating"}
-              </span>
-            )}
-          </div>
-          <div className="dash-stat-val">
-            {loading ? "…" : s ? `${Math.round(s.average_quiz_score * 100)}%` : "—"}
-          </div>
-          <div className="dash-stat-bottom">
-            <span className="dash-stat-lbl">Average Score</span>
-            <span className="dash-stat-sub">overall accuracy</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Recent Knowledge Activity (2-Column Grid) ── */}
-      <div className="analytics-grid-2">
-        {/* Recent Documents */}
-        <div className="analytics-card">
-          <div className="analytics-card-head">
-            <div>
-              <h2 className="analytics-card-title">Recent Documents</h2>
-              <p className="analytics-card-sub">Indexed files in your workspace.</p>
-            </div>
-            <button
-              type="button"
-              className="search-category-view-all"
-              onClick={() => navigate("/documents")}
-            >
-              View all <Icon name="chevronRight" size={11} />
-            </button>
           </div>
 
-          {data && data.recent_documents.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {data.recent_documents.slice(0, 4).map((d) => (
-                <div
-                  key={d.id}
-                  className="note-lib-row"
-                  style={{ padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}
-                  onClick={() => navigate(`/documents?doc=${d.id}`)}
-                >
-                  <div className="note-lib-row-left">
-                    <div className="note-lib-icon" style={{ width: 28, height: 28 }}>
-                      <Icon name="doc" size={13} />
-                    </div>
-                    <div className="note-lib-row-info">
-                      <span className="note-lib-row-title" style={{ fontSize: 13 }}>{d.name}</span>
-                      <span className="note-lib-row-meta" style={{ fontSize: 11 }}>
-                        {formatDate(d.created_at.toString())}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="eval-status-pill pass">Ready</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <span style={{ fontSize: 12, color: "var(--text-faint)", padding: "12px 0" }}>
-              No documents uploaded yet.
-            </span>
-          )}
-        </div>
-
-        {/* Recent Quizzes */}
-        <div className="analytics-card">
-          <div className="analytics-card-head">
-            <div>
-              <h2 className="analytics-card-title">Recent Assessments</h2>
-              <p className="analytics-card-sub">Recent practice tests and scores.</p>
-            </div>
-            <button
-              type="button"
-              className="search-category-view-all"
-              onClick={() => navigate("/quiz")}
-            >
-              View all <Icon name="chevronRight" size={11} />
-            </button>
+          <div className="bento-heatmap-body">
+            <StudyHeatmap data={heatmapData} streak={streak} loading={heatmapLoading} />
           </div>
-
-          {data && data.recent_quizzes.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {data.recent_quizzes.slice(0, 4).map((q) => (
-                <div
-                  key={q.id}
-                  className="note-lib-row"
-                  style={{ padding: "8px 10px", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}
-                  onClick={() => navigate("/quiz")}
-                >
-                  <div className="note-lib-row-left">
-                    <div className="note-lib-icon" style={{ width: 28, height: 28 }}>
-                      <Icon name="quiz" size={13} />
-                    </div>
-                    <div className="note-lib-row-info">
-                      <span className="note-lib-row-title" style={{ fontSize: 13 }}>{q.title}</span>
-                      <span className="note-lib-row-meta" style={{ fontSize: 11 }}>
-                        <span style={{ textTransform: "capitalize" }}>{q.difficulty}</span> · {formatDate(q.created_at.toString())}
-                      </span>
-                    </div>
-                  </div>
-                  <span className={`eval-status-pill ${q.score != null && q.score >= 0.7 ? "pass" : "miss"}`}>
-                    {q.score != null ? `${Math.round(q.score * 100)}%` : "Not taken"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <span style={{ fontSize: 12, color: "var(--text-faint)", padding: "12px 0" }}>
-              No quizzes completed yet.
-            </span>
-          )}
         </div>
       </div>
     </div>
-  );
-}
-
-/* ── Inline trend badge helper ── */
-function InlineTrend({ trend }: { trend: { this_week: number | null; last_week: number | null } }) {
-  const delta = (trend.this_week ?? 0) - (trend.last_week ?? 0);
-  if (delta === 0) return null;
-  return (
-    <span className={`eval-status-pill ${delta > 0 ? "pass" : "skip"}`} style={{ fontSize: 10.5 }}>
-      {delta > 0 ? `+${delta}` : delta} this wk
-    </span>
   );
 }

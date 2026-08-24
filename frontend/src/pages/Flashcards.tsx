@@ -51,10 +51,15 @@ export default function Flashcards() {
   const [filterTab, setFilterTab] = useState<"all" | "due" | "learning" | "mastered">("all");
   const [isLibCollapsed, setIsLibCollapsed] = useState(false);
 
+  // Edit Modal
   const [editCard, setEditCard] = useState<FlashcardResponse | null>(null);
   const [editFront, setEditFront] = useState("");
   const [editBack, setEditBack] = useState("");
   const [editBusy, setEditBusy] = useState(false);
+
+  // Delete Confirmation Modal
+  const [deleteCardTarget, setDeleteCardTarget] = useState<FlashcardResponse | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     void load();
@@ -161,18 +166,28 @@ export default function Flashcards() {
     }
   }
 
-  async function del(id: string) {
+  function confirmDelete(e: React.MouseEvent, card: FlashcardResponse) {
+    e.stopPropagation();
+    setDeleteCardTarget(card);
+  }
+
+  async function executeDelete() {
+    if (!deleteCardTarget) return;
+    setDeleteBusy(true);
     try {
-      await studyApi.deleteFlashcard(id);
-      setCards((prev) => prev.filter((c) => c.id !== id));
-      setDue((prev) => prev.filter((c) => c.id !== id));
+      await studyApi.deleteFlashcard(deleteCardTarget.id);
+      setCards((prev) => prev.filter((c) => c.id !== deleteCardTarget.id));
+      setDue((prev) => prev.filter((c) => c.id !== deleteCardTarget.id));
       toast("success", "Flashcard deleted", "Card removed from deck.");
+      setDeleteCardTarget(null);
     } catch (err) {
       toast(
         "error",
         "Couldn't delete flashcard",
         err instanceof ApiError ? err.message : "Please try again.",
       );
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -294,7 +309,7 @@ export default function Flashcards() {
             </p>
           </div>
           {due.length > 0 && (
-            <Button variant="primary" className="btn-sm" onClick={() => startStudy(due)}>
+            <Button variant="primary" className="btn-sm" style={{ borderRadius: 999, padding: "7px 18px" }} onClick={() => startStudy(due)}>
               <Icon name="card" size={14} /> Study Due Cards ({due.length})
             </Button>
           )}
@@ -304,44 +319,44 @@ export default function Flashcards() {
       {mode === "list" && (
         <>
           {/* ── Top Metrics / Stats Strip ── */}
-          <div className="quiz-stats-strip">
-            <div className="quiz-stat-card">
-              <div className="quiz-stat-icon">
+          <div className="note-stats-strip">
+            <div className="note-stat-item">
+              <div className="note-stat-icon-wrap">
                 <Icon name="card" size={17} />
               </div>
-              <div className="quiz-stat-info">
-                <span className="quiz-stat-value">{stats.total}</span>
-                <span className="quiz-stat-label">Total Cards</span>
+              <div className="note-stat-content">
+                <span className="note-stat-val">{stats.total}</span>
+                <span className="note-stat-lbl">Total Cards</span>
               </div>
             </div>
 
-            <div className="quiz-stat-card">
-              <div className="quiz-stat-icon" style={{ color: stats.dueCount > 0 ? "#ef4444" : "var(--accent)" }}>
+            <div className="note-stat-item">
+              <div className="note-stat-icon-wrap" style={{ color: stats.dueCount > 0 ? "#ef4444" : undefined }}>
                 <Icon name="clock" size={17} />
               </div>
-              <div className="quiz-stat-info">
-                <span className="quiz-stat-value">{stats.dueCount}</span>
-                <span className="quiz-stat-label">Due Today</span>
+              <div className="note-stat-content">
+                <span className="note-stat-val">{stats.dueCount}</span>
+                <span className="note-stat-lbl">Due Today</span>
               </div>
             </div>
 
-            <div className="quiz-stat-card">
-              <div className="quiz-stat-icon" style={{ color: "#10b981" }}>
+            <div className="note-stat-item">
+              <div className="note-stat-icon-wrap">
                 <Icon name="target" size={17} />
               </div>
-              <div className="quiz-stat-info">
-                <span className="quiz-stat-value">{stats.mastered}</span>
-                <span className="quiz-stat-label">Mastered</span>
+              <div className="note-stat-content">
+                <span className="note-stat-val">{stats.mastered}</span>
+                <span className="note-stat-lbl">Mastered</span>
               </div>
             </div>
 
-            <div className="quiz-stat-card">
-              <div className="quiz-stat-icon" style={{ color: "#f59e0b" }}>
+            <div className="note-stat-item">
+              <div className="note-stat-icon-wrap">
                 <Icon name="layers" size={17} />
               </div>
-              <div className="quiz-stat-info">
-                <span className="quiz-stat-value">{stats.easeAvg}</span>
-                <span className="quiz-stat-label">Ease Factor</span>
+              <div className="note-stat-content">
+                <span className="note-stat-val">{stats.easeAvg}</span>
+                <span className="note-stat-lbl">Ease Factor</span>
               </div>
             </div>
           </div>
@@ -360,7 +375,7 @@ export default function Flashcards() {
                   </p>
                 </div>
               </div>
-              <Button variant="primary" onClick={() => startStudy(due)}>
+              <Button variant="primary" style={{ borderRadius: 999, padding: "8px 22px" }} onClick={() => startStudy(due)}>
                 <Icon name="card" size={15} /> Start Review ({due.length})
               </Button>
             </div>
@@ -474,9 +489,15 @@ export default function Flashcards() {
                   ? "Grounded across all knowledge base documents"
                   : `Grounded in ${scopeIds.length} selected document${scopeIds.length > 1 ? "s" : ""}`}
               </span>
-              <Button onClick={() => void generate()} loading={busy} className="btn-generate-quiz">
-                <Icon name="card" size={14} /> Generate Flashcards
-              </Button>
+              <button
+                type="button"
+                onClick={() => void generate()}
+                disabled={busy}
+                className="btn-generate-notes-pill"
+              >
+                <Icon name="card" size={16} />
+                <span>{busy ? "Generating…" : "Generate Flashcards"}</span>
+              </button>
             </div>
           </div>
 
@@ -515,63 +536,67 @@ export default function Flashcards() {
 
               {!isLibCollapsed && (
                 <div className="doc-collapsible-right" onClick={(e) => e.stopPropagation()}>
-                  <div className="quiz-filter-chips">
+                  <div className="quiz-filter-tabs note-filter-pill-group">
                     <button
                       type="button"
-                      className={`quiz-filter-chip ${filterTab === "all" ? "active" : ""}`}
+                      className={`quiz-tab-btn ${filterTab === "all" ? "active" : ""}`}
                       onClick={() => setFilterTab("all")}
                     >
-                      All ({cards.length})
+                      <Icon name="layoutGrid" size={12} />
+                      <span>All ({cards.length})</span>
                     </button>
                     <button
                       type="button"
-                      className={`quiz-filter-chip ${filterTab === "due" ? "active" : ""}`}
+                      className={`quiz-tab-btn ${filterTab === "due" ? "active" : ""}`}
                       onClick={() => setFilterTab("due")}
                     >
-                      Due ({due.length})
+                      <Icon name="clock" size={12} />
+                      <span>Due ({due.length})</span>
                     </button>
                     <button
                       type="button"
-                      className={`quiz-filter-chip ${filterTab === "learning" ? "active" : ""}`}
+                      className={`quiz-tab-btn ${filterTab === "learning" ? "active" : ""}`}
                       onClick={() => setFilterTab("learning")}
                     >
-                      Learning ({stats.learning})
+                      <Icon name="layers" size={12} />
+                      <span>Learning ({stats.learning})</span>
                     </button>
                     <button
                       type="button"
-                      className={`quiz-filter-chip ${filterTab === "mastered" ? "active" : ""}`}
+                      className={`quiz-tab-btn ${filterTab === "mastered" ? "active" : ""}`}
                       onClick={() => setFilterTab("mastered")}
                     >
-                      Mastered ({stats.mastered})
+                      <Icon name="checkCircle" size={12} />
+                      <span>Mastered ({stats.mastered})</span>
                     </button>
                   </div>
 
-                  <div className="doc-search-box" style={{ width: 170, minWidth: "unset", padding: "4px 8px" }}>
-                    <Icon name="search" size={13} className="doc-search-icon" />
+                  <div className="note-search-pill-wrap">
+                    <Icon name="search" size={13} className="note-search-pill-icon" />
                     <input
                       type="text"
                       placeholder="Filter cards…"
                       value={cardSearch}
                       onChange={(e) => setCardSearch(e.target.value)}
-                      className="doc-search-input"
-                      style={{ fontSize: 12 }}
+                      className="note-search-pill-input"
                     />
                     {cardSearch && (
                       <button
                         type="button"
-                        className="doc-search-clear"
+                        className="note-search-pill-clear"
                         onClick={() => setCardSearch("")}
                         aria-label="Clear card search"
+                        title="Clear search"
                       >
-                        <Icon name="close" size={12} />
+                        <Icon name="close" size={11} />
                       </button>
                     )}
                   </div>
 
-                  <div className="flashcard-view-toggle">
+                  <div className="doc-view-toggle">
                     <button
                       type="button"
-                      className={`flashcard-view-btn ${viewMode === "grid" ? "active" : ""}`}
+                      className={`doc-view-btn ${viewMode === "grid" ? "active" : ""}`}
                       onClick={() => setViewMode("grid")}
                       title="Card Grid View"
                       aria-label="Card Grid View"
@@ -580,7 +605,7 @@ export default function Flashcards() {
                     </button>
                     <button
                       type="button"
-                      className={`flashcard-view-btn ${viewMode === "list" ? "active" : ""}`}
+                      className={`doc-view-btn ${viewMode === "list" ? "active" : ""}`}
                       onClick={() => setViewMode("list")}
                       title="Table List View"
                       aria-label="Table List View"
@@ -590,8 +615,12 @@ export default function Flashcards() {
                   </div>
 
                   {cards.length > 0 && (
-                    <Button variant="secondary" className="btn-sm" onClick={() => startStudy(filteredCards)}>
-                      <Icon name="card" size={13} /> Practice Deck ({filteredCards.length})
+                    <Button
+                      variant="secondary"
+                      style={{ borderRadius: 999, height: 38, padding: "0 16px" }}
+                      onClick={() => startStudy(filteredCards)}
+                    >
+                      <Icon name="card" size={13} /> Practice ({filteredCards.length})
                     </Button>
                   )}
                 </div>
@@ -616,8 +645,22 @@ export default function Flashcards() {
                   <div className="quiz-empty-wrap">
                     <EmptyState
                       icon="search"
-                      title={`No flashcards matching "${cardSearch}"`}
-                      hint="Try adjusting your search query or active filter."
+                      title={cardSearch ? `No flashcards matching "${cardSearch}"` : "No flashcards found in this filter."}
+                      hint="Try adjusting your search query or switching tabs."
+                      action={
+                        (cardSearch || filterTab !== "all") ? (
+                          <Button
+                            variant="secondary"
+                            style={{ borderRadius: 999, fontSize: 12, padding: "5px 16px" }}
+                            onClick={() => {
+                              setCardSearch("");
+                              setFilterTab("all");
+                            }}
+                          >
+                            Clear Filters
+                          </Button>
+                        ) : undefined
+                      }
                     />
                   </div>
                 ) : viewMode === "grid" ? (
@@ -665,7 +708,7 @@ export default function Flashcards() {
                                   <button
                                     className="quiz-icon-btn btn-del"
                                     aria-label="Delete flashcard"
-                                    onClick={() => void del(c.id)}
+                                    onClick={(e) => confirmDelete(e, c)}
                                     title="Delete card"
                                   >
                                     <Icon name="trash" size={13} />
@@ -727,7 +770,7 @@ export default function Flashcards() {
                                   <button
                                     className="quiz-icon-btn btn-del"
                                     aria-label="Delete flashcard"
-                                    onClick={() => void del(c.id)}
+                                    onClick={(e) => confirmDelete(e, c)}
                                     title="Delete card"
                                   >
                                     <Icon name="trash" size={13} />
@@ -838,7 +881,7 @@ export default function Flashcards() {
                             <button
                               className="quiz-icon-btn btn-del"
                               aria-label={`Delete flashcard`}
-                              onClick={() => void del(c.id)}
+                              onClick={(e) => confirmDelete(e, c)}
                               title="Delete card"
                             >
                               <Icon name="trash" size={14} />
@@ -1087,6 +1130,40 @@ export default function Flashcards() {
           </Button>
           <Button onClick={() => void commitEdit()} loading={editBusy}>
             Save Changes
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ── Delete Flashcard Confirmation Modal ── */}
+      <Modal
+        open={Boolean(deleteCardTarget)}
+        onClose={() => !deleteBusy && setDeleteCardTarget(null)}
+        title="Delete Flashcard"
+      >
+        <div style={{ padding: "8px 0 16px" }}>
+          <p style={{ color: "var(--text-h)", fontSize: 14, margin: "0 0 8px", fontWeight: 500 }}>
+            Are you sure you want to delete this flashcard?
+          </p>
+          <p style={{ color: "var(--text-faint)", fontSize: 12.5, margin: 0 }}>
+            "{deleteCardTarget?.front}"
+          </p>
+        </div>
+        <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
+          <Button
+            variant="ghost"
+            onClick={() => setDeleteCardTarget(null)}
+            disabled={deleteBusy}
+            style={{ borderRadius: 999 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => void executeDelete()}
+            loading={deleteBusy}
+            style={{ borderRadius: 999 }}
+          >
+            Delete Card
           </Button>
         </div>
       </Modal>

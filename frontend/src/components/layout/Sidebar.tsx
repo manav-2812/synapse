@@ -41,16 +41,31 @@ export function Sidebar({ collapsed, onToggle }: Props) {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const userSeenKey = user?.id ? `synapse_activity_seen_${user.id}` : SEEN_KEY;
+  const userClearedKey = user?.id ? `synapse_activity_cleared_${user.id}` : CLEARED_KEY;
+
   const [clearedAt, setClearedAt] = useState<string>(() => {
-    return localStorage.getItem(CLEARED_KEY) || "";
+    return localStorage.getItem(userClearedKey) || localStorage.getItem(CLEARED_KEY) || "";
   });
   const [seenAt, setSeenAt] = useState<string>(() => {
-    const stored = localStorage.getItem(SEEN_KEY);
+    const stored = localStorage.getItem(userSeenKey) || localStorage.getItem(SEEN_KEY);
     if (stored) return stored;
     const now = new Date().toISOString();
-    localStorage.setItem(SEEN_KEY, now);
+    localStorage.setItem(userSeenKey, now);
     return now;
   });
+
+  // Sync keys when authenticated user changes
+  useEffect(() => {
+    if (!user?.id) return;
+    const sKey = `synapse_activity_seen_${user.id}`;
+    const cKey = `synapse_activity_cleared_${user.id}`;
+    setClearedAt(localStorage.getItem(cKey) || "");
+    const stored = localStorage.getItem(sKey);
+    if (stored) {
+      setSeenAt(stored);
+    }
+  }, [user?.id]);
 
   const loadDashboard = () => {
     analyticsApi
@@ -79,7 +94,7 @@ export function Sidebar({ collapsed, onToggle }: Props) {
       .catch(() => {});
   };
 
-  // Fetch real study telemetry & activity items on mount
+  // Fetch real study telemetry & activity items on mount & user change
   useEffect(() => {
     loadDashboard();
 
@@ -97,7 +112,7 @@ export function Sidebar({ collapsed, onToggle }: Props) {
       window.removeEventListener("synapse:new-notification", onNewNotification);
       window.removeEventListener("synapse:refresh-activity", loadDashboard);
     };
-  }, []);
+  }, [user?.id]);
 
   // Filter out cleared items
   const activeActivity = useMemo(() => {
@@ -125,18 +140,19 @@ export function Sidebar({ collapsed, onToggle }: Props) {
 
   function markAllRead() {
     const now = new Date().toISOString();
-    localStorage.setItem(SEEN_KEY, now);
+    localStorage.setItem(userSeenKey, now);
     setSeenAt(now);
   }
 
   function handleClearAll() {
     const now = new Date().toISOString();
-    localStorage.setItem(CLEARED_KEY, now);
+    localStorage.setItem(userClearedKey, now);
     setClearedAt(now);
     setFilterOpen(false);
   }
 
   function handleRestoreAll() {
+    localStorage.removeItem(userClearedKey);
     localStorage.removeItem(CLEARED_KEY);
     setClearedAt("");
     loadDashboard();

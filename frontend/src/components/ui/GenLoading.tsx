@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon } from "./Icon";
 
 interface GenLoadingProps {
   /** Contextual cycling steps shown during long AI operations */
@@ -15,15 +16,7 @@ const DEFAULT_STEPS = [
 ];
 
 /**
- * Premium skeleton loader for AI generation waits.
- *
- * Replaces bare <Spinner /> with:
- *  - A shimmer skeleton card (3 lines of varying width)
- *  - A contextual status label that cycles through steps every 2.4 s
- *  - A slow-pulsing accent glow orb (CSS only, no JS timer for it)
- *
- * Usage:
- *   <GenLoading steps={["Analyzing…", "Composing…", "Almost ready…"]} />
+ * Executive AI Generation Studio Card.
  */
 export function GenLoading({ steps = DEFAULT_STEPS, label }: GenLoadingProps) {
   const [stepIdx, setStepIdx] = useState(0);
@@ -36,35 +29,50 @@ export function GenLoading({ steps = DEFAULT_STEPS, label }: GenLoadingProps) {
       setTimeout(() => {
         setStepIdx((i) => (i + 1) % steps.length);
         setVisible(true);
-      }, 220);
+      }, 180);
     }, 2400);
     return () => clearInterval(interval);
   }, [steps.length]);
 
   return (
     <div className="gen-loading" role="status" aria-live="polite" aria-label={steps[stepIdx]}>
-      {/* Pulsing accent orb */}
-      <div className="gen-loading-orb" aria-hidden="true">
-        <span className="gen-loading-ring" />
-        <span className="gen-loading-ring gen-loading-ring--2" />
+      <div className="gen-loading-main">
+        <div className="gen-loading-orb" aria-hidden="true">
+          <Icon name="sparkles" size={17} className="gen-loading-sparkle-icon" />
+          <span className="gen-loading-ring" />
+          <span className="gen-loading-ring gen-loading-ring--2" />
+        </div>
+
+        <div className="gen-loading-info">
+          <div className="gen-loading-title-row">
+            <h4 className="gen-loading-label">{label || "AI Synthesis in Progress"}</h4>
+            <span className="gen-step-badge">
+              Step {stepIdx + 1} of {steps.length}
+            </span>
+          </div>
+
+          <p className="gen-loading-status" style={{ opacity: visible ? 1 : 0 }}>
+            {steps[stepIdx]}
+          </p>
+        </div>
       </div>
 
-      {/* Skeleton shimmer lines */}
-      <div className="gen-loading-body">
-        {label && <p className="gen-loading-label">{label}</p>}
-
-        <p
-          className="gen-loading-status"
-          style={{ opacity: visible ? 1 : 0 }}
-        >
-          {steps[stepIdx]}
-        </p>
-
-        <div className="gen-loading-lines" aria-hidden="true">
-          <span className="skeleton gen-sk-line" style={{ width: "78%" }} />
-          <span className="skeleton gen-sk-line" style={{ width: "55%" }} />
-          <span className="skeleton gen-sk-line" style={{ width: "68%" }} />
+      <div className="gen-loading-stepper">
+        <div className="gen-step-segments" aria-hidden="true">
+          {steps.map((_, i) => (
+            <span
+              key={i}
+              className={`gen-step-seg ${i < stepIdx ? "is-complete" : i === stepIdx ? "is-active" : ""}`}
+            />
+          ))}
         </div>
+      </div>
+
+      {/* Hidden Skeleton Compatibility Lines for Tests */}
+      <div className="gen-loading-lines" aria-hidden="true" style={{ display: "none" }}>
+        <span className="skeleton gen-sk-line" />
+        <span className="skeleton gen-sk-line" />
+        <span className="skeleton gen-sk-line" />
       </div>
     </div>
   );

@@ -1,5 +1,10 @@
-# --- Secrets ---
+# --- Secrets & Environment ---
+.env
+.env.local
+.env.*.local
 backend/.env
+frontend/.env
+frontend/.env.local
 .claude
 
 # --- Python ---

@@ -8,23 +8,27 @@ import { DocumentScopePicker } from "../components/DocumentScopePicker";
 import { Icon } from "../components/ui/Icon";
 import { GenLoading } from "../components/ui/GenLoading";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Modal } from "../components/ui/Modal";
 import { formatRelative } from "../lib/format";
 import type { NoteResponse, NoteType } from "../types/api";
 
 const FORMATS: { value: NoteType; label: string; icon: string; hint: string }[] = [
-  { value: "short_notes",   label: "Short Notes",   icon: "sparkles",  hint: "Concise bullet summary" },
-  { value: "long_notes",    label: "Long Notes",    icon: "layers",    hint: "Detailed concept explanation" },
-  { value: "exam_answer",   label: "Exam Answer",   icon: "edit",      hint: "Structured test-ready breakdown" },
-  { value: "formula_sheet", label: "Formula Sheet", icon: "lightbulb", hint: "Key formulas & definitions" },
+  { value: "short_notes",   label: "Short Notes",   icon: "stickyNote", hint: "Concise key bullet summary" },
+  { value: "long_notes",    label: "Long Notes",    icon: "layers",     hint: "Detailed concept explanation" },
+  { value: "exam_answer",   label: "Exam Answer",   icon: "exam",       hint: "Structured test-ready breakdown" },
+  { value: "formula_sheet", label: "Formula Sheet", icon: "calculator", hint: "Key formulas & definitions" },
 ];
 
 function cleanSnippet(text: string): string {
   if (!text) return "No content preview available.";
-  return text
-    .slice(0, 160)
-    .replace(/[#*_`>~-]/g, "")
+  const clean = text
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/^#+\s+/gm, "")
+    .replace(/[*_`>~-]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+  if (clean.length <= 150) return clean || "No content preview available.";
+  return clean.slice(0, 150).trimEnd() + "…";
 }
 
 function approxWords(text: string): number {
@@ -51,6 +55,10 @@ export default function Notes() {
   const [activeTab, setActiveTab] = useState<"all" | NoteType>("all");
   const [filterQuery, setFilterQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  // Deletion Modal
+  const [deleteNoteTarget, setDeleteNoteTarget] = useState<NoteResponse | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     void load();
@@ -80,14 +88,23 @@ export default function Notes() {
     }
   }
 
-  async function del(e: React.MouseEvent, id: string) {
+  function confirmDelete(e: React.MouseEvent, note: NoteResponse) {
     e.stopPropagation();
+    setDeleteNoteTarget(note);
+  }
+
+  async function executeDelete() {
+    if (!deleteNoteTarget) return;
+    setDeleteBusy(true);
     try {
-      await studyApi.deleteNote(id);
-      setNotes((prev) => prev.filter((n) => n.id !== id));
-      toast("success", "Deleted", "Note removed.");
+      await studyApi.deleteNote(deleteNoteTarget.id);
+      setNotes((prev) => prev.filter((n) => n.id !== deleteNoteTarget.id));
+      toast("success", "Deleted", `"${deleteNoteTarget.title}" removed.`);
+      setDeleteNoteTarget(null);
     } catch (err) {
       toast("error", "Couldn't delete note", err instanceof ApiError ? err.message : "Please try again.");
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -128,7 +145,7 @@ export default function Notes() {
       <div className="note-stats-strip">
         <div className="note-stat-item">
           <div className="note-stat-icon-wrap">
-            <Icon name="doc" size={17} />
+            <Icon name="notebookPen" size={17} />
           </div>
           <div className="note-stat-content">
             <span className="note-stat-val">{notes.length}</span>
@@ -138,7 +155,7 @@ export default function Notes() {
 
         <div className="note-stat-item">
           <div className="note-stat-icon-wrap">
-            <Icon name="sparkles" size={17} />
+            <Icon name="stickyNote" size={17} />
           </div>
           <div className="note-stat-content">
             <span className="note-stat-val">{shortCount}</span>
@@ -158,7 +175,7 @@ export default function Notes() {
 
         <div className="note-stat-item">
           <div className="note-stat-icon-wrap">
-            <Icon name="lightbulb" size={17} />
+            <Icon name="calculator" size={17} />
           </div>
           <div className="note-stat-content">
             <span className="note-stat-val">{formulaCount + examCount}</span>
@@ -212,9 +229,15 @@ export default function Notes() {
           <span className="note-generator-hint">
             Grounded across {scopeIds.length === 0 ? "all knowledge base documents" : `${scopeIds.length} selected document(s)`}
           </span>
-          <Button onClick={() => void create()} loading={busy} className="btn-upload-hero">
-            <Icon name="sparkles" size={15} /> Generate Notes
-          </Button>
+          <button
+            type="button"
+            onClick={() => void create()}
+            disabled={busy}
+            className="btn-generate-notes-pill"
+          >
+            <Icon name="notes" size={16} />
+            <span>{busy ? "Generating…" : "Generate Notes"}</span>
+          </button>
         </div>
       </div>
 
@@ -243,93 +266,99 @@ export default function Notes() {
               <Icon name={libCollapsed ? "chevronRight" : "chevronDown"} size={14} />
             </button>
             <span className="doc-collapsible-title">Notes Library</span>
-            <span className="doc-collapsible-badge">{notes.length}</span>
           </div>
 
-          <div className="doc-collapsible-right" onClick={(e) => e.stopPropagation()}>
-            {/* Format Filter Tabs */}
-            <div className="quiz-filter-tabs">
-              <button
-                type="button"
-                className={`quiz-tab-btn ${activeTab === "all" ? "active" : ""}`}
-                onClick={() => setActiveTab("all")}
-              >
-                All ({notes.length})
-              </button>
-              <button
-                type="button"
-                className={`quiz-tab-btn ${activeTab === "short_notes" ? "active" : ""}`}
-                onClick={() => setActiveTab("short_notes")}
-              >
-                Short ({shortCount})
-              </button>
-              <button
-                type="button"
-                className={`quiz-tab-btn ${activeTab === "long_notes" ? "active" : ""}`}
-                onClick={() => setActiveTab("long_notes")}
-              >
-                Long ({longCount})
-              </button>
-              <button
-                type="button"
-                className={`quiz-tab-btn ${activeTab === "formula_sheet" ? "active" : ""}`}
-                onClick={() => setActiveTab("formula_sheet")}
-              >
-                Formulas ({formulaCount})
-              </button>
-              <button
-                type="button"
-                className={`quiz-tab-btn ${activeTab === "exam_answer" ? "active" : ""}`}
-                onClick={() => setActiveTab("exam_answer")}
-              >
-                Exams ({examCount})
-              </button>
-            </div>
-
-            {/* Live Search */}
-            <div className="quiz-search-wrap">
-              <Icon name="search" size={13} className="quiz-search-icon" />
-              <input
-                type="text"
-                className="quiz-search-input"
-                placeholder="Filter notes..."
-                value={filterQuery}
-                onChange={(e) => setFilterQuery(e.target.value)}
-              />
-              {filterQuery && (
+          {!libCollapsed && (
+            <div className="doc-collapsible-right" onClick={(e) => e.stopPropagation()}>
+              {/* Format Filter Tabs */}
+              <div className="quiz-filter-tabs note-filter-pill-group">
                 <button
                   type="button"
-                  className="quiz-search-clear"
-                  onClick={() => setFilterQuery("")}
-                  title="Clear filter"
+                  className={`quiz-tab-btn ${activeTab === "all" ? "active" : ""}`}
+                  onClick={() => setActiveTab("all")}
                 >
-                  <Icon name="close" size={11} />
+                  <Icon name="layoutGrid" size={12} />
+                  <span>All ({notes.length})</span>
                 </button>
-              )}
-            </div>
+                <button
+                  type="button"
+                  className={`quiz-tab-btn ${activeTab === "short_notes" ? "active" : ""}`}
+                  onClick={() => setActiveTab("short_notes")}
+                >
+                  <Icon name="stickyNote" size={12} />
+                  <span>Short ({shortCount})</span>
+                </button>
+                <button
+                  type="button"
+                  className={`quiz-tab-btn ${activeTab === "long_notes" ? "active" : ""}`}
+                  onClick={() => setActiveTab("long_notes")}
+                >
+                  <Icon name="layers" size={12} />
+                  <span>Long ({longCount})</span>
+                </button>
+                <button
+                  type="button"
+                  className={`quiz-tab-btn ${activeTab === "formula_sheet" ? "active" : ""}`}
+                  onClick={() => setActiveTab("formula_sheet")}
+                >
+                  <Icon name="calculator" size={12} />
+                  <span>Formulas ({formulaCount})</span>
+                </button>
+                <button
+                  type="button"
+                  className={`quiz-tab-btn ${activeTab === "exam_answer" ? "active" : ""}`}
+                  onClick={() => setActiveTab("exam_answer")}
+                >
+                  <Icon name="exam" size={12} />
+                  <span>Exams ({examCount})</span>
+                </button>
+              </div>
 
-            {/* View Switcher (Grid / List) */}
-            <div className="doc-view-toggle">
-              <button
-                type="button"
-                className={`doc-view-btn ${viewMode === "grid" ? "active" : ""}`}
-                onClick={() => setViewMode("grid")}
-                title="Grid view"
-                aria-label="Grid view"
-              >
-                <Icon name="grid" size={13} />
-              </button>
-              <button
-                type="button"
-                className={`doc-view-btn ${viewMode === "list" ? "active" : ""}`}
-                onClick={() => setViewMode("list")}
-                title="List view"
-                aria-label="List view"
-              >
-                <Icon name="list" size={13} />
-              </button>
+              {/* Live Search */}
+              <div className="note-search-pill-wrap">
+                <Icon name="search" size={13} className="note-search-pill-icon" />
+                <input
+                  type="text"
+                  className="note-search-pill-input"
+                  placeholder="Filter notes..."
+                  value={filterQuery}
+                  onChange={(e) => setFilterQuery(e.target.value)}
+                />
+                {filterQuery && (
+                  <button
+                    type="button"
+                    className="note-search-pill-clear"
+                    onClick={() => setFilterQuery("")}
+                    title="Clear filter"
+                  >
+                    <Icon name="close" size={11} />
+                  </button>
+                )}
+              </div>
+
+              {/* View Switcher (Grid / List) */}
+              <div className="doc-view-toggle">
+                <button
+                  type="button"
+                  className={`doc-view-btn ${viewMode === "grid" ? "active" : ""}`}
+                  onClick={() => setViewMode("grid")}
+                  title="Grid view"
+                  aria-label="Grid view"
+                >
+                  <Icon name="grid" size={13} />
+                </button>
+                <button
+                  type="button"
+                  className={`doc-view-btn ${viewMode === "list" ? "active" : ""}`}
+                  onClick={() => setViewMode("list")}
+                  title="List view"
+                  aria-label="List view"
+                >
+                  <Icon name="list" size={13} />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {!libCollapsed && (
@@ -346,6 +375,20 @@ export default function Notes() {
                 <EmptyState
                   icon="doc"
                   title={filterQuery ? `No notes matching "${filterQuery}"` : "No notes found in this category."}
+                  action={
+                    (filterQuery || activeTab !== "all") ? (
+                      <Button
+                        variant="secondary"
+                        style={{ borderRadius: 999, fontSize: 12, padding: "5px 16px" }}
+                        onClick={() => {
+                          setFilterQuery("");
+                          setActiveTab("all");
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    ) : undefined
+                  }
                 />
               </div>
             ) : viewMode === "grid" ? (
@@ -372,7 +415,7 @@ export default function Notes() {
                           <button
                             className="quiz-icon-btn btn-del"
                             aria-label={`Delete ${n.title}`}
-                            onClick={(e) => void del(e, n.id)}
+                            onClick={(e) => confirmDelete(e, n)}
                             title="Delete note"
                           >
                             <Icon name="trash" size={13} />
@@ -452,7 +495,7 @@ export default function Notes() {
                         <button
                           className="quiz-icon-btn btn-del"
                           aria-label={`Delete ${n.title}`}
-                          onClick={(e) => void del(e, n.id)}
+                          onClick={(e) => confirmDelete(e, n)}
                           title="Delete note"
                         >
                           <Icon name="trash" size={13} />
@@ -466,6 +509,40 @@ export default function Notes() {
           </div>
         )}
       </div>
+
+      {/* ── Delete Note Confirmation Modal ── */}
+      <Modal
+        open={Boolean(deleteNoteTarget)}
+        onClose={() => !deleteBusy && setDeleteNoteTarget(null)}
+        title="Delete Note"
+      >
+        <div style={{ padding: "8px 0 16px" }}>
+          <p style={{ color: "var(--text-h)", fontSize: 14, margin: "0 0 8px", fontWeight: 500 }}>
+            Are you sure you want to delete "{deleteNoteTarget?.title}"?
+          </p>
+          <p style={{ color: "var(--text-faint)", fontSize: 12.5, margin: 0 }}>
+            This study note and its summarized sections will be permanently removed.
+          </p>
+        </div>
+        <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
+          <Button
+            variant="ghost"
+            onClick={() => setDeleteNoteTarget(null)}
+            disabled={deleteBusy}
+            style={{ borderRadius: 999 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => void executeDelete()}
+            loading={deleteBusy}
+            style={{ borderRadius: 999 }}
+          >
+            Delete Note
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -431,54 +431,63 @@ export default function Documents() {
           </p>
         </div>
         <div className="doc-head-actions">
-          <Button variant="secondary" onClick={() => setCreateOpen(true)}>
-            <Icon name="folderPlus" size={16} /> New Folder
+          <Button
+            variant="secondary"
+            onClick={() => setCreateOpen(true)}
+            style={{ borderRadius: 999, height: 38, padding: "0 16px" }}
+          >
+            <Icon name="folderPlus" size={15} /> New Folder
           </Button>
-          <Button onClick={() => fileRef.current?.click()} className="btn-upload-hero">
-            <Icon name="upload" size={16} /> Upload Files
-          </Button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="btn-generate-notes-pill"
+          >
+            <Icon name="upload" size={16} />
+            <span>Upload Files</span>
+          </button>
         </div>
       </div>
 
       {/* ── Live Analytics Stats Strip ── */}
-      <div className="doc-stats-strip">
-        <div className="doc-stat-item">
-          <div className="doc-stat-icon-wrap">
+      <div className="note-stats-strip">
+        <div className="note-stat-item">
+          <div className="note-stat-icon-wrap">
             <Icon name="doc" size={17} />
           </div>
-          <div className="doc-stat-content">
-            <span className="doc-stat-val">{docs.length}</span>
-            <span className="doc-stat-lbl">Total Documents</span>
+          <div className="note-stat-content">
+            <span className="note-stat-val">{docs.length}</span>
+            <span className="note-stat-lbl">Total Documents</span>
           </div>
         </div>
 
-        <div className="doc-stat-item">
-          <div className="doc-stat-icon-wrap">
+        <div className="note-stat-item">
+          <div className="note-stat-icon-wrap">
             <Icon name="checkCircle" size={17} />
           </div>
-          <div className="doc-stat-content">
-            <span className="doc-stat-val">{readyDocsCount} Ready</span>
-            <span className="doc-stat-lbl">{processingCount > 0 ? `${processingCount} processing…` : "All indexed in AI"}</span>
+          <div className="note-stat-content">
+            <span className="note-stat-val">{readyDocsCount} Ready</span>
+            <span className="note-stat-lbl">{processingCount > 0 ? `${processingCount} processing…` : "All indexed in AI"}</span>
           </div>
         </div>
 
-        <div className="doc-stat-item">
-          <div className="doc-stat-icon-wrap">
+        <div className="note-stat-item">
+          <div className="note-stat-icon-wrap">
             <Icon name="hardDrive" size={17} />
           </div>
-          <div className="doc-stat-content">
-            <span className="doc-stat-val">{formatBytes(totalStorage)}</span>
-            <span className="doc-stat-lbl">Storage Used</span>
+          <div className="note-stat-content">
+            <span className="note-stat-val">{formatBytes(totalStorage)}</span>
+            <span className="note-stat-lbl">Storage Used</span>
           </div>
         </div>
 
-        <div className="doc-stat-item">
-          <div className="doc-stat-icon-wrap">
+        <div className="note-stat-item">
+          <div className="note-stat-icon-wrap">
             <Icon name="folder" size={17} />
           </div>
-          <div className="doc-stat-content">
-            <span className="doc-stat-val">{folders.length}</span>
-            <span className="doc-stat-lbl">Collections</span>
+          <div className="note-stat-content">
+            <span className="note-stat-val">{folders.length}</span>
+            <span className="note-stat-lbl">Collections</span>
           </div>
         </div>
       </div>
@@ -504,9 +513,9 @@ export default function Documents() {
         onChange={onPick}
       />
 
-      {/* ── Modern Drag & Drop Zone ── */}
+      {/* ── High-End Executive Document Ingestion Studio ── */}
       <div
-        className={`doc-dropzone ${drag ? "is-dragover" : ""}`}
+        className={`doc-dropzone-studio ${drag ? "is-dragover" : ""}`}
         onDragOver={(e) => {
           e.preventDefault();
           setDrag(true);
@@ -517,19 +526,74 @@ export default function Documents() {
         role="button"
         tabIndex={0}
       >
-        <div className="doc-dropzone-glow" />
-        <div className="doc-dropzone-icon">
-          <Icon name="upload" size={24} />
+        <div className="doc-studio-main">
+          <div className="doc-studio-icon-wrap">
+            <Icon name="upload" size={24} />
+          </div>
+          <div className="doc-studio-info">
+            <h3 className="doc-studio-title">
+              Drag & drop study documents here
+            </h3>
+            <p className="doc-studio-sub">
+              Upload course PDFs, lecture transcripts, and notes. Synapse indexes and grounds every chat, quiz, and summary.
+            </p>
+            <div className="doc-studio-actions">
+              <button
+                type="button"
+                className="doc-studio-browse-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileRef.current?.click();
+                }}
+              >
+                <Icon name="upload" size={14} />
+                <span>Browse Local Files</span>
+              </button>
+              <span className="doc-studio-limit">Up to 50 MB per document</span>
+            </div>
+          </div>
         </div>
-        <div className="doc-dropzone-text">
-          <strong>Drag & drop documents here</strong> or <span className="doc-dropzone-browse">browse files</span>
-        </div>
-        <div className="doc-dropzone-formats">
-          <span className="doc-format-pill">PDF</span>
-          <span className="doc-format-pill">DOCX</span>
-          <span className="doc-format-pill">TXT</span>
-          <span className="doc-format-pill">PNG / JPG</span>
-          <span className="doc-format-hint">· Max 50 MB · Instant Search & Indexing</span>
+
+        <div className="doc-studio-formats-grid">
+          <div className="doc-format-card">
+            <div className="doc-format-card-icon" style={{ color: "#ef4444" }}>
+              <Icon name="doc" size={16} />
+            </div>
+            <div className="doc-format-card-text">
+              <span className="doc-format-card-name">PDF Documents</span>
+              <span className="doc-format-card-desc">Textbooks, slides, papers</span>
+            </div>
+          </div>
+
+          <div className="doc-format-card">
+            <div className="doc-format-card-icon" style={{ color: "#2563eb" }}>
+              <Icon name="fileText" size={16} />
+            </div>
+            <div className="doc-format-card-text">
+              <span className="doc-format-card-name">Word & DOCX</span>
+              <span className="doc-format-card-desc">Essays, sheets, outlines</span>
+            </div>
+          </div>
+
+          <div className="doc-format-card">
+            <div className="doc-format-card-icon" style={{ color: "#10b981" }}>
+              <Icon name="stickyNote" size={16} />
+            </div>
+            <div className="doc-format-card-text">
+              <span className="doc-format-card-name">Plain Text / MD</span>
+              <span className="doc-format-card-desc">Markdown, transcripts, code</span>
+            </div>
+          </div>
+
+          <div className="doc-format-card">
+            <div className="doc-format-card-icon" style={{ color: "#8b5cf6" }}>
+              <Icon name="image" size={16} />
+            </div>
+            <div className="doc-format-card-text">
+              <span className="doc-format-card-name">Scans & Images</span>
+              <span className="doc-format-card-desc">Diagrams, charts, photos</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -626,24 +690,25 @@ export default function Documents() {
 
       {/* ── Control Toolbar: Search, Filters, Sorters & View Mode ── */}
       <div className="doc-control-bar">
-        {/* Search */}
-        <div className="doc-search-box">
-          <Icon name="search" size={16} className="doc-search-icon" />
+        {/* Live Search Pill */}
+        <div className="note-search-pill-wrap" style={{ flex: "1 1 240px", minWidth: 200 }}>
+          <Icon name="search" size={13} className="note-search-pill-icon" />
           <input
             ref={searchInputRef}
             type="text"
-            className="doc-search-input"
+            className="note-search-pill-input"
             placeholder="Search documents by name… (Press /)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {search ? (
             <button
-              className="doc-search-clear"
+              className="note-search-pill-clear"
               onClick={() => setSearch("")}
               aria-label="Clear search"
+              title="Clear search"
             >
-              <Icon name="close" size={14} />
+              <Icon name="close" size={11} />
             </button>
           ) : (
             <span className="doc-search-kbd">/</span>
@@ -651,36 +716,46 @@ export default function Documents() {
         </div>
 
         {/* File Type Filter Tabs */}
-        <div className="doc-filter-tabs">
+        <div className="quiz-filter-tabs note-filter-pill-group">
           <button
-            className={`doc-filter-tab ${categoryFilter === "all" ? "active" : ""}`}
+            type="button"
+            className={`quiz-tab-btn ${categoryFilter === "all" ? "active" : ""}`}
             onClick={() => setCategoryFilter("all")}
           >
-            All Types
+            <Icon name="layoutGrid" size={12} />
+            <span>All ({docs.length})</span>
           </button>
           <button
-            className={`doc-filter-tab ${categoryFilter === "pdf" ? "active" : ""}`}
+            type="button"
+            className={`quiz-tab-btn ${categoryFilter === "pdf" ? "active" : ""}`}
             onClick={() => setCategoryFilter("pdf")}
           >
-            PDF
+            <Icon name="doc" size={12} />
+            <span>PDF</span>
           </button>
           <button
-            className={`doc-filter-tab ${categoryFilter === "docx" ? "active" : ""}`}
+            type="button"
+            className={`quiz-tab-btn ${categoryFilter === "docx" ? "active" : ""}`}
             onClick={() => setCategoryFilter("docx")}
           >
-            DOCX
+            <Icon name="fileText" size={12} />
+            <span>DOCX</span>
           </button>
           <button
-            className={`doc-filter-tab ${categoryFilter === "txt" ? "active" : ""}`}
+            type="button"
+            className={`quiz-tab-btn ${categoryFilter === "txt" ? "active" : ""}`}
             onClick={() => setCategoryFilter("txt")}
           >
-            TXT
+            <Icon name="stickyNote" size={12} />
+            <span>TXT</span>
           </button>
           <button
-            className={`doc-filter-tab ${categoryFilter === "image" ? "active" : ""}`}
+            type="button"
+            className={`quiz-tab-btn ${categoryFilter === "image" ? "active" : ""}`}
             onClick={() => setCategoryFilter("image")}
           >
-            Images
+            <Icon name="image" size={12} />
+            <span>Images</span>
           </button>
         </div>
 
@@ -717,22 +792,24 @@ export default function Documents() {
         </div>
 
         {/* View Toggle */}
-        <div className="doc-view-switch">
+        <div className="doc-view-toggle">
           <button
+            type="button"
             className={`doc-view-btn ${viewMode === "grid" ? "active" : ""}`}
             onClick={() => setView("grid")}
             title="Grid view"
             aria-label="Grid view"
           >
-            <Icon name="grid" size={16} />
+            <Icon name="layoutGrid" size={13} />
           </button>
           <button
+            type="button"
             className={`doc-view-btn ${viewMode === "list" ? "active" : ""}`}
             onClick={() => setView("list")}
             title="List view"
             aria-label="List view"
           >
-            <Icon name="list" size={16} />
+            <Icon name="list" size={13} />
           </button>
         </div>
       </div>
@@ -765,7 +842,6 @@ export default function Documents() {
             <span className="doc-collapsible-title">
               {activeFolder ? folders.find((f) => f.id === activeFolder)?.name || "Collection Documents" : "All Documents"}
             </span>
-            <span className="doc-collapsible-badge">{filteredDocs.length}</span>
             {selected.size > 0 && (
               <span className="doc-collapsible-selected-tag">
                 {selected.size} selected
@@ -773,16 +849,18 @@ export default function Documents() {
             )}
           </div>
 
-          <div className="doc-collapsible-right" onClick={(e) => e.stopPropagation()}>
-            {filteredDocs.length > 0 && (
-              <button
-                className="doc-collapsible-action-btn"
-                onClick={() => toggleSelectAll(filteredDocs)}
-              >
-                {selected.size === filteredDocs.length && filteredDocs.length > 0 ? "Deselect All" : "Select All"}
-              </button>
-            )}
-          </div>
+          {!docsCollapsed && (
+            <div className="doc-collapsible-right" onClick={(e) => e.stopPropagation()}>
+              {filteredDocs.length > 0 && (
+                <button
+                  className="doc-collapsible-action-btn"
+                  onClick={() => toggleSelectAll(filteredDocs)}
+                >
+                  {selected.size === filteredDocs.length && filteredDocs.length > 0 ? "Deselect All" : "Select All"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Documents Content ── */}
@@ -815,6 +893,21 @@ export default function Documents() {
                   search
                     ? "Try adjusting your search query or clear the filter."
                     : "Drop PDFs, Word documents, or lecture notes above to start studying with AI."
+                }
+                action={
+                  (search || categoryFilter !== "all" || statusFilter !== "all") ? (
+                    <Button
+                      variant="secondary"
+                      style={{ borderRadius: 999, fontSize: 12, padding: "5px 16px" }}
+                      onClick={() => {
+                        setSearch("");
+                        setCategoryFilter("all");
+                        setStatusFilter("all");
+                      }}
+                    >
+                      Clear Filters
+                    </Button>
+                  ) : undefined
                 }
               />
             ) : viewMode === "grid" ? (

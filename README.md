@@ -23,7 +23,7 @@
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.115.5-009688.svg" alt="FastAPI 0.115.5" /></a>  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16-336791.svg" alt="PostgreSQL 16" /></a>
   <a href="https://www.trychroma.com/"><img src="https://img.shields.io/badge/ChromaDB-0.6.3-ff6b6b.svg" alt="ChromaDB 0.6.3" /></a>
   <a href="#-quality--performance"><img src="https://img.shields.io/badge/Lighthouse-desktop%20100%20%7C%20mobile%2095%E2%80%9399-brightgreen.svg" alt="Lighthouse scores" /></a>
-  <a href="#-testing"><img src="https://img.shields.io/badge/tests-23%20backend%20%2B%2048%20frontend-brightgreen.svg" alt="Test count" /></a>
+  <a href="#-testing"><img src="https://img.shields.io/badge/tests-35%20backend%20%2B%2040%20frontend-brightgreen.svg" alt="Test count" /></a>
   <a href="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml"><img src="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://img.shields.io/github/last-commit/manav-2812/Synapse"><img src="https://img.shields.io/github/last-commit/manav-2812/Synapse.svg" alt="Last Commit" /></a>
   <a href="https://img.shields.io/github/commit-activity/m/manav-2812/Synapse"><img src="https://img.shields.io/github/commit-activity/m/manav-2812/Synapse.svg" alt="Commit Activity" /></a>
@@ -89,6 +89,7 @@ The system is built around two non-negotiable design goals:
 - **Multi-format Ingestion** — PDF, DOCX, TXT, and scanned PNG/JPG with OCR support (Tesseract with vision-LLM fallback).
 - **Background Processing Pipeline** — parse → clean → chunk → embed → index, with live status polling and cancelable uploads.
 - **Hybrid Retrieval** — dense semantic search (ChromaDB) blended with sparse BM25 keyword matching via Reciprocal Rank Fusion (RRF). Configurable weights swept by the evaluation harness.
+- **Live Web Search Fallback (Tavily)** — automatic live web search grounding when uploaded documents lack sufficient context to answer a query.
 
 ### Conversational Study & Notes
 - **Streaming Chat with Grounded Citations** — token-by-token streaming via Server-Sent Events (SSE) with interactive source citations.
@@ -714,7 +715,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```powershell
 cd frontend
 npm install
-cp .env.example .env           # set VITE_API_BASE_URL if needed (defaults to http://localhost:8000)
+cp .env.example .env           # set VITE_API_BASE_URL if needed (defaults to http://localhost:8000/api/v1)
 npm run dev                    # → http://localhost:5173
 ```
 
@@ -780,10 +781,10 @@ README for the current status.
 
 ```bash
 # Backend — pytest (real Postgres + real Chroma + real embeddings)
-cd backend && pytest                 # 23 passed, 0 failures, 0 warnings
+cd backend && pytest                 # 35 passed, 0 failures, 0 warnings
 
 # Frontend — Vitest unit/component (api client, hooks, UI primitives)
-cd frontend && npm test              # 38 passed
+cd frontend && npm test              # 40 passed across 12 test files
 
 # Frontend — Playwright e2e (signup → upload → chat citation → flashcard → quiz → analytics)
 cd frontend && npm run test:e2e      # 10 passed (against the real stack + live LLM)
@@ -926,9 +927,15 @@ Required values must be set; the rest have sensible defaults.
 |----------|:---:|-------------|
 | `DATABASE_URL` | ✅ | `postgresql+asyncpg://user:pass@host:5432/synapse` |
 | `JWT_SECRET_KEY` | ✅ | Signs access/refresh tokens (≥ 32 random chars) |
-| `GROQ_API_KEY` | ✅ | Primary LLM |
-| `GEMINI_API_KEY` | | Second fallback LLM |
+| `GROQ_API_KEY` | ✅ | Primary LLM provider |
+| `GEMINI_API_KEY` | | Second fallback LLM provider |
 | `OPENROUTER_API_KEY` | | Third fallback LLM (Free Models Router / Nemotron) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | | Google OAuth 2.0 credentials for social sign-in |
+| `GOOGLE_REDIRECT_URI` | | Google OAuth redirect URI (default `http://localhost:5173/auth/callback/google`) |
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | | Microsoft Entra ID credentials for social sign-in |
+| `MICROSOFT_TENANT_ID` / `MICROSOFT_REDIRECT_URI` | | Microsoft OAuth tenant (default `common`) and redirect URI |
+| `TAVILY_API_KEY` | | Tavily search API key for live web search fallback |
+| `WEB_SEARCH_MAX_RESULTS` | | Max Tavily search results injected into context (default `5`) |
 | `CHROMA_PERSIST_PATH` | | Vector store dir (default `./chroma_db`) |
 | `STORAGE_PATH` | | Uploaded-file dir (default `./storage`) |
 | `ALLOWED_ORIGINS` | | CORS allow-list (must include the frontend origin) |
@@ -950,9 +957,13 @@ Required values must be set; the rest have sensible defaults.
 
 **Frontend** (`frontend/.env`):
 
-| Variable | Description |
-|----------|-------------|
-| `VITE_API_BASE_URL` | API base URL, inlined at build time |
+| Variable | Required | Description |
+|----------|:---:|-------------|
+| `VITE_API_BASE_URL` | ✅ | API base URL (must include `/api/v1`, e.g. `http://localhost:8000/api/v1`) |
+| `VITE_GOOGLE_CLIENT_ID` | | Google OAuth Client ID for social login button |
+| `VITE_GOOGLE_REDIRECT_URI` | | Google OAuth callback URL (default `http://localhost:5173/auth/callback/google`) |
+| `VITE_MICROSOFT_CLIENT_ID` | | Microsoft OAuth Client ID for social login button |
+| `VITE_MICROSOFT_REDIRECT_URI` | | Microsoft OAuth callback URL (default `http://localhost:5173/auth/callback/microsoft`) |
 
 ---
 

@@ -16,13 +16,13 @@ interface Props {
 export function StatValue({ value, loading, format }: Props) {
   const isNumeric = typeof value === "number";
   const target = isNumeric ? (value as number) : 0;
-  const [animated, ref] = useCountUp(target);
+  const animated = useCountUp(target);
 
   if (loading) return <Skeleton height="30px" />;
   if (!isNumeric) return <div className="stat-value">{value}</div>;
 
   return (
-    <div className="stat-value" ref={ref}>
+    <div className="stat-value">
       {format ? format(animated) : animated}
     </div>
   );

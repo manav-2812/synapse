@@ -61,26 +61,27 @@ class AnalyticsService:
         user = await UserRepository(self.session).get_by_id(user_id)
         goal = user.daily_study_goal_minutes if user else 30
 
-        # --- Weekly activity chart (Mon..Sun of the current calendar week) ---
+        # --- Weekly activity chart (Sun..Sat of the current calendar week) ---
         # Source of truth: the per-day StudyActivity table (minutes studied per
-        # UTC day). Everything else is derived from it so the chart total, the
-        # trend badge, and the value line all agree.
+        # UTC day). Aligns with the Sun..Sat calendar and heatmap.
         activity_by_day = {r.date: r.minutes for r in activity}
-        this_monday = today - timedelta(days=today.weekday())
-        last_monday = this_monday - timedelta(days=7)
-        this_sunday = this_monday + timedelta(days=6)
-        weekday_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        days_since_sunday = (today.weekday() + 1) % 7
+        this_sunday_start = today - timedelta(days=days_since_sunday)
+        last_sunday_start = this_sunday_start - timedelta(days=7)
+        this_saturday_end = this_sunday_start + timedelta(days=6)
+        last_saturday_end = last_sunday_start + timedelta(days=6)
+        weekday_labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
         weekly_by_day = []
         for i in range(7):
-            d = this_monday + timedelta(days=i)
+            d = this_sunday_start + timedelta(days=i)
             weekly_by_day.append(
                 {"date": d.isoformat(), "weekday": weekday_labels[i],
                  "minutes": activity_by_day.get(d, 0)}
             )
         this_week_minutes = sum(b["minutes"] for b in weekly_by_day)
         last_week_minutes = sum(
-            activity_by_day.get(last_monday + timedelta(days=i), 0) for i in range(7)
+            activity_by_day.get(last_sunday_start + timedelta(days=i), 0) for i in range(7)
         )
 
         # --- Metric trends: this calendar week vs the previous one ---
@@ -90,10 +91,10 @@ class AnalyticsService:
                 if getattr(it, "created_at", None) and start <= it.created_at.date() <= end
             )
 
-        documents_tw = count_in_window(docs, this_monday, this_sunday)
-        documents_lw = count_in_window(docs, last_monday, this_monday - timedelta(days=1))
-        quizzes_tw = count_in_window(quizzes, this_monday, this_sunday)
-        quizzes_lw = count_in_window(quizzes, last_monday, this_monday - timedelta(days=1))
+        documents_tw = count_in_window(docs, this_sunday_start, this_saturday_end)
+        documents_lw = count_in_window(docs, last_sunday_start, last_saturday_end)
+        quizzes_tw = count_in_window(quizzes, this_sunday_start, this_saturday_end)
+        quizzes_lw = count_in_window(quizzes, last_sunday_start, last_saturday_end)
 
         # Questions asked = user chat messages, counted week-over-week.
         msg_res = await self.session.execute(
@@ -104,11 +105,11 @@ class AnalyticsService:
         user_msg_dates = [row[0] for row in msg_res.all()]
         questions_tw = sum(
             1 for dt in user_msg_dates
-            if dt and this_monday <= dt.date() <= this_sunday
+            if dt and this_sunday_start <= dt.date() <= this_saturday_end
         )
         questions_lw = sum(
             1 for dt in user_msg_dates
-            if dt and last_monday <= dt.date() <= this_monday - timedelta(days=1)
+            if dt and last_sunday_start <= dt.date() <= last_saturday_end
         )
 
         # Avg quiz score week-over-week (None when a week has no scored quizzes).
@@ -120,8 +121,8 @@ class AnalyticsService:
             ]
             return (sum(scores) / len(scores)) if scores else None
 
-        score_tw = avg_score_in_window(quizzes, this_monday, this_sunday)
-        score_lw = avg_score_in_window(quizzes, last_monday, this_monday - timedelta(days=1))
+        score_tw = avg_score_in_window(quizzes, this_sunday_start, this_saturday_end)
+        score_lw = avg_score_in_window(quizzes, last_sunday_start, last_saturday_end)
 
         # Per-document quiz performance (scope[0] is the primary document).
         doc_names = {str(d.id): d.original_filename for d in docs}

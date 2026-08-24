@@ -7,6 +7,7 @@ export interface EvalRunItem {
   question: string;
   expected_answer: string;
   expected_documents: string[];
+  source_document_name?: string;
   retrieved_documents: string[];
   precision_at_k: number;
   recall_at_k: number;

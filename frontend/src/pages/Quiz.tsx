@@ -315,44 +315,44 @@ export default function Quiz() {
       {mode === "list" && (
         <>
           {/* ── Top Metrics / Stats Strip ── */}
-          <div className="quiz-stats-strip">
-            <div className="quiz-stat-card">
-              <div className="quiz-stat-icon">
+          <div className="note-stats-strip">
+            <div className="note-stat-item">
+              <div className="note-stat-icon-wrap">
                 <Icon name="quiz" size={17} />
               </div>
-              <div className="quiz-stat-info">
-                <span className="quiz-stat-value">{stats.totalQuizzes}</span>
-                <span className="quiz-stat-label">Total Quizzes</span>
+              <div className="note-stat-content">
+                <span className="note-stat-val">{stats.totalQuizzes}</span>
+                <span className="note-stat-lbl">Total Quizzes</span>
               </div>
             </div>
 
-            <div className="quiz-stat-card">
-              <div className="quiz-stat-icon" style={{ color: "var(--accent)" }}>
+            <div className="note-stat-item">
+              <div className="note-stat-icon-wrap">
                 <Icon name="checkCircle" size={17} />
               </div>
-              <div className="quiz-stat-info">
-                <span className="quiz-stat-value">{stats.completedCount}</span>
-                <span className="quiz-stat-label">Attempted</span>
+              <div className="note-stat-content">
+                <span className="note-stat-val">{stats.completedCount}</span>
+                <span className="note-stat-lbl">Attempted</span>
               </div>
             </div>
 
-            <div className="quiz-stat-card">
-              <div className="quiz-stat-icon" style={{ color: "#f59e0b" }}>
+            <div className="note-stat-item">
+              <div className="note-stat-icon-wrap">
                 <Icon name="target" size={17} />
               </div>
-              <div className="quiz-stat-info">
-                <span className="quiz-stat-value">{stats.avgScore !== null ? `${stats.avgScore}%` : "—"}</span>
-                <span className="quiz-stat-label">Avg Accuracy</span>
+              <div className="note-stat-content">
+                <span className="note-stat-val">{stats.avgScore !== null ? `${stats.avgScore}%` : "—"}</span>
+                <span className="note-stat-lbl">Avg Accuracy</span>
               </div>
             </div>
 
-            <div className="quiz-stat-card">
-              <div className="quiz-stat-icon" style={{ color: "var(--text-muted)" }}>
+            <div className="note-stat-item">
+              <div className="note-stat-icon-wrap">
                 <Icon name="layers" size={17} />
               </div>
-              <div className="quiz-stat-info">
-                <span className="quiz-stat-value">{stats.totalQuestions}</span>
-                <span className="quiz-stat-label">Questions</span>
+              <div className="note-stat-content">
+                <span className="note-stat-val">{stats.totalQuestions}</span>
+                <span className="note-stat-lbl">Questions</span>
               </div>
             </div>
           </div>
@@ -483,9 +483,15 @@ export default function Quiz() {
                   ? "Grounded across all knowledge base documents"
                   : `Grounded in ${scopeIds.length} selected document${scopeIds.length > 1 ? "s" : ""}`}
               </span>
-              <Button onClick={() => void generate()} loading={busy} className="btn-generate-quiz">
-                Generate Quiz
-              </Button>
+              <button
+                type="button"
+                onClick={() => void generate()}
+                disabled={busy}
+                className="btn-generate-notes-pill"
+              >
+                <Icon name="quiz" size={16} />
+                <span>{busy ? "Generating…" : "Generate Quiz"}</span>
+              </button>
             </div>
           </div>
 
@@ -520,42 +526,63 @@ export default function Quiz() {
                   <Icon name={isQuizzesCollapsed ? "chevronRight" : "chevronDown"} size={14} />
                 </button>
                 <span className="doc-collapsible-title">Your Quizzes</span>
-                <span className="doc-collapsible-badge">{filteredQuizzes.length}</span>
               </div>
 
               {!isQuizzesCollapsed && (
                 <div className="doc-collapsible-right" onClick={(e) => e.stopPropagation()}>
-                  <div className="quiz-filter-chips">
-                    {["all", "easy", "medium", "hard"].map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        className={`quiz-filter-chip ${diffFilter === d ? "active" : ""}`}
-                        onClick={() => setDiffFilter(d)}
-                      >
-                        {d.charAt(0).toUpperCase() + d.slice(1)}
-                      </button>
-                    ))}
+                  <div className="quiz-filter-tabs note-filter-pill-group">
+                    <button
+                      type="button"
+                      className={`quiz-tab-btn ${diffFilter === "all" ? "active" : ""}`}
+                      onClick={() => setDiffFilter("all")}
+                    >
+                      <Icon name="layoutGrid" size={12} />
+                      <span>All ({quizzes.length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`quiz-tab-btn ${diffFilter === "easy" ? "active" : ""}`}
+                      onClick={() => setDiffFilter("easy")}
+                    >
+                      <span className="quiz-diff-dot diff-easy" />
+                      <span>Easy</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`quiz-tab-btn ${diffFilter === "medium" ? "active" : ""}`}
+                      onClick={() => setDiffFilter("medium")}
+                    >
+                      <span className="quiz-diff-dot diff-medium" />
+                      <span>Medium</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`quiz-tab-btn ${diffFilter === "hard" ? "active" : ""}`}
+                      onClick={() => setDiffFilter("hard")}
+                    >
+                      <span className="quiz-diff-dot diff-hard" />
+                      <span>Hard</span>
+                    </button>
                   </div>
 
-                  <div className="doc-search-box" style={{ width: 180, minWidth: "unset", padding: "4px 8px" }}>
-                    <Icon name="search" size={13} className="doc-search-icon" />
+                  <div className="note-search-pill-wrap">
+                    <Icon name="search" size={13} className="note-search-pill-icon" />
                     <input
                       type="text"
                       placeholder="Filter quizzes…"
                       value={quizSearch}
                       onChange={(e) => setQuizSearch(e.target.value)}
-                      className="doc-search-input"
-                      style={{ fontSize: 12 }}
+                      className="note-search-pill-input"
                     />
                     {quizSearch && (
                       <button
                         type="button"
-                        className="doc-search-clear"
+                        className="note-search-pill-clear"
                         onClick={() => setQuizSearch("")}
                         aria-label="Clear quiz filter"
+                        title="Clear search"
                       >
-                        <Icon name="close" size={12} />
+                        <Icon name="close" size={11} />
                       </button>
                     )}
                   </div>
@@ -577,8 +604,22 @@ export default function Quiz() {
                   <div className="quiz-empty-wrap">
                     <EmptyState
                       icon="search"
-                      title={`No quizzes matching "${quizSearch}"`}
+                      title={quizSearch ? `No quizzes matching "${quizSearch}"` : "No quizzes found in this filter."}
                       hint="Try adjusting your search query or difficulty filter."
+                      action={
+                        (quizSearch || diffFilter !== "all") ? (
+                          <Button
+                            variant="secondary"
+                            style={{ borderRadius: 999, fontSize: 12, padding: "5px 16px" }}
+                            onClick={() => {
+                              setQuizSearch("");
+                              setDiffFilter("all");
+                            }}
+                          >
+                            Clear Filters
+                          </Button>
+                        ) : undefined
+                      }
                     />
                   </div>
                 ) : (

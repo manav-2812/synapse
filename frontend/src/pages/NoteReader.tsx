@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { studyApi } from "../api/study";
 import { ApiError } from "../api/client";
 import { useToast } from "../hooks/useToast";
@@ -33,27 +35,63 @@ function renderMarkdownWithAnchors(text: string): { html: string; toc: TocItem[]
     if (inOl) { html.push("</ol>"); inOl = false; }
   };
 
-  const inline = (s: string) =>
-    s
+  const inline = (s: string) => {
+    let res = s
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.+?)\*/g,   "<em>$1</em>")
       .replace(/`([^`]+)`/g,   "<code>$1</code>")
       .replace(/__(.*?)__/g,   "<strong>$1</strong>");
 
-  for (const raw of lines) {
+    // Automatically bold leading terms before colons in list items e.g. "Users Table: description"
+    res = res.replace(/^([A-Za-z0-9\s&—–/,-]{2,35}):\s+/i, (match, p1) => {
+      if (p1.includes("<strong")) return match;
+      return `<strong>${p1}:</strong> `;
+    });
+
+    return res;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trimEnd();
-    const h1 = line.match(/^#\s+(.+)/);
-    const h2 = line.match(/^##\s+(.+)/);
-    const h3 = line.match(/^###\s+(.+)/);
-    if (h1 || h2 || h3) {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
       closeLists();
-      const level = h1 ? 1 : h2 ? 2 : 3;
-      const text2 = (h1 ?? h2 ?? h3)![1].trim();
-      const id = `heading-${++headingCount}-${text2.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`;
-      toc.push({ id, level, text: text2.replace(/\*/g, "") });
-      html.push(`<h${level} id="${id}" class="nc-h${level}">${inline(text2)}</h${level}>`);
+      html.push('<div class="nc-gap"></div>');
       continue;
     }
+
+    if (/^---+$/.test(trimmed)) {
+      closeLists();
+      html.push('<hr class="nc-hr" />');
+      continue;
+    }
+
+    // 1. Explicit Markdown Headings #, ##, ###, ####
+    const hMatch = line.match(/^(#{1,4})\s+(.+)/);
+    if (hMatch) {
+      closeLists();
+      const level = Math.min(3, hMatch[1].length);
+      const text2 = hMatch[2].trim().replace(/\*\*/g, "");
+      const id = `heading-${++headingCount}-${text2.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`;
+      toc.push({ id, level, text: text2 });
+      html.push(`<h${level} id="${id}" class="nc-h${level}">${inline(hMatch[2].trim())}</h${level}>`);
+      continue;
+    }
+
+    // 2. Standalone bold heading: **Heading Title**
+    const boldHeadingMatch = trimmed.match(/^\*\*([^*]+)\*\*:?$/);
+    if (boldHeadingMatch) {
+      closeLists();
+      const text2 = boldHeadingMatch[1].trim();
+      const id = `heading-${++headingCount}-${text2.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`;
+      toc.push({ id, level: 2, text: text2 });
+      html.push(`<h2 id="${id}" class="nc-h2">${text2}</h2>`);
+      continue;
+    }
+
+    // 3. Ordered list item: 1. Item
     const ol = line.match(/^\d+\.\s+(.+)/);
     if (ol) {
       if (inUl) { html.push("</ul>"); inUl = false; }
@@ -61,16 +99,39 @@ function renderMarkdownWithAnchors(text: string): { html: string; toc: TocItem[]
       html.push(`<li>${inline(ol[1])}</li>`);
       continue;
     }
-    const ul = line.match(/^[-*]\s+(.+)/);
+
+    // 4. Unordered list item: - Item or * Item or • Item
+    const ul = line.match(/^[-*•]\s+(.+)/);
     if (ul) {
       if (inOl) { html.push("</ol>"); inOl = false; }
       if (!inUl) { html.push('<ul class="nc-ul">'); inUl = true; }
       html.push(`<li>${inline(ul[1])}</li>`);
       continue;
     }
+
+    // 5. Implicit Section Header (e.g. "Database Design Overview" followed by a list, < 65 chars, no period at end)
+    const nextLine = lines[i + 1] ? lines[i + 1].trim() : "";
+    const isNextList = nextLine.startsWith("-") || nextLine.startsWith("*") || nextLine.startsWith("•") || /^\d+\./.test(nextLine);
+    const isHeadingLike =
+      trimmed.length >= 3 &&
+      trimmed.length <= 65 &&
+      !trimmed.endsWith(".") &&
+      !trimmed.endsWith(",") &&
+      !trimmed.startsWith("-") &&
+      !trimmed.startsWith("*") &&
+      (isNextList || (i > 0 && lines[i - 1].trim() === ""));
+
+    if (isHeadingLike) {
+      closeLists();
+      const text2 = trimmed.replace(/:$/, "").replace(/\*\*/g, "");
+      const id = `heading-${++headingCount}-${text2.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`;
+      toc.push({ id, level: 2, text: text2 });
+      html.push(`<h2 id="${id}" class="nc-h2">${inline(trimmed)}</h2>`);
+      continue;
+    }
+
+    // 6. Normal Paragraph
     closeLists();
-    if (/^---+$/.test(line)) { html.push('<hr class="nc-hr" />'); continue; }
-    if (line.trim() === "")  { html.push('<div class="nc-gap"></div>'); continue; }
     html.push(`<p class="nc-p">${inline(line)}</p>`);
   }
   closeLists();
@@ -85,6 +146,7 @@ export default function NoteReader() {
   const [note,    setNote]    = useState<NoteResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied,  setCopied]  = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const [editOpen,    setEditOpen]    = useState(false);
   const [editTitle,   setEditTitle]   = useState("");
@@ -134,7 +196,7 @@ export default function NoteReader() {
     });
   }
 
-  function handleDownload() {
+  function handleDownloadMarkdown() {
     if (!note) return;
     const safeTitle = note.title.replace(/[/\\?%*:|"<>]/g, "_").trim() || "Notes";
     const header = `# ${note.title}\n*Generated by Synapse on ${new Date().toLocaleDateString()}*\n\n---\n\n`;
@@ -148,6 +210,186 @@ export default function NoteReader() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast("success", "Downloaded", `Saved ${safeTitle}.md`);
+  }
+
+  function handleDownloadDocx() {
+    if (!note) return;
+    const safeTitle = note.title.replace(/[/\\?%*:|"<>]/g, "_").trim() || "Notes";
+    const dateStr = formatDate(note.created_at.toString());
+    const typeLabel = TYPES.find((t) => t.value === note.note_type)?.label ?? note.note_type;
+
+    const wordHtml = `<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+  <meta charset="utf-8">
+  <title>${note.title}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    body {
+      font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.65;
+      color: #1a1a1a;
+      margin: 1in;
+    }
+    h1 {
+      font-size: 22pt;
+      color: #1e3a8a;
+      margin-bottom: 6pt;
+      font-weight: bold;
+    }
+    .doc-meta {
+      font-size: 10pt;
+      color: #6b7280;
+      margin-bottom: 18pt;
+      border-bottom: 1pt solid #e5e7eb;
+      padding-bottom: 8pt;
+    }
+    h2 {
+      font-size: 14pt;
+      color: #111827;
+      margin-top: 18pt;
+      margin-bottom: 6pt;
+      font-weight: bold;
+    }
+    h3 {
+      font-size: 12pt;
+      color: #2563eb;
+      margin-top: 12pt;
+      margin-bottom: 4pt;
+      font-weight: bold;
+    }
+    p {
+      margin-top: 0;
+      margin-bottom: 8pt;
+      text-align: justify;
+    }
+    ul, ol {
+      margin-top: 4pt;
+      margin-bottom: 10pt;
+      padding-left: 24pt;
+    }
+    li {
+      margin-bottom: 4pt;
+      text-align: justify;
+    }
+    strong {
+      color: #0f172a;
+      font-weight: bold;
+    }
+    code {
+      font-family: Consolas, 'Courier New', monospace;
+      background-color: #f1f5f9;
+      padding: 2pt 4pt;
+      font-size: 9.5pt;
+    }
+  </style>
+</head>
+<body>
+  <h1>${note.title}</h1>
+  <div class="doc-meta">
+    <strong>Type:</strong> ${typeLabel} &nbsp;|&nbsp; 
+    <strong>Generated by:</strong> Synapse AI Study Assistant &nbsp;|&nbsp; 
+    <strong>Date:</strong> ${dateStr} &nbsp;|&nbsp; 
+    <strong>Word Count:</strong> ${wordCount} words
+  </div>
+  <div>
+    ${html}
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob(['\ufeff' + wordHtml], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeTitle}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast("success", "DOCX Downloaded", `Saved ${safeTitle}.docx`);
+  }
+
+  async function handleDownloadPdf() {
+    if (!note || !contentRef.current) return;
+    setDownloadingPdf(true);
+    toast("info", "Generating PDF…", "Preparing your document for download.");
+
+    try {
+      const safeTitle = note.title.replace(/[/\\?%*:|"<>]/g, "_").trim() || "Notes";
+      const element = contentRef.current;
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        onclone: (clonedDoc) => {
+          const printHeader = clonedDoc.querySelector(".nr-print-header") as HTMLElement | null;
+          if (printHeader) {
+            printHeader.style.display = "block";
+            printHeader.style.marginBottom = "24px";
+            printHeader.style.paddingBottom = "14px";
+            printHeader.style.borderBottom = "2px solid #e5e7eb";
+          }
+          const canvasEl = clonedDoc.querySelector(".nr-paper-canvas") as HTMLElement | null;
+          if (canvasEl) {
+            canvasEl.style.boxShadow = "none";
+            canvasEl.style.border = "none";
+            canvasEl.style.padding = "40px 48px";
+            canvasEl.style.color = "#111827";
+            canvasEl.style.backgroundColor = "#ffffff";
+          }
+          const contentEls = clonedDoc.querySelectorAll(".nr-document-content, .nc-p, .nc-ul li, .nc-ol li, .nc-h1, .nc-h2, .nc-h3");
+          contentEls.forEach((el) => {
+            const h = el as HTMLElement;
+            h.style.color = "#111827";
+            h.style.opacity = "1";
+          });
+        },
+      });
+
+      const imgWidth = 595.28; // A4 pt width
+      const pageHeight = 841.89; // A4 pt height
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "a4",
+      });
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.98), "JPEG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+      heightLeft -= pageHeight;
+
+      // Add subsequent pages if note spans multiple pages
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.98), "JPEG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`${safeTitle}.pdf`);
+      toast("success", "PDF Downloaded", `Saved ${safeTitle}.pdf`);
+    } catch (err) {
+      toast("error", "PDF Generation Failed", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setDownloadingPdf(false);
+    }
   }
 
   function openEdit() {
@@ -221,17 +463,38 @@ export default function NoteReader() {
         </div>
 
         <div className="nr-topbar-actions">
-          <button className="action-pill-btn btn-copy" onClick={handleCopy} title="Copy as Markdown">
-            <Icon name={copied ? "check" : "copy"} size={14} />
-            <span>{copied ? "Copied!" : "Copy"}</span>
+          <button
+            className="action-pill-btn btn-pdf"
+            onClick={() => void handleDownloadPdf()}
+            disabled={downloadingPdf}
+            title="Download full note as PDF file"
+          >
+            <Icon name="download" size={14} />
+            <span>{downloadingPdf ? "Generating…" : "PDF"}</span>
           </button>
-          <button className="action-pill-btn btn-markdown" onClick={handleDownload} title="Download .md file">
+          <button
+            className="action-pill-btn btn-word"
+            onClick={handleDownloadDocx}
+            title="Download full note as Microsoft Word document (.docx)"
+          >
+            <Icon name="download" size={14} />
+            <span>DOCX</span>
+          </button>
+          <button
+            className="action-pill-btn btn-markdown"
+            onClick={handleDownloadMarkdown}
+            title="Download full note as Markdown (.md) file"
+          >
             <Icon name="download" size={14} />
             <span>Markdown</span>
           </button>
-          <button className="action-pill-btn btn-print" onClick={() => window.print()} title="Print or Save as PDF">
-            <Icon name="print" size={14} />
-            <span>Print / PDF</span>
+          <button
+            className="action-pill-btn btn-copy"
+            onClick={handleCopy}
+            title="Copy formatted markdown text"
+          >
+            <Icon name={copied ? "check" : "copy"} size={14} />
+            <span>{copied ? "Copied!" : "Copy"}</span>
           </button>
           
           <div className="nr-actions-divider" />
