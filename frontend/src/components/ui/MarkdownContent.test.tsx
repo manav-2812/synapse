@@ -40,8 +40,8 @@ describe("MarkdownContent", () => {
     );
     const pills = container.querySelectorAll(".md-cite-pill");
     expect(pills.length).toBe(2);
-    expect(pills[0].textContent).toBe("[Source 1]");
-    expect(pills[1].textContent).toBe("[2]");
+    expect(pills[0].textContent).toBe("Source 1");
+    expect(pills[1].textContent).toBe("Source 2");
   });
 
   it("converts citation tags inside list items into styled pills", () => {
@@ -52,8 +52,8 @@ describe("MarkdownContent", () => {
     );
     const pills = container.querySelectorAll(".md-cite-pill");
     expect(pills.length).toBe(2);
-    expect(pills[0].textContent).toBe("[Source 3]");
-    expect(pills[1].textContent).toBe("[4]");
+    expect(pills[0].textContent).toBe("Source 3");
+    expect(pills[1].textContent).toBe("Source 4");
   });
 
   it("renders inline code and fenced code blocks", () => {

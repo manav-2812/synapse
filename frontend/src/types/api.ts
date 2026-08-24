@@ -133,6 +133,8 @@ export interface ChatRequest {
   message: string;
   conversation_id?: string | null;
   document_scope?: string[] | null;
+  /** When true, skip document retrieval and use Tavily web search directly. */
+  web_mode?: boolean;
 }
 export interface SourceResponse {
   document_id: string | null;
@@ -141,6 +143,12 @@ export interface SourceResponse {
   chunk_text: string;
   page_number: number | null;
   score: number | null;
+  /** "document" = from ChromaDB/BM25; "web" = from Tavily. Default: "document". */
+  source_type?: "document" | "web";
+  // Web-only fields (populated when source_type === "web")
+  web_url?: string | null;
+  web_title?: string | null;
+  web_published_date?: string | null;
 }
 export interface MessageResponse {
   id: string;

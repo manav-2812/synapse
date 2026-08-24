@@ -21,6 +21,7 @@ alembic==1.14.0
 # --- Auth & security ---
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
+webauthn==3.0.0
 
 # --- Rate limiting ---
 slowapi==0.1.9
@@ -51,6 +52,9 @@ python-json-logger==2.0.7      # fallback JSON logger
 
 # --- CORS / HTTP utils ---
 httpx==0.27.2                  # async HTTP client (used in tests and LLM fallback)
+
+# --- Web search ---
+tavily-python==0.5.1           # Tavily search SDK for web-fallback retrieval
 
 # ============================================================
 # Development / testing (not needed in production image)

@@ -116,6 +116,15 @@ export default function Profile() {
     return s;
   }, [newPassword]);
 
+  // Pace descriptor for goal
+  const goalPace = useMemo(() => {
+    if (goal <= 0) return { label: "Paused", tag: " Inactive Goal" };
+    if (goal < 20) return { label: "Sprint", tag: " Quick Sprint" };
+    if (goal < 45) return { label: "Focused", tag: " Focused Practice" };
+    if (goal < 75) return { label: "Intensive", tag: " Power Study" };
+    return { label: "Mastery", tag: " Deep Mastery" };
+  }, [goal]);
+
   const strengthLabels = ["Very weak", "Weak", "Fair", "Good", "Strong"];
   const strengthColors = ["#ef4444", "#f97316", "#eab308", "#3b82f6", "#22c55e"];
 
@@ -227,15 +236,6 @@ export default function Profile() {
       setPwBusy(false);
     }
   }
-
-  // Pace descriptor for goal
-  const goalPace = useMemo(() => {
-    if (goal <= 0) return { label: "Paused", tag: "💤 Inactive Goal" };
-    if (goal < 20) return { label: "Sprint", tag: "⚡ Quick Sprint" };
-    if (goal < 45) return { label: "Focused", tag: "🎯 Focused Practice" };
-    if (goal < 75) return { label: "Intensive", tag: "🚀 Power Study" };
-    return { label: "Mastery", tag: "🔥 Deep Mastery" };
-  }, [goal]);
 
   return (
     <div className="profile-pg rise">

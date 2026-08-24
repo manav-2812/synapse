@@ -77,9 +77,12 @@ def main():
             "--reload"
         ]
         
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
         backend_proc = subprocess.Popen(
             backend_cmd,
             cwd=str(BACKEND_DIR),
+            env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

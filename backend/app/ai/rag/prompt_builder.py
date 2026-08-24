@@ -124,6 +124,21 @@ SYSTEM_INSTRUCTIONS = (
     "no object syntax whatsoever."
 )
 
+# System prompt used when the answer is grounded in live web search results.
+WEB_SYSTEM_INSTRUCTIONS = (
+    "You are Synapse, an AI study assistant with live web search access. "
+    "The user has requested to answer this question using live WEB SEARCH RESULTS. "
+    "Rules:\n"
+    "1. Answer the question comprehensively, clearly, and accurately using the provided WEB SEARCH RESULTS.\n"
+    "2. Every key factual claim should be supported by referencing the relevant exact [Source N] marker.\n"
+    "3. Structure your response clearly with concise explanations, bullet points, and bold terms where helpful.\n"
+    "4. Answer the actual question in the very first sentence.\n"
+    "5. NEVER say 'the uploaded notes do not contain' or mention uploaded documents when answering from the web.\n"
+    "6. If the search results do not cover a specific detail, state what is known from the results accurately.\n"
+    "7. NEVER output <think> tags, chain-of-thought reasoning, or meta-commentary. Your response must be the final answer only.\n"
+    "8. NEVER output raw JSON or code blocks unless specifically requested."
+)
+
 
 def _format_context(chunks: list[dict]) -> str:
     if not chunks:
@@ -132,6 +147,21 @@ def _format_context(chunks: list[dict]) -> str:
     for i, c in enumerate(chunks, 1):
         loc = f" (page {c['page_number']})" if c.get("page_number") else ""
         parts.append(f"[Source {i}]{loc}:\n{c['text']}\n")
+    return "\n".join(parts)
+
+
+def _format_web_context(results: list) -> str:
+    """Format Tavily WebSearchResult objects for injection into the LLM prompt."""
+    if not results:
+        return "(No web search results were found.)\n"
+    parts = []
+    for i, r in enumerate(results, 1):
+        date_str = f" (published: {r.published_date})" if getattr(r, "published_date", None) else ""
+        parts.append(
+            f"[Source {i}] {r.title}{date_str}\n"
+            f"URL: {r.url}\n"
+            f"{r.content}\n"
+        )
     return "\n".join(parts)
 
 
@@ -152,6 +182,31 @@ def build_prompt(question: str, chunks: list[dict], history: list | None = None)
     """Return (system_prompt, user_prompt)."""
     context = _format_context(chunks)
     system = SYSTEM_INSTRUCTIONS + "\n\n--- NOTE EXCERPTS ---\n" + context
+
+    user = ""
+    history_text = _format_history(history or [])
+    if history_text:
+        user += "Previous conversation:\n" + history_text + "\n\n"
+    user += f"Student: {question}\nSynapse:"
+    return system, user
+
+
+def build_web_prompt(
+    question: str, web_results: list, history: list | None = None
+) -> tuple[str, str]:
+    """Return (system_prompt, user_prompt) for a web-search-grounded answer.
+
+    Parameters
+    ----------
+    question:
+        The raw user query.
+    web_results:
+        List of ``WebSearchResult`` objects from ``web_search_service.search()``.
+    history:
+        Conversation history (same as ``build_prompt``).
+    """
+    context = _format_web_context(web_results)
+    system = WEB_SYSTEM_INSTRUCTIONS + "\n\n--- WEB SEARCH RESULTS ---\n" + context
 
     user = ""
     history_text = _format_history(history or [])

@@ -1,9 +1,8 @@
 """Pydantic schemas for RAG chat."""
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
-
-
 
 
 class ChatRequest(BaseModel):
@@ -11,6 +10,14 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = None
     document_scope: list[str] | None = Field(
         default=None, description="Restrict retrieval to these document IDs."
+    )
+    web_mode: bool = Field(
+        default=False,
+        description=(
+            "When True, bypass document retrieval entirely and go straight to "
+            "web search. This is the manual override — the user explicitly wants "
+            "an answer from the public web regardless of their uploaded notes."
+        ),
     )
 
 
@@ -21,6 +28,12 @@ class SourceResponse(BaseModel):
     chunk_text: str
     page_number: int | None = None
     score: float | None = None
+    # "document" (default, from ChromaDB/BM25) or "web" (from Tavily)
+    source_type: Literal["document", "web"] = "document"
+    # Web-only fields — populated when source_type == "web"
+    web_url: str | None = None
+    web_title: str | None = None
+    web_published_date: str | None = None
 
 
 class MessageResponse(BaseModel):

@@ -21,15 +21,21 @@ from app.services.chat_service import ChatService
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
 
+from app.core.database import AsyncSessionLocal
+
 @router.post("/message", status_code=status.HTTP_200_OK)
 async def chat_message(
     payload: ChatRequest,
     current_user=Depends(get_current_user),
-    session: AsyncSession = Depends(get_db),
 ):
-    svc = ChatService(session)
+    async def event_generator():
+        async with AsyncSessionLocal() as session:
+            svc = ChatService(session)
+            async for chunk in svc.chat(payload, current_user.id):
+                yield chunk
+
     return StreamingResponse(
-        svc.chat(payload, current_user.id),
+        event_generator(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

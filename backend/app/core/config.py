@@ -106,6 +106,13 @@ class Settings(BaseSettings):
     # Set to 0.0 to disable (legacy behaviour — passes all retrieved chunks).
     relevance_threshold: float = 0.15
 
+    # Minimum score a chunk must reach for the retrieval to be considered
+    # "genuinely relevant" — i.e. the user's documents actually cover the topic.
+    # Used exclusively to decide whether to fall back to web search.
+    # Must be >= relevance_threshold. Increase this to trigger web fallback more
+    # aggressively; decrease it to rely more on documents.
+    web_fallback_threshold: float = 0.58
+
     # Chunking parameters. CHUNK_TOKENS should stay under the embedding model's
     # max_seq_length (all-MiniLM-L6-v2 = 256 tokens). CHUNK_OVERLAP provides
     # sentence-boundary continuity between adjacent chunks.
@@ -125,6 +132,13 @@ class Settings(BaseSettings):
     # In-memory response cache (LRU) max entries.
     response_cache_max_size: int = 256
     response_cache_ttl_seconds: int = 3600
+
+    # Web search (Tavily) — secondary retrieval source when document retrieval
+    # returns no relevant chunks above the relevance threshold.
+    # Set TAVILY_API_KEY to a non-empty value to enable web search.
+    tavily_api_key: str = ""
+    # Maximum number of Tavily results to include in the LLM context.
+    web_search_max_results: int = 5
 
     @property
     def avatars_path(self) -> str:

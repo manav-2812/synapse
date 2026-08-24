@@ -95,6 +95,7 @@ export const chatApi = {
       message: params.message,
       conversation_id: params.conversation_id || undefined,
       document_scope: params.document_scope || undefined,
+      web_mode: Boolean(params.web_mode),
     };
 
     async function doFetch(token: string | null): Promise<Response> {

@@ -198,10 +198,20 @@ async def retrieve(
     # If filtering removes everything, fall back to the single best chunk so
     # the LLM can still give an "I don't have enough info" answer grounded on
     # whatever was closest rather than a completely empty context.
+    # Mark it so callers can detect "nothing really matched" without re-checking
+    # the score themselves.
+    below_threshold_only = False
     if not filtered and merged:
         filtered = merged[:1]
+        below_threshold_only = True
 
     out = filtered[:top_k]
+
+    # Tag every chunk with whether this result set cleared the threshold, so
+    # chat_service can decide whether to fall back to web search.
+    if below_threshold_only:
+        for c in out:
+            c["below_threshold"] = True
 
     log.info(
         "retrieved_hybrid",
@@ -211,15 +221,21 @@ async def retrieve(
         total_candidates=len(merged),
         filtered_out=len(merged) - len(filtered),
         bm25_active=bool(bm25_norm),
+        below_threshold_only=below_threshold_only,
     )
     return out
 
 
 def relevant(chunks: list[dict], threshold: float | None = None) -> bool:
-    """True if at least one chunk clears the relevance threshold.
+    """True if at least one chunk genuinely clears the relevance threshold.
 
-    Uses ``settings.relevance_threshold`` by default (configurable via env var).
-    Pass an explicit ``threshold`` to override for a specific call site.
+    Uses ``settings.relevance_threshold`` by default.  Chunks tagged with
+    ``below_threshold=True`` by the retriever's last-resort fallback are
+    treated as non-relevant regardless of their score, so the web-search
+    fallback fires correctly when the corpus has no real match.
     """
     t = threshold if threshold is not None else settings.relevance_threshold
-    return any((c.get("score") or 0) >= t for c in chunks)
+    return any(
+        (c.get("score") or 0) >= t and not c.get("below_threshold")
+        for c in chunks
+    )

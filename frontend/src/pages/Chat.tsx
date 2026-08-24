@@ -25,6 +25,7 @@ import { DocumentScopePicker } from "../components/DocumentScopePicker";
 import { MarkdownContent } from "../components/ui/MarkdownContent";
 import { CitationChip } from "../components/CitationChip";
 import { MessageActionToolbar } from "../components/MessageActionToolbar";
+import { WebCitationChip } from "../components/WebCitationChip";
 import type {
   ConversationListItem,
   SourceResponse,
@@ -216,6 +217,7 @@ export default function Chat() {
   const [loadingConv, setLoadingConv] = useState(true);
   const [activeSource, setActiveSource] = useState<SourceResponse | null>(null);
   const [conversationsOpen, setConversationsOpen] = useState(true);
+  const [webMode, setWebMode] = useState(false);
 
   const [renamingConv, setRenamingConv] = useState<string | null>(null);
   const [convDraft, setConvDraft] = useState("");
@@ -773,6 +775,7 @@ export default function Chat() {
     if (!text || busy) return;
 
     const docScope = scopeIds;
+    const currentWebMode = webMode;
     const isNew = !activeId;
     const tempId = `temp-${Date.now()}`;
     const optimisticTitle = text.slice(0, 50) || "New Chat";
@@ -826,6 +829,7 @@ export default function Chat() {
           message: text,
           conversation_id: activeId || undefined,
           document_scope: docScope.length ? docScope : undefined,
+          web_mode: currentWebMode,
         },
         {
           onConversation: (convPayload) => {
@@ -1410,6 +1414,14 @@ export default function Chat() {
                         <span className="msg-sender-label">
                           {m.role === "user" ? "You" : "Synapse"}
                         </span>
+                        {m.role === "assistant" &&
+                          m.sources.length > 0 &&
+                          m.sources[0]?.source_type === "web" && (
+                            <span className="web-answer-badge" title="Answer sourced from the web, not your uploaded documents">
+                              <Icon name="externalLink" size={11} />
+                              Web
+                            </span>
+                          )}
                       </div>
                       {editingMsg === m.id ? (
                         <div className="msg-edit">
@@ -1456,13 +1468,21 @@ export default function Chat() {
                           </div>
                           {m.sources.length > 0 && (
                             <div className="source-chips">
-                              {m.sources.map((src, i) => (
-                                <CitationChip
-                                  key={i}
-                                  source={src}
-                                  onClick={() => setActiveSource(src)}
-                                />
-                              ))}
+                              {m.sources.map((src, i) =>
+                                src.source_type === "web" ? (
+                                  <WebCitationChip
+                                    key={i}
+                                    source={src}
+                                    index={i + 1}
+                                  />
+                                ) : (
+                                  <CitationChip
+                                    key={i}
+                                    source={src}
+                                    onClick={() => setActiveSource(src)}
+                                  />
+                                )
+                              )}
                             </div>
                           )}
                         </>
@@ -1529,7 +1549,7 @@ export default function Chat() {
                 />
 
                 <div className="composer-bottom-bar">
-                  {/* ── Left Side: Hybrid Search Button (styled like Chat/Cowork toggle) ── */}
+                  {/* ── Left Side: Hybrid Search Button + Web Search Toggle ── */}
                   <div className="composer-bottom-left">
                     <button
                       type="button"
@@ -1538,6 +1558,16 @@ export default function Chat() {
                     >
                       <Icon name="search" size={13} />
                       <span>Hybrid search</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`composer-web-pill-btn${webMode ? " active" : ""}`}
+                      title={webMode ? "Web search is on — click to turn off" : "Turn on web search to answer from the internet"}
+                      aria-pressed={webMode}
+                      onClick={() => setWebMode((v) => !v)}
+                    >
+                      <Icon name="externalLink" size={13} />
+                      <span>Web</span>
                     </button>
                   </div>
 

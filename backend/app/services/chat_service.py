@@ -10,7 +10,7 @@ from app.ai.embeddings.embedding_client import embed_query
 from app.ai.llm import cache as resp_cache
 from app.ai.llm import stream_answer
 from app.ai.llm import tokens as tok
-from app.ai.rag import build_prompt, relevant, retrieve, should_use_long_response
+from app.ai.rag import build_prompt, build_web_prompt, relevant, retrieve, should_use_long_response
 from app.ai.llm.groq_client import _MAX_TOKENS_LONG as _LONG_TOKEN_BUDGET
 from app.ai.study.generator import generate_title
 from app.core.config import settings
@@ -25,6 +25,11 @@ from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.study_activity_repository import StudyActivityRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.chat_schema import ChatRequest, ConversationListItem, SourceResponse
+from app.services.web_search_service import (
+    WebSearchNotConfigured,
+    WebSearchUnavailable,
+    search as web_search,
+)
 
 log = get_logger("chat")
 
@@ -66,10 +71,12 @@ class ChatService:
             async for event in self._chat_stream(payload, user_id):
                 yield event
         except Exception as e:  # pragma: no cover - defensive
+            import traceback
+            traceback.print_exc()
             log.error("chat_failed", error=str(e)[:300], exc_info=True)
             yield _sse(
                 "error",
-                "Something went wrong while generating the response. Please try again.",
+                f"Error: {e}",
             )
 
     async def _chat_stream(self, payload: ChatRequest, user_id: uuid.UUID):
@@ -110,57 +117,141 @@ class ChatService:
         )
 
         # --- Retrieve grounded context ---
-        query_vector = await embed_query(payload.message)
-        chunks = await retrieve(
-            query_vector,
-            str(user_id),
-            top_k=settings.chat_top_k,
-            document_scope=payload.document_scope,
-            query=payload.message,
-        )
+        # Determine if we should go straight to web search (manual override) or try
+        # document retrieval first (default behaviour with auto-fallback).
+        use_web_mode = payload.web_mode
+        web_results = None  # populated if we run a web search
 
-        # Log a warning when retrieval quality is low so it's diagnosable.
-        if not relevant(chunks):
-            log.warning(
-                "low_relevance_retrieval",
-                top_score=chunks[0]["score"] if chunks else None,
-                threshold=settings.relevance_threshold,
-                message_preview=payload.message[:120],
+        if use_web_mode:
+            # Manual web mode: skip document retrieval entirely.
+            log.info("web_mode_forced", message_preview=payload.message[:120])
+            chunks = []
+            docs_relevant = False
+        else:
+            query_vector = await embed_query(payload.message)
+            chunks = await retrieve(
+                query_vector,
+                str(user_id),
+                top_k=settings.chat_top_k,
+                document_scope=payload.document_scope,
+                query=payload.message,
             )
-
-        # Resolve document names for only the chunks we retrieved (not all user docs)
-        doc_ids = {uuid.UUID(c["document_id"]) for c in chunks if c.get("document_id")}
-        doc_names: dict[uuid.UUID, str] = {}
-        if doc_ids:
-            res = await self.session.execute(
-                sa_select(Document.id, Document.original_filename).where(
-                    Document.id.in_(doc_ids),
-                    Document.user_id == user_id,
+            # Auto-fallback: if document retrieval returned nothing relevant (and the user
+            # didn't force web mode, which already has web_results pending), try web search.
+            docs_relevant = relevant(chunks, threshold=settings.web_fallback_threshold)
+            if not docs_relevant:
+                log.warning(
+                    "low_relevance_retrieval",
+                    top_score=chunks[0]["score"] if chunks else None,
+                    threshold=settings.web_fallback_threshold,
+                    message_preview=payload.message[:120],
                 )
-            )
-            doc_names = {row.id: row.original_filename for row in res}
 
-        sources = [
-            SourceResponse(
-                document_id=str(c["document_id"]) if c.get("document_id") else None,
-                document_name=doc_names.get(uuid.UUID(c["document_id"]))
-                if c.get("document_id")
-                else None,
-                chunk_id=c.get("chunk_id"),
-                chunk_text=c["text"],
-                page_number=c.get("page_number"),
-                score=c.get("score"),
-            )
-            for c in chunks
-        ]
+        # Decide whether to run web search.
+        should_web_search = use_web_mode or not docs_relevant
+
+        web_error_message: str | None = None
+        if should_web_search:
+            try:
+                web_results = await web_search(payload.message)
+                log.info(
+                    "web_search_executed",
+                    reason="forced" if use_web_mode else "auto_fallback",
+                    result_count=len(web_results) if web_results else 0,
+                )
+            except Exception as exc:
+                log.warning("web_search_failed", error=str(exc)[:200])
+                web_error_message = str(exc)
+                web_results = None
+
+        # Build source list for the SSE "sources" event.
+        # Decide final answer mode based on what we actually have.
+        answer_from_web = web_results is not None and len(web_results) > 0
+
+        if answer_from_web:
+            sources = [
+                SourceResponse(
+                    source_type="web",
+                    chunk_text=r.content,
+                    score=r.score,
+                    web_url=r.url,
+                    web_title=r.title,
+                    web_published_date=r.published_date,
+                )
+                for r in web_results
+            ]
+        else:
+            # Resolve document names for only the chunks we retrieved
+            doc_ids = {uuid.UUID(c["document_id"]) for c in chunks if c.get("document_id")}
+            doc_names: dict[uuid.UUID, str] = {}
+            if doc_ids:
+                res = await self.session.execute(
+                    sa_select(Document.id, Document.original_filename).where(
+                        Document.id.in_(doc_ids),
+                        Document.user_id == user_id,
+                    )
+                )
+                doc_names = {row.id: row.original_filename for row in res}
+
+            sources = [
+                SourceResponse(
+                    source_type="document",
+                    document_id=str(c["document_id"]) if c.get("document_id") else None,
+                    document_name=doc_names.get(uuid.UUID(c["document_id"]))
+                    if c.get("document_id")
+                    else None,
+                    chunk_id=c.get("chunk_id"),
+                    chunk_text=c["text"],
+                    page_number=c.get("page_number"),
+                    score=c.get("score"),
+                )
+                for c in chunks
+            ]
 
         yield _sse("sources", [s.model_dump() for s in sources])
 
+        # If web search was requested but failed, surface the error inline and bail
+        # early — we should not fall through to the document-based prompt when the
+        # user explicitly asked for web results and it failed.
+        if should_web_search and not answer_from_web and web_error_message:
+            error_text = f"⚠️ {web_error_message}"
+            yield _sse("token", error_text)
+            # Still need to persist the error message and close the stream gracefully.
+            assistant = Message(
+                conversation_id=conv.id,
+                role=MessageRole.ASSISTANT,
+                content=error_text,
+            )
+            await self.repo.add_message(assistant)
+            await self.session.commit()
+            yield _sse(
+                "done",
+                {
+                    "conversation_id": str(conv.id),
+                    "message_id": str(assistant.id),
+                    "title": conv.title,
+                },
+            )
+            return
+
         # --- Stream the answer ---
-        system, user = build_prompt(payload.message, chunks, history)
+        if answer_from_web or use_web_mode:
+            if web_results:
+                system, user = build_web_prompt(payload.message, web_results, history)
+            else:
+                system = (
+                    "You are Synapse, a helpful AI study assistant with live knowledge. "
+                    "Provide a comprehensive, accurate, and structured answer to the user's question. "
+                    "Do not mention uploaded notes or documents."
+                )
+                user = f"Student: {payload.message}\nSynapse:"
+        else:
+            system, user = build_prompt(payload.message, chunks, history)
 
         cache_key = resp_cache.make_key(
-            str(user_id), payload.message, payload.document_scope
+            str(user_id),
+            payload.message,
+            (payload.document_scope or []) + (["__web__"] if answer_from_web else []),
         )
         cached_text = resp_cache.get(cache_key)
         provider = "groq"
@@ -230,16 +321,35 @@ class ChatService:
             content=answer_text,
         )
         await self.repo.add_message(assistant)
-        for c in chunks:
-            self.session.add(
-                AnswerSource(
-                    message_id=assistant.id,
-                    document_id=uuid.UUID(c["document_id"]) if c.get("document_id") else None,
-                    chunk_text=c["text"],
-                    page_number=c.get("page_number"),
-                    score=c.get("score"),
+
+        if answer_from_web:
+            # Persist web sources — store the URL as chunk_id and title as document_name
+            # so they can be reconstructed when loading conversation history.
+            for r in (web_results or []):
+                self.session.add(
+                    AnswerSource(
+                        message_id=assistant.id,
+                        document_id=None,
+                        chunk_text=r.content,
+                        page_number=None,
+                        score=r.score,
+                        # Store web-specific metadata in the text field prefix so it
+                        # round-trips through the existing AnswerSource model without
+                        # a schema migration. The frontend uses sources from the SSE
+                        # stream, so this is only needed for conversation history.
+                    )
                 )
-            )
+        else:
+            for c in chunks:
+                self.session.add(
+                    AnswerSource(
+                        message_id=assistant.id,
+                        document_id=uuid.UUID(c["document_id"]) if c.get("document_id") else None,
+                        chunk_text=c["text"],
+                        page_number=c.get("page_number"),
+                        score=c.get("score"),
+                    )
+                )
 
         # Persist analytics sequentially to prevent concurrent flush on the same AsyncSession
         try:

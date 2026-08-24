@@ -14685,6 +14685,7 @@ body {
 .msg-header {
   display: flex;
   align-items: center;
+  gap: 8px;
   margin-bottom: 6px;
   user-select: none;
 }
@@ -15003,6 +15004,130 @@ body {
 
 :root[data-theme="dark"] .composer-hybrid-pill-btn:hover {
   filter: brightness(1.1);
+}
+
+/* ── Web Search Toggle Pill — sits next to Hybrid search pill ── */
+.composer-web-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+:root[data-theme="dark"] .composer-web-pill-btn {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.composer-web-pill-btn:hover {
+  color: var(--text-h);
+  filter: brightness(0.97);
+}
+
+:root[data-theme="dark"] .composer-web-pill-btn:hover {
+  filter: brightness(1.1);
+  color: #fff;
+}
+
+/* Active (web mode is on) */
+.composer-web-pill-btn.active {
+  background: rgba(37, 99, 235, 0.09) !important;
+  border-color: #3b82f6 !important;
+  color: #2563eb !important;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25), 0 1px 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+:root[data-theme="dark"] .composer-web-pill-btn.active {
+  background: rgba(59, 130, 246, 0.18) !important;
+  border-color: #60a5fa !important;
+  color: #93c5fd !important;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3), 0 1px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ── Web answer badge (shown in msg-header when answer came from the web) ── */
+.web-answer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+:root[data-theme="dark"] .web-answer-badge {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ── Web citation chip badge ── */
+.web-sc-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  color: var(--text-muted);
+}
+
+.web-source-chip {
+  text-decoration: none !important;
+}
+.web-source-chip:hover {
+  text-decoration: none !important;
+}
+
+.web-chip-ext-icon {
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+.web-source-chip:hover .web-chip-ext-icon {
+  opacity: 0.9;
+}
+
+/* ── Web citation popover extras ── */
+.web-cp-url-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.web-cp-url {
+  font-size: 11px;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.web-cp-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  margin-top: 4px;
+  color: var(--text-faint);
+  font-size: 11px;
 }
 
 /* ── Right Controls: Document Scope, Model, Voice, Waveform, Send ── */
@@ -15757,6 +15882,7 @@ body {
 }
 
 .composer-hybrid-pill-btn,
+.composer-web-pill-btn,
 .composer-scope-wrapper .scope-trigger,
 .composer-model-pill {
   color: var(--text-faint) !important;
@@ -15768,6 +15894,16 @@ body {
   padding: 3px 8px;
   background: var(--surface-2);
   box-shadow: none;
+}
+
+.composer-web-pill-btn {
+  padding: 3px 8px;
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.composer-web-pill-btn.active {
+  color: var(--text-h) !important;
 }
 
 .composer-scope-wrapper .scope-trigger .scope-trigger-text,
