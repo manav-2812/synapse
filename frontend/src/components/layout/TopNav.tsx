@@ -153,27 +153,23 @@ export function TopNav({ title }: Props) {
                 onClick={closeAll}
                 aria-hidden="true"
               />
-              <div className="menu" role="menu">
-                <div className="menu-head">
-                  <div className="menu-name">{user?.full_name}</div>
-                  <div className="menu-email">{user?.email}</div>
-                </div>
+              <div className="sb-profile-popover sb-profile-popover--topnav" role="menu">
                 <button
-                  className="menu-item"
+                  className="sb-profile-pop-item"
                   role="menuitem"
                   onClick={() => {
                     closeAll();
                     navigate("/profile");
                   }}
                 >
-                  <Icon name="grid" size={15} /> Profile
+                  <span>Settings</span>
                 </button>
                 <button
-                  className="menu-item danger"
+                  className="sb-profile-pop-item"
                   role="menuitem"
                   onClick={() => void logout()}
                 >
-                  <Icon name="logout" size={15} /> Log out
+                  <span>Log out</span>
                 </button>
               </div>
             </>

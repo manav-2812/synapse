@@ -310,24 +310,32 @@ export function Sidebar({ collapsed, onToggle }: Props) {
 
           {/* Search Button / Pill */}
           {!inboxView && isSearch ? (
-            <NavLink
-              to="/search"
+            <button
+              type="button"
               className="sb-quick-home active"
-              title="Search"
-              onClick={() => setInboxView(false)}
+              title="Search (Ctrl+K)"
+              aria-label="Search"
+              onClick={() => {
+                setInboxView(false);
+                navigate("/search");
+              }}
             >
               <Icon name="search" size={16} />
               <span>Search</span>
-            </NavLink>
+            </button>
           ) : (
-            <NavLink
-              to="/search"
-              className="sb-quick-btn"
-              title="Search"
-              onClick={() => setInboxView(false)}
+            <button
+              type="button"
+              className={`sb-quick-btn${isSearch ? " active" : ""}`}
+              title="Search (Ctrl+K)"
+              aria-label="Search"
+              onClick={() => {
+                setInboxView(false);
+                navigate("/search");
+              }}
             >
               <Icon name="search" size={16} />
-            </NavLink>
+            </button>
           )}
         </div>
       </div>
@@ -672,30 +680,24 @@ export function Sidebar({ collapsed, onToggle }: Props) {
               <>
                 <div className="menu-backdrop" onClick={() => setProfileOpen(false)} aria-hidden="true" />
                 <div className="sb-profile-popover" role="menu">
-                  <div className="menu-head">
-                    <div className="menu-name">{user?.full_name || "User"}</div>
-                    <div className="menu-email">{user?.email}</div>
-                  </div>
                   <button
-                    className="menu-item"
+                    className="sb-profile-pop-item"
                     role="menuitem"
                     onClick={() => {
                       setProfileOpen(false);
                       navigate("/profile");
                     }}
                   >
-                    <Icon name="edit" size={15} />
-                    <span>Edit profile</span>
+                    <span>Settings</span>
                   </button>
                   <button
-                    className="menu-item danger"
+                    className="sb-profile-pop-item"
                     role="menuitem"
                     onClick={() => {
                       setProfileOpen(false);
                       setLogoutOpen(true);
                     }}
                   >
-                    <Icon name="logout" size={15} />
                     <span>Log out</span>
                   </button>
                 </div>

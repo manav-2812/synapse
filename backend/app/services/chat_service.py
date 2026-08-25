@@ -25,6 +25,7 @@ from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.study_activity_repository import StudyActivityRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.chat_schema import ChatRequest, ConversationListItem, SourceResponse
+from app.services.query_correction import correct_query
 from app.services.web_search_service import (
     WebSearchNotConfigured,
     WebSearchUnavailable,
@@ -100,7 +101,7 @@ class ChatService:
         user_msg = Message(
             conversation_id=conv.id,
             role=MessageRole.USER,
-            content=payload.message,
+            content=payload.message.replace("\x00", ""),
         )
         await self.repo.add_message(user_msg)
         await self.session.commit()
@@ -123,6 +124,28 @@ class ChatService:
         use_web_mode = payload.web_mode
         web_results = None  # populated if we run a web search
 
+        # Pre-process query for project-specific terms before retrieval
+        correction = correct_query(payload.message)
+        effective_query = correction.corrected_query if correction.was_corrected else payload.message
+
+        if correction.was_corrected:
+            log.info(
+                "query_preprocessed_for_retrieval",
+                original=payload.message,
+                corrected=effective_query,
+            )
+            yield _sse(
+                "correction",
+                {
+                    "original_query": payload.message,
+                    "corrected_query": effective_query,
+                    "corrections": [
+                        {"original": c.original, "corrected": c.corrected}
+                        for c in correction.corrections
+                    ],
+                },
+            )
+
         if use_web_mode:
             # Web Source mode: bypass document retrieval and query the live web directly.
             log.info("web_mode_forced", message_preview=payload.message[:120])
@@ -136,13 +159,13 @@ class ChatService:
                 explicit_insight=payload.insight_mode,
                 message_preview=payload.message[:120],
             )
-            query_vector = await embed_query(payload.message)
+            query_vector = await embed_query(effective_query)
             chunks = await retrieve(
                 query_vector,
                 str(user_id),
                 top_k=settings.chat_top_k,
                 document_scope=payload.document_scope,
-                query=payload.message,
+                query=effective_query,
             )
             docs_relevant = True
             should_web_search = False
@@ -315,7 +338,7 @@ class ChatService:
         assistant = Message(
             conversation_id=conv.id,
             role=MessageRole.ASSISTANT,
-            content=answer_text,
+            content=answer_text.replace("\x00", ""),
         )
         await self.repo.add_message(assistant)
 
@@ -327,7 +350,7 @@ class ChatService:
                     AnswerSource(
                         message_id=assistant.id,
                         document_id=None,
-                        chunk_text=r.content,
+                        chunk_text=r.content.replace("\x00", "") if getattr(r, "content", None) else "",
                         page_number=None,
                         score=r.score,
                         # Store web-specific metadata in the text field prefix so it
@@ -338,11 +361,12 @@ class ChatService:
                 )
         else:
             for c in chunks:
+                raw_chunk_text = c.get("text") or ""
                 self.session.add(
                     AnswerSource(
                         message_id=assistant.id,
                         document_id=uuid.UUID(c["document_id"]) if c.get("document_id") else None,
-                        chunk_text=c["text"],
+                        chunk_text=raw_chunk_text.replace("\x00", ""),
                         page_number=c.get("page_number"),
                         score=c.get("score"),
                     )

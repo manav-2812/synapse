@@ -46,6 +46,16 @@ export default function Flashcards() {
     scopeParam ? scopeParam.split(",").map((s) => s.trim()).filter(Boolean) : [],
   );
 
+  useEffect(() => {
+    const p = params.get("scope") || params.get("doc");
+    if (p) {
+      const ids = p.split(",").map((s) => s.trim()).filter(Boolean);
+      if (ids.length > 0) {
+        setScopeIds(ids);
+      }
+    }
+  }, [params]);
+
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [cardSearch, setCardSearch] = useState("");
   const [filterTab, setFilterTab] = useState<"all" | "due" | "learning" | "mastered">("all");
@@ -65,6 +75,49 @@ export default function Flashcards() {
     void load();
     void loadDue();
   }, []);
+
+  // Auto-launch focused study session when card_id or study=1 is present in URL
+  useEffect(() => {
+    if (cards.length === 0) return;
+
+    const cardIdParam = params.get("card_id");
+    const qParam = params.get("q") || params.get("topic");
+    const modeParam = params.get("mode");
+    const studyParam = params.get("study");
+
+    if (cardIdParam) {
+      const targetCard = cards.find((c) => c.id === cardIdParam);
+      if (targetCard) {
+        // Collect target card + any related cards from same document
+        const related = cards.filter(
+          (c) => c.id !== targetCard.id && c.document_id && c.document_id === targetCard.document_id
+        );
+        const deck = [targetCard, ...related];
+        startStudy(deck);
+        return;
+      }
+    }
+
+    if (qParam) {
+      setCardSearch(qParam);
+      const matches = cards.filter(
+        (c) =>
+          c.front.toLowerCase().includes(qParam.toLowerCase()) ||
+          c.back.toLowerCase().includes(qParam.toLowerCase())
+      );
+      if (matches.length > 0 && studyParam === "1") {
+        startStudy(matches);
+        return;
+      }
+    }
+
+    if (modeParam === "due" && studyParam === "1") {
+      const dueCards = cards.filter((c) => c.is_due);
+      if (dueCards.length > 0) {
+        startStudy(dueCards);
+      }
+    }
+  }, [cards, params]);
 
   // Keyboard shortcut listener for Study Mode
   useEffect(() => {
@@ -261,10 +314,19 @@ export default function Flashcards() {
     setExpandedBacks((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
+  function scrollToLibrary(tab?: "all" | "due" | "learning" | "mastered") {
+    if (tab) setFilterTab(tab);
+    setIsLibCollapsed(false);
+    const el = document.getElementById("flashcard-library-section");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   // Aggregate statistics
   const stats = useMemo(() => {
     const total = cards.length;
-    const dueCount = due.length;
+    const dueCount = due.length > 0 ? due.length : cards.filter((c) => c.is_due).length;
     const mastered = cards.filter((c) => c.repetitions >= 3 || c.interval_days >= 7).length;
     const learning = total - mastered;
     const easeAvg =
@@ -279,7 +341,10 @@ export default function Flashcards() {
   const filteredCards = useMemo(() => {
     let list = cards;
     if (filterTab === "due") {
-      list = due;
+      list = cards.filter((c) => c.is_due || due.some((d) => d.id === c.id));
+      if (list.length === 0 && due.length > 0) {
+        list = due;
+      }
     } else if (filterTab === "mastered") {
       list = list.filter((c) => c.repetitions >= 3 || c.interval_days >= 7);
     } else if (filterTab === "learning") {
@@ -309,9 +374,14 @@ export default function Flashcards() {
             </p>
           </div>
           {due.length > 0 && (
-            <Button variant="primary" className="btn-sm" style={{ borderRadius: 999, padding: "7px 18px" }} onClick={() => startStudy(due)}>
+            <button
+              type="button"
+              className="btn-generate-notes-pill"
+              style={{ height: 36, padding: "0 18px", fontSize: 12.5 }}
+              onClick={() => startStudy(due)}
+            >
               <Icon name="card" size={14} /> Study Due Cards ({due.length})
-            </Button>
+            </button>
           )}
         </div>
       )}
@@ -320,7 +390,14 @@ export default function Flashcards() {
         <>
           {/* ── Top Metrics / Stats Strip ── */}
           <div className="note-stats-strip">
-            <div className="note-stat-item">
+            <div
+              className="note-stat-item"
+              onClick={() => scrollToLibrary("all")}
+              title="Click to view all flashcards"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && scrollToLibrary("all")}
+            >
               <div className="note-stat-icon-wrap">
                 <Icon name="card" size={17} />
               </div>
@@ -330,8 +407,15 @@ export default function Flashcards() {
               </div>
             </div>
 
-            <div className="note-stat-item">
-              <div className="note-stat-icon-wrap" style={{ color: stats.dueCount > 0 ? "#ef4444" : undefined }}>
+            <div
+              className="note-stat-item"
+              onClick={() => scrollToLibrary("due")}
+              title="Click to view due flashcards"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && scrollToLibrary("due")}
+            >
+              <div className="note-stat-icon-wrap">
                 <Icon name="clock" size={17} />
               </div>
               <div className="note-stat-content">
@@ -340,7 +424,14 @@ export default function Flashcards() {
               </div>
             </div>
 
-            <div className="note-stat-item">
+            <div
+              className="note-stat-item"
+              onClick={() => scrollToLibrary("mastered")}
+              title="Click to view mastered flashcards"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && scrollToLibrary("mastered")}
+            >
               <div className="note-stat-icon-wrap">
                 <Icon name="target" size={17} />
               </div>
@@ -350,13 +441,20 @@ export default function Flashcards() {
               </div>
             </div>
 
-            <div className="note-stat-item">
+            <div
+              className="note-stat-item"
+              onClick={() => scrollToLibrary("learning")}
+              title="Click to view learning flashcards"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && scrollToLibrary("learning")}
+            >
               <div className="note-stat-icon-wrap">
                 <Icon name="layers" size={17} />
               </div>
               <div className="note-stat-content">
-                <span className="note-stat-val">{stats.easeAvg}</span>
-                <span className="note-stat-lbl">Ease Factor</span>
+                <span className="note-stat-val">{stats.learning}</span>
+                <span className="note-stat-lbl">Learning Cards</span>
               </div>
             </div>
           </div>
@@ -375,9 +473,14 @@ export default function Flashcards() {
                   </p>
                 </div>
               </div>
-              <Button variant="primary" style={{ borderRadius: 999, padding: "8px 22px" }} onClick={() => startStudy(due)}>
-                <Icon name="card" size={15} /> Start Review ({due.length})
-              </Button>
+              <button
+                type="button"
+                className="btn-generate-notes-pill"
+                style={{ height: 38, padding: "0 22px" }}
+                onClick={() => startStudy(due)}
+              >
+                <Icon name="card" size={15} /> <span>Start Review ({due.length})</span>
+              </button>
             </div>
           )}
 
@@ -514,7 +617,7 @@ export default function Flashcards() {
           )}
 
           {/* ── Flashcard Library Collapsible Card (Matching Documents & Quiz) ── */}
-          <div className={`doc-collapsible-box ${isLibCollapsed ? "is-collapsed" : ""}`}>
+          <div id="flashcard-library-section" className={`doc-collapsible-box ${isLibCollapsed ? "is-collapsed" : ""}`}>
             <div
               className="doc-collapsible-header"
               onClick={() => setIsLibCollapsed((c) => !c)}
@@ -615,13 +718,17 @@ export default function Flashcards() {
                   </div>
 
                   {cards.length > 0 && (
-                    <Button
-                      variant="secondary"
-                      style={{ borderRadius: 999, height: 38, padding: "0 16px" }}
+                    <button
+                      type="button"
+                      className="note-read-pill-btn"
+                      style={{ height: 38, padding: "0 18px" }}
                       onClick={() => startStudy(filteredCards)}
                     >
-                      <Icon name="card" size={13} /> Practice ({filteredCards.length})
-                    </Button>
+                      <span className="note-read-icon">
+                        <Icon name="card" size={13} />
+                      </span>
+                      <span>Practice ({filteredCards.length})</span>
+                    </button>
                   )}
                 </div>
               )}
@@ -733,18 +840,20 @@ export default function Flashcards() {
                                   Reveal
                                 </button>
 
-                                <Button
-                                  variant="secondary"
-                                  className="btn-sm"
-                                  style={{ fontSize: 11.5, padding: "3px 8px" }}
+                                <button
+                                  type="button"
+                                  className="note-read-pill-btn"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     startStudy([c]);
                                   }}
                                   title="Practice this card"
                                 >
-                                  <Icon name="card" size={12} /> Practice
-                                </Button>
+                                  <span className="note-read-icon">
+                                    <Icon name="card" size={12} />
+                                  </span>
+                                  <span>Practice</span>
+                                </button>
                               </div>
                             </div>
 
@@ -795,18 +904,20 @@ export default function Flashcards() {
                                   Question
                                 </button>
 
-                                <Button
-                                  variant="secondary"
-                                  className="btn-sm"
-                                  style={{ fontSize: 11.5, padding: "3px 8px" }}
+                                <button
+                                  type="button"
+                                  className="note-read-pill-btn"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     startStudy([c]);
                                   }}
                                   title="Practice this card"
                                 >
-                                  <Icon name="card" size={12} /> Practice
-                                </Button>
+                                  <span className="note-read-icon">
+                                    <Icon name="card" size={12} />
+                                  </span>
+                                  <span>Practice</span>
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -861,15 +972,17 @@ export default function Flashcards() {
                           </div>
 
                           <div className="quiz-row-actions">
-                            <Button
-                              variant="secondary"
-                              className="btn-sm"
-                              style={{ fontSize: 11.5, padding: "3px 8px" }}
+                            <button
+                              type="button"
+                              className="note-read-pill-btn"
                               onClick={() => startStudy([c])}
                               title="Practice this card"
                             >
-                              <Icon name="card" size={12} /> Practice
-                            </Button>
+                              <span className="note-read-icon">
+                                <Icon name="card" size={12} />
+                              </span>
+                              <span>Practice</span>
+                            </button>
                             <button
                               className="quiz-icon-btn"
                               aria-label={`Edit flashcard`}
@@ -905,12 +1018,13 @@ export default function Flashcards() {
           <div className="quiz-stage-topbar">
             <div className="quiz-stage-top-left">
               <button
+                type="button"
                 className="quiz-stage-exit-btn"
                 onClick={() => setMode("list")}
-                title="Exit study session"
+                title="Back to Flashcards"
               >
-                <Icon name="close" size={14} />
-                <span>Exit</span>
+                <Icon name="chevron" size={13} />
+                <span>Back to Flashcards</span>
               </button>
               <div className="quiz-stage-divider" />
               <span className="quiz-stage-quiz-title">Spaced Repetition Review</span>
@@ -923,7 +1037,7 @@ export default function Flashcards() {
             </div>
 
             <div className="quiz-stage-top-right">
-              <span className="quiz-type-tag" style={{ color: "var(--accent)" }}>
+              <span className="quiz-pill-badge">
                 {reviewedSessionCount} Reviewed
               </span>
             </div>
@@ -985,15 +1099,19 @@ export default function Flashcards() {
                   {/* Back Side */}
                   <div className="flashcard-3d-face flashcard-3d-back" onClick={(e) => e.stopPropagation()}>
                     <div className="flashcard-face-header">
-                      <span className="quiz-pill-badge" style={{ color: "var(--accent)", background: "rgba(35, 131, 226, 0.1)" }}>
+                      <span className="quiz-pill-badge">
                         Answer / Concept
                       </span>
                       <button
                         type="button"
-                        className="doc-collapsible-action-btn"
+                        className="note-read-pill-btn"
+                        style={{ height: 28, padding: "0 12px", fontSize: 11.5 }}
                         onClick={() => setIsFlipped(false)}
                       >
-                        <Icon name="refresh" size={12} /> Flip Back
+                        <span className="note-read-icon">
+                          <Icon name="refresh" size={12} />
+                        </span>
+                        <span>Flip Back</span>
                       </button>
                     </div>
 
@@ -1024,33 +1142,35 @@ export default function Flashcards() {
 
           {/* Navigation and Shortcuts Bar */}
           <div className="quiz-stage-footer" style={{ marginTop: 6 }}>
-            <Button
-              variant="secondary"
-              className="btn-sm"
+            <button
+              type="button"
+              className="note-read-pill-btn"
+              style={{ height: 36, padding: "0 20px", fontSize: 12.5 }}
               disabled={currentIdx === 0}
               onClick={() => {
                 setCurrentIdx((c) => Math.max(0, c - 1));
                 setIsFlipped(false);
               }}
             >
-              <Icon name="chevron" size={14} /> Previous
-            </Button>
+              <Icon name="chevron" size={14} /> <span>Previous</span>
+            </button>
 
             <div className="quiz-stage-progress-summary">
               Press <span className="quiz-kbd-key">Space</span> to flip card
             </div>
 
-            <Button
-              variant="secondary"
-              className="btn-sm"
+            <button
+              type="button"
+              className="note-read-pill-btn"
+              style={{ height: 36, padding: "0 20px", fontSize: 12.5 }}
               disabled={currentIdx === studyDeck.length - 1}
               onClick={() => {
                 setCurrentIdx((c) => Math.min(studyDeck.length - 1, c + 1));
                 setIsFlipped(false);
               }}
             >
-              Next <Icon name="chevronRight" size={14} />
-            </Button>
+              <span>Next</span> <Icon name="chevronRight" size={14} />
+            </button>
           </div>
 
           <div className="quiz-kbd-floating-bar">
@@ -1085,18 +1205,26 @@ export default function Flashcards() {
             </div>
 
             <div className="quiz-result-hero-actions">
-              <Button variant="secondary" className="btn-sm" onClick={() => setMode("list")}>
-                Back to Library
-              </Button>
-              <Button
-                variant="primary"
-                className="btn-sm"
+              <button
+                type="button"
+                className="note-read-pill-btn"
+                style={{ height: 40, padding: "0 22px", fontSize: 13 }}
+                onClick={() => setMode("list")}
+              >
+                <Icon name="chevron" size={14} />
+                <span>Back to Flashcards</span>
+              </button>
+              <button
+                type="button"
+                className="btn-generate-notes-pill"
+                style={{ height: 40, padding: "0 24px", fontSize: 13 }}
                 onClick={() => {
                   startStudy(cards);
                 }}
               >
-                <Icon name="refresh" size={13} /> Practice Again
-              </Button>
+                <Icon name="refresh" size={14} />
+                <span>Practice Again</span>
+              </button>
             </div>
           </div>
         </div>

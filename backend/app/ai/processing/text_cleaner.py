@@ -8,6 +8,8 @@ class TextCleaner:
     def clean(text: str) -> str:
         if not text:
             return ""
+        # Remove null bytes and non-printable control chars that PostgreSQL rejects in strings
+        text = text.replace("\x00", "")
         text = unicodedata.normalize("NFKC", text)
         text = text.replace(" ", " ")
         text = re.sub(r"[ \t]+", " ", text)

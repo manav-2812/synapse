@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { formatRelative } from "../../lib/format";
@@ -30,6 +30,18 @@ export function NotificationPanel({
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabFilter>("all");
   const [searchFilter, setSearchFilter] = useState("");
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const unreadItems = useMemo(
     () => activity.filter((a) => +new Date(a.at) > +new Date(seenAt)),
@@ -147,27 +159,28 @@ export function NotificationPanel({
           </button>
         </div>
 
-        {/* Search filter if items exist */}
+        {/* Dedicated Pill Search Filter */}
         {activity.length > 3 && (
-          <div style={{ padding: "6px 10px 4px", borderBottom: "1px solid var(--border)" }}>
-            <div className="quiz-search-wrap" style={{ width: "100%", height: 28 }}>
-              <Icon name="search" size={12} className="quiz-search-icon" />
+          <div className="syn-inbox-search-row">
+            <div className="syn-inbox-search-wrap">
+              <Icon name="search" size={13} className="syn-inbox-search-icon" />
               <input
                 type="text"
-                className="quiz-search-input"
-                style={{ fontSize: 12, height: 26 }}
+                className="syn-inbox-search-input"
                 placeholder="Filter notifications..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
+                autoComplete="off"
+                spellCheck="false"
               />
               {searchFilter && (
                 <button
                   type="button"
-                  className="quiz-search-clear"
+                  className="syn-inbox-search-clear"
                   onClick={() => setSearchFilter("")}
                   title="Clear filter"
                 >
-                  <Icon name="close" size={10} />
+                  <Icon name="close" size={11} />
                 </button>
               )}
             </div>

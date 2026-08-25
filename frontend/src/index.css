@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=Google+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+/* Synapse Global Reset & Baseline */
 
 :root {
   /* ----------------------------------------------------------------------
@@ -32,19 +32,19 @@
   --aurora: none;
   --aurora-intensity: 0;
 
-  /* Surfaces — Notion Warm Paper Light */
-  --bg: #fbfaf8;
-  --bg-soft: #f5f4f1;
+  /* Surfaces — Bright & Luminous Clean Light */
+  --bg: #f9fafb;
+  --bg-soft: #f3f4f6;
   --surface: #ffffff;
-  --surface-2: #f1f1ef;
-  --surface-3: #e9e9e7;
-  --border: rgba(55, 53, 47, 0.11);
-  --border-strong: rgba(55, 53, 47, 0.2);
+  --surface-2: #f3f4f6;
+  --surface-3: #e5e7eb;
+  --border: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.12);
 
   /* Text — Crisp high-contrast */
-  --text-h: #1a1915;
-  --text: #2f2d28;
-  --text-faint: #6b6860;
+  --text-h: #0f172a;
+  --text: #334155;
+  --text-faint: #64748b;
 
   /* Status */
   --ok: #0f7b6c;
@@ -211,6 +211,38 @@
 
 /* Explicit light selection forces light even when the OS prefers dark. */
 :root[data-theme="light"] {
+  --accent: #2383e2;
+  --accent-strong: #0075db;
+  --accent-soft: #4799eb;
+  --accent-bg: rgba(35, 131, 226, 0.08);
+  --accent-border: rgba(35, 131, 226, 0.24);
+  --accent-glow: rgba(35, 131, 226, 0.12);
+  --on-accent: #ffffff;
+
+  --syn-seal-ring: #1D1C2E;
+  --syn-seal-indigo: #4A4FE0;
+  --syn-seal-gold: #C9A227;
+  --syn-seal-root: #1D1C2E;
+
+  --bg: #f9fafb;
+  --bg-soft: #f3f4f6;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --surface-3: #e5e7eb;
+  --border: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.12);
+
+  --text-h: #0f172a;
+  --text: #334155;
+  --text-faint: #64748b;
+
+  --shadow-sm: 0 1px 2px rgba(15, 15, 15, 0.06);
+  --shadow: 0 1px 3px rgba(15, 15, 15, 0.1), 0 0 0 1px rgba(15, 15, 15, 0.05);
+  --shadow-md: 0 4px 14px rgba(15, 15, 15, 0.1), 0 0 0 1px rgba(15, 15, 15, 0.06);
+  --shadow-lg: 0 12px 30px rgba(15, 15, 15, 0.14), 0 0 0 1px rgba(15, 15, 15, 0.07);
+  --shadow-xl: 0 20px 40px rgba(15, 15, 15, 0.16);
+  --inset-hairline: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.8);
   color-scheme: light;
 }
 

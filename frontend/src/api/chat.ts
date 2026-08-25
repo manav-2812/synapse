@@ -9,12 +9,14 @@ import type {
   ConversationRenameRequest,
   MessageResponse,
   MessageUpdateRequest,
+  QueryCorrectionPayload,
   SourceResponse,
 } from "../types/api";
 
 export interface ChatStreamHandlers {
   onStart?: () => void;
   onConversation?: (payload: ChatConversationPayload) => void;
+  onCorrection?: (payload: QueryCorrectionPayload) => void;
   onToken?: (t: string) => void;
   onSources?: (s: SourceResponse[]) => void;
   onDone?: (payload: ChatDonePayload | null) => void;
@@ -157,6 +159,7 @@ export const chatApi = {
         const ev = parseEvent(rawEvent);
         if (!ev) continue;
         if (ev.type === "conversation") handlers.onConversation?.(ev.value);
+        else if (ev.type === "correction") handlers.onCorrection?.(ev.value);
         else if (ev.type === "sources") handlers.onSources?.(ev.value);
         else if (ev.type === "token") handlers.onToken?.(ev.value || "");
         else if (ev.type === "done") {
@@ -171,6 +174,7 @@ export const chatApi = {
     const trailing = parseEvent(buffer.trim());
     if (trailing) {
       if (trailing.type === "conversation") handlers.onConversation?.(trailing.value);
+      else if (trailing.type === "correction") handlers.onCorrection?.(trailing.value);
       else if (trailing.type === "sources") handlers.onSources?.(trailing.value);
       else if (trailing.type === "token") handlers.onToken?.(trailing.value || "");
       else if (trailing.type === "done") handlers.onDone?.(trailing.value);

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { SHORTCUTS } from "../hooks/useShortcuts";
 import { Icon } from "./ui/Icon";
 
@@ -17,9 +18,18 @@ export function ShortcutsHelp({ open, onClose }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose} role="presentation">
       <div
         className="shortcuts"
@@ -49,6 +59,7 @@ export function ShortcutsHelp({ open, onClose }: Props) {
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

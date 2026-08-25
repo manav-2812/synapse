@@ -67,6 +67,16 @@ export default function Quiz() {
     scopeParam ? scopeParam.split(",").map((s) => s.trim()).filter(Boolean) : [],
   );
 
+  useEffect(() => {
+    const p = params.get("scope") || params.get("doc");
+    if (p) {
+      const ids = p.split(",").map((s) => s.trim()).filter(Boolean);
+      if (ids.length > 0) {
+        setScopeIds(ids);
+      }
+    }
+  }, [params]);
+
   const [renameQuizId, setRenameQuizId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renameBusy, setRenameBusy] = useState(false);
@@ -293,6 +303,15 @@ export default function Quiz() {
     return list;
   }, [quizzes, diffFilter, quizSearch]);
 
+  function scrollToQuizzes(diff?: typeof diffFilter) {
+    if (diff) setDiffFilter(diff);
+    setIsQuizzesCollapsed(false);
+    const el = document.getElementById("quizzes-library-section");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   return (
     <div className="quiz-page-layout">
       {/* ── Page Header (hidden during active quiz taking) ── */}
@@ -305,8 +324,13 @@ export default function Quiz() {
             </p>
           </div>
           {mode !== "list" && (
-            <Button variant="secondary" className="btn-sm" onClick={() => setMode("list")}>
-              <Icon name="close" size={15} /> Exit Quiz
+            <Button
+              variant="secondary"
+              className="btn-sm"
+              style={{ borderRadius: 999, padding: "6px 16px", fontSize: 12.5 }}
+              onClick={() => setMode("list")}
+            >
+              <Icon name="close" size={14} /> Exit Quiz
             </Button>
           )}
         </div>
@@ -316,7 +340,14 @@ export default function Quiz() {
         <>
           {/* ── Top Metrics / Stats Strip ── */}
           <div className="note-stats-strip">
-            <div className="note-stat-item">
+            <div
+              className="note-stat-item"
+              onClick={() => scrollToQuizzes("all")}
+              title="Click to view all quizzes"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && scrollToQuizzes("all")}
+            >
               <div className="note-stat-icon-wrap">
                 <Icon name="quiz" size={17} />
               </div>
@@ -326,7 +357,14 @@ export default function Quiz() {
               </div>
             </div>
 
-            <div className="note-stat-item">
+            <div
+              className="note-stat-item"
+              onClick={() => scrollToQuizzes("all")}
+              title="Click to view attempted quizzes"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && scrollToQuizzes("all")}
+            >
               <div className="note-stat-icon-wrap">
                 <Icon name="checkCircle" size={17} />
               </div>
@@ -336,7 +374,14 @@ export default function Quiz() {
               </div>
             </div>
 
-            <div className="note-stat-item">
+            <div
+              className="note-stat-item"
+              onClick={() => scrollToQuizzes("all")}
+              title="Click to view quizzes accuracy"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && scrollToQuizzes("all")}
+            >
               <div className="note-stat-icon-wrap">
                 <Icon name="target" size={17} />
               </div>
@@ -346,7 +391,14 @@ export default function Quiz() {
               </div>
             </div>
 
-            <div className="note-stat-item">
+            <div
+              className="note-stat-item"
+              onClick={() => scrollToQuizzes("all")}
+              title="Click to view questions breakdown"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && scrollToQuizzes("all")}
+            >
               <div className="note-stat-icon-wrap">
                 <Icon name="layers" size={17} />
               </div>
@@ -508,7 +560,7 @@ export default function Quiz() {
           )}
 
           {/* ── Notion / Linear Collapsible Card for Quizzes (Matching Documents) ── */}
-          <div className={`doc-collapsible-box ${isQuizzesCollapsed ? "is-collapsed" : ""}`}>
+          <div id="quizzes-library-section" className={`doc-collapsible-box ${isQuizzesCollapsed ? "is-collapsed" : ""}`}>
             <div
               className="doc-collapsible-header"
               onClick={() => setIsQuizzesCollapsed((c) => !c)}
@@ -643,7 +695,6 @@ export default function Quiz() {
                                 {attempt && (
                                   <span
                                     className={`result-tag ${attempt.score >= 0.8 ? "tag-correct" : "tag-incorrect"}`}
-                                    style={{ fontSize: "10.5px", padding: "1px 6px" }}
                                   >
                                     Score: {Math.round(attempt.score * 100)}%
                                   </span>
@@ -658,9 +709,17 @@ export default function Quiz() {
                           </div>
 
                           <div className="quiz-row-actions">
-                            <Button variant="secondary" className="btn-sm" onClick={() => void review(q.id)}>
-                              <Icon name="book" size={13} /> {attempt ? "Review" : "Take"}
-                            </Button>
+                            <button
+                              type="button"
+                              className="note-read-pill-btn"
+                              onClick={() => void review(q.id)}
+                              title={attempt ? "Review quiz results" : "Take quiz"}
+                            >
+                              <span className="note-read-icon">
+                                <Icon name="book" size={13} />
+                              </span>
+                              <span>{attempt ? "Review" : "Take"}</span>
+                            </button>
                             <button
                               className="quiz-icon-btn"
                               aria-label={`Rename ${q.title}`}
@@ -717,6 +776,7 @@ export default function Quiz() {
             <div className="quiz-stage-top-right">
               <div className="quiz-view-toggle">
                 <button
+                  type="button"
                   className={`view-toggle-btn ${takingView === "focus" ? "active" : ""}`}
                   onClick={() => setTakingView("focus")}
                   title="1 question at a time"
@@ -724,6 +784,7 @@ export default function Quiz() {
                   Focus
                 </button>
                 <button
+                  type="button"
                   className={`view-toggle-btn ${takingView === "all" ? "active" : ""}`}
                   onClick={() => setTakingView("all")}
                   title="See all questions"
@@ -914,11 +975,12 @@ export default function Quiz() {
               <div className="quiz-all-submit-bar">
                 <Button
                   variant="primary"
+                  className="btn-submit-quiz"
                   onClick={() => void submit()}
                   loading={busy}
                   disabled={answeredCount < totalQuestions}
                 >
-                  Submit All Answers ({answeredCount}/{totalQuestions})
+                  <Icon name="check" size={14} /> Submit All Answers ({answeredCount}/{totalQuestions})
                 </Button>
               </div>
             </div>
@@ -960,7 +1022,7 @@ export default function Quiz() {
 
             <div className="quiz-result-hero-actions">
               <Button variant="secondary" className="btn-sm" onClick={() => setMode("list")}>
-                Back to Quizzes
+                <Icon name="chevron" size={13} /> Back to Quizzes
               </Button>
               <Button
                 variant="secondary"
@@ -1142,7 +1204,7 @@ export default function Quiz() {
                   {lastAttempt && (
                     <>
                       <span>·</span>
-                      <span className={`result-tag ${lastAttempt.score >= 0.7 ? "tag-correct" : "tag-incorrect"}`}>
+                      <span className={`result-tag ${lastAttempt.score >= 0.8 ? "tag-correct" : "tag-incorrect"}`}>
                         Score: {Math.round(lastAttempt.score * 100)}% ({lastAttempt.correct}/{lastAttempt.total})
                       </span>
                     </>

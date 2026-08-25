@@ -5,8 +5,8 @@ export interface NavItem {
 }
 
 export const STUDY_ITEMS: NavItem[] = [
-  { to: "/documents", label: "Documents", icon: "doc" },
   { to: "/chat", label: "Chat", icon: "chat" },
+  { to: "/documents", label: "Documents", icon: "doc" },
   { to: "/quiz", label: "Quiz", icon: "quiz" },
   { to: "/flashcards", label: "Flashcards", icon: "card" },
   { to: "/notes", label: "Notes", icon: "notes" },

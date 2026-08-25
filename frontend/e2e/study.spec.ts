@@ -3,50 +3,65 @@ import { signup, uniqueEmail, navTo } from "./helpers";
 
 test("generate a flashcard set and reveal a card", async ({ page }) => {
   await signup(page, uniqueEmail());
-  await navTo(page, "Flashcards");
 
-  // Generate a set of flashcards (this calls the LLM — allow time).
-  await page.getByRole("button", { name: /Generate/ }).click();
+  // Upload a document so the flashcard generator has material to generate cards from
+  await navTo(page, "Documents");
+  await page.setInputFiles('input[type="file"]', "e2e/fixtures/sample.txt");
+  await expect(page.getByText(/Ready|Completed/i).first()).toBeVisible({
+    timeout: 60_000,
+  });
+
+  await navTo(page, "Flashcards");
+  await page.getByRole("button", { name: "Generate Flashcards" }).click();
 
   // A flashcard renders once generation completes.
-  const card = page.locator(".flashcard").first();
+  const card = page.locator(".flashcard, .flashcard-grid-card").first();
   await expect(card).toBeVisible({ timeout: 90_000 });
-  await expect(page.locator(".flashcard").first()).toHaveText(/\S/);
+  await expect(card).toHaveText(/\S/);
 
   // Clicking flips the card to reveal the back.
   await card.click();
-  await expect(card).toHaveClass(/flipped/);
+  await expect(card).toHaveClass(/flipped|is-flipped/);
 });
 
 test("generate a quiz, answer it, and see a score", async ({ page }) => {
   await signup(page, uniqueEmail());
+
+  // Upload a document so the quiz generator has material to generate questions from
+  await navTo(page, "Documents");
+  await page.setInputFiles('input[type="file"]', "e2e/fixtures/sample.txt");
+  await expect(page.getByText(/Ready|Completed/i).first()).toBeVisible({
+    timeout: 60_000,
+  });
+
   await navTo(page, "Quiz");
+  await page.getByRole("button", { name: "Generate Quiz" }).click();
 
-  await page.getByRole("button", { name: /Generate/ }).click();
+  // Quiz question prompt renders once generated.
+  const questionPrompt = page.locator(".quiz-stage-prompt, .quiz-q");
+  await expect(questionPrompt.first()).toBeVisible({ timeout: 90_000 });
 
-  // Quiz questions render.
-  const questions = page.locator(".quiz-q");
-  await expect(questions.first()).toBeVisible({ timeout: 90_000 });
-  const count = await questions.count();
-  expect(count).toBeGreaterThan(0);
-
-  // Answer every question — MCQ options render as .opt buttons, otherwise a
-  // free-text field. Submitting requires every question to be answered.
-  for (let i = 0; i < count; i++) {
-    const q = questions.nth(i);
-    const opt = q.locator(".opt").first();
+  // Step through each focus question, pick an option, and advance
+  const totalDots = await page.locator(".quiz-dot-step").count();
+  const iterations = totalDots > 0 ? totalDots : 5;
+  for (let i = 0; i < iterations; i++) {
+    const opt = page.locator(".quiz-hero-opt").first();
     if (await opt.count()) {
       await opt.click();
-    } else {
-      await q.locator("input.input").fill("answer");
+    }
+    const nextBtn = page.getByRole("button", { name: /Next Question/i });
+    if (await nextBtn.isVisible()) {
+      await nextBtn.click();
     }
   }
 
-  await page.getByRole("button", { name: /Submit answers/ }).click();
+  const completeBtn = page.getByRole("button", { name: /Complete Quiz/i });
+  await expect(completeBtn).toBeVisible({ timeout: 10_000 });
+  await completeBtn.click();
 
   // A score result is shown.
-  await expect(page.locator(".quiz-result").first()).toBeVisible({
+  await expect(page.locator(".quiz-result-hero-card, .quiz-result").first()).toBeVisible({
     timeout: 60_000,
   });
-  await expect(page.getByText(/\d+ \/ \d+ correct/i)).toBeVisible();
+  await expect(page.getByText(/\d+ of \d+ Questions Correct|\d+ \/ \d+ correct/i)).toBeVisible();
 });

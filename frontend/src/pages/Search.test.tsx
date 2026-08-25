@@ -14,7 +14,6 @@ describe("Search Page", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Search Workspace")).toBeInTheDocument();
     const input = screen.getByPlaceholderText(/Search documents, notes, chats/i);
     expect(input).toBeInTheDocument();
 

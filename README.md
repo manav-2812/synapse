@@ -12,7 +12,7 @@
 </p>
 
 <!-- <p align="center">
-  <a href="https://.vercel.app"><img src="https://img.shields.io/badge/%F0%9F%94%97_Live_Demo-synapse.vercel.app-0070F3?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" /></a>
+  <a href="https://synapse.vercel.app"><img src="https://img.shields.io/badge/%F0%9F%94%97_Live_Demo-synapse.vercel.app-0070F3?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" /></a>
 </p> -->
 
 <p align="center">
@@ -20,13 +20,13 @@
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11-3776AB.svg" alt="Python 3.11" /></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-20%2B-339933.svg" alt="Node 20+" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-61DAFB.svg" alt="React 19" /></a>
-  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.115.5-009688.svg" alt="FastAPI 0.115.5" /></a>  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16-336791.svg" alt="PostgreSQL 16" /></a>
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.115.5-009688.svg" alt="FastAPI 0.115.5" /></a>
+  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16-336791.svg" alt="PostgreSQL 16" /></a>
   <a href="https://www.trychroma.com/"><img src="https://img.shields.io/badge/ChromaDB-0.6.3-ff6b6b.svg" alt="ChromaDB 0.6.3" /></a>
   <a href="#-quality--performance"><img src="https://img.shields.io/badge/Lighthouse-desktop%20100%20%7C%20mobile%2095%E2%80%9399-brightgreen.svg" alt="Lighthouse scores" /></a>
-  <a href="#-testing"><img src="https://img.shields.io/badge/tests-35%20backend%20%2B%2040%20frontend-brightgreen.svg" alt="Test count" /></a>
+  <a href="#-testing"><img src="https://img.shields.io/badge/tests-46%20backend%20%2B%2049%20unit%20%2B%2010%20e2e-brightgreen.svg" alt="Test count" /></a>
   <a href="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml"><img src="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://img.shields.io/github/last-commit/manav-2812/Synapse"><img src="https://img.shields.io/github/last-commit/manav-2812/Synapse.svg" alt="Last Commit" /></a>
-  <a href="https://img.shields.io/github/commit-activity/m/manav-2812/Synapse"><img src="https://img.shields.io/github/commit-activity/m/manav-2812/Synapse.svg" alt="Commit Activity" /></a>
   <a href="#-getting-started"><img src="https://img.shields.io/badge/status-production%20ready-blue.svg" alt="Status" /></a>
 </p>
 
@@ -40,6 +40,7 @@
   <a href="#getting-started">Getting Started</a> ·
   <a href="#testing">Testing</a> ·
   <a href="#quality--performance">Quality</a> ·
+  <a href="#security">Security</a> ·
   <a href="#design-decisions">Design Decisions</a> ·
   <a href="#known-limitations">Known Limitations</a> ·
   <a href="#roadmap">Roadmap</a> ·
@@ -52,7 +53,7 @@
 ## Overview
 
 Synapse is a **retrieval-augmented generation (RAG) study assistant**. A user uploads
-college material — PDF, DOCX, TXT, or scanned PNG/JPG — and Synapse answers
+course material — PDF, DOCX, TXT, or scanned PNG/JPG — and Synapse answers
 questions, generates exam-style answers, adaptive quizzes, structured notes, and
 flip flashcards. Every answer is **cited** to the exact passage in the source
 document, so the student can verify it rather than trust a black box.
@@ -62,10 +63,10 @@ The system is built around two non-negotiable design goals:
 1. **It works end-to-end with real AI answers grounded in real uploaded
    documents** — not a mocked demo. The retrieval layer is *measured*, not
    assumed: a built-in evaluation harness scores precision, recall, MRR, and NDCG
-   against a labelled dataset and trends the results over time.
+   against dynamic datasets generated from the user's actual document corpus.
 2. **It is engineered to a production standard** — a typed API with uniform error
    handling, a layered backend with enforced data-ownership boundaries, a
-   Linear-inspired frontend with light/dark design tokens, and a clean Lighthouse
+   sleek modern frontend with light/dark design tokens, and a clean Lighthouse
    profile across every route.
 
 > Synapse is a **three-tier application**:
@@ -80,29 +81,33 @@ The system is built around two non-negotiable design goals:
 
 ## Features
 
-### Authentication & Security
-- **Biometric Passkeys (WebAuthn / FIDO2)** — passwordless hardware-bound login via Touch ID, Face ID, Windows Hello, and security keys.
+### Authentication & Biometric Security
+- **Biometric Passkeys (WebAuthn / FIDO2)** — passwordless hardware-bound login via Touch ID, Face ID, Windows Hello, and YubiKeys.
 - **OAuth 2.0 Social Logins** — one-click sign-in with Google and Microsoft accounts.
-- **Secure Token Lifecycle** — JWT authentication with single-use rotating refresh tokens, bcrypt password hashing, and CSRF-protected OAuth state.
+- **Secure Token Lifecycle** — JWT authentication with single-use rotating refresh tokens (`jti` tracking), bcrypt password hashing, and CSRF-protected OAuth state.
 
-### Ingestion & Retrieval
+### Ingestion & Hybrid Retrieval
 - **Multi-format Ingestion** — PDF, DOCX, TXT, and scanned PNG/JPG with OCR support (Tesseract with vision-LLM fallback).
-- **Background Processing Pipeline** — parse → clean → chunk → embed → index, with live status polling and cancelable uploads.
-- **Hybrid Retrieval** — dense semantic search (ChromaDB) blended with sparse BM25 keyword matching via Reciprocal Rank Fusion (RRF). Configurable weights swept by the evaluation harness.
-- **Live Web Search Fallback (Tavily)** — automatic live web search grounding when uploaded documents lack sufficient context to answer a query.
+- **Background Ingestion Pipeline** — parse → clean → token-aware chunking → embed → index, with live status polling and cancelable uploads.
+- **Hybrid Retrieval (Dense Vector + BM25)** — ChromaDB semantic vector search blended with sparse BM25 keyword matching via Reciprocal Rank Fusion (RRF). Configurable weights swept by the evaluation harness.
+- **Misspelling-Tolerant Query Correction** — fuzzy token matching (`rapidfuzz`) autocorrects course jargon and technical typos before vector search.
+- **Live Web Search Grounding (Tavily)** — automatic live web fallback when uploaded documents lack sufficient context to answer a query.
 
 ### Conversational Study & Notes
 - **Streaming Chat with Grounded Citations** — token-by-token streaming via Server-Sent Events (SSE) with interactive source citations.
-- **Interactive Note Reader** — structured summaries, exam answers, and formula sheets readable in a dedicated reader layout.
-- **Global Search (`/search`) & Command Palette (`⌘K`)** — instant cross-document search and quick navigation.
+- **Interactive Note Reader (`/notes/:id`)** — structured summaries, exam answers, and formula sheets readable in a dedicated distraction-free reader layout.
+- **Global Search (`/search`) & Command Palette (`⌘K`)** — instant cross-document search and omnibar navigation with keyboard shortcuts.
+- **Voice Synthesis & Speech Input** — integrated speech-to-text input with animated audio visualizer.
 
-### Study Tools & Analytics
+### Study Tools, Memory Decay & Telemetry
 - **Spaced-Repetition Flashcards (SM-2)** — adaptive memory scheduling with due-for-review filtering.
-- **Interactive Quizzes** — MCQ and short-answer generation with automatic scoring and explanations.
-- **Study Heatmap & Telemetry** — visual activity streak tracking, token and cost metering, cache-hit monitoring, and retrieval precision metrics.
+- **Ebbinghaus Memory Decay Radar** — real-time mathematical retention calculation ($R(t) = e^{-t/S}$) visualizing topic stability over time.
+- **Interactive Quizzes** — MCQ and short-answer generation with automatic scoring, answer reveal, and explanations.
+- **53-Week Study Heatmap & Telemetry** — visual activity streak tracking, token and compute cost metering, and cache-hit monitoring.
+- **Retrieval Eval Benchmark Dashboard (`/eval`)** — live evaluation harness scoring precision@k, recall@k, MRR, and NDCG against the user's active document library.
 
 ### Design & User Experience
-- **Ultra-Modern UI** — refined stadium pill navigation, real-time activity inbox drawer, and smooth 3-way theme toggle (Light / System / Dark).
+- **Refined Modern Interface** — custom dark/light theme tokens, frosted glass elevation, stadium pill controls, and focused emerald status indicators.
 - **Accessibility & SEO** — keyboard shortcuts, ARIA standards, `prefers-reduced-motion` compliance, and complete Open Graph meta tags.
 
 ---
@@ -338,26 +343,26 @@ flowchart LR
   Return --> Usage[/"GET /analytics/usage<br/>tokens · cost · cache-hit rate"/]
 ```
 
-See [`docs/architecture.md`](docs/architecture.md) for the full layered design,
-OCR degradation behavior, and the eval pipeline.
-
 ---
 
 ## Tech Stack
 
-| Layer | Choice |
-|-------|--------|
-| **Frontend** | React 19 · TypeScript · Vite 8 · React Router 7 |
-| **Backend** | Python 3.11 (required — 3.13 breaks the dependency build) · FastAPI 0.115.5 (async) |
-| **Database** | PostgreSQL 16 + SQLAlchemy 2.0 (async) + Alembic |
-| **Vector store** | ChromaDB 0.6.3 (one persistent collection per user) |
-| **Embeddings** | Sentence-Transformers `all-MiniLM-L6-v2` (local, CPU) |
-| **LLM** | Groq `openai/gpt-oss-120b` (primary) · Gemini `gemini-2.0-flash` (fallback) · OpenRouter (`openrouter/free`, third fallback) |
-| **RAG** | Hand-rolled retriever — semantic (Chroma) + BM25, no LangChain |
-| **Auth** | JWT (20-min access + 7-day rotating refresh) · bcrypt |
-| **Frontend tests** | Vitest + React Testing Library · Playwright |
-| **Backend tests** | pytest + pytest-asyncio |
-| **Hosting** | Frontend → Vercel (static SPA) · Backend + Postgres → Render |
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Frontend** | React 19 · TypeScript · Vite 8 · React Router 7 | Responsive, accessible SPA with client-side routing |
+| **Styling** | Vanilla CSS Design Tokens | HSL-curated palette, frosted glassmorphism, responsive bento grid |
+| **Backend** | Python 3.11 · FastAPI 0.115.5 (async) · Pydantic v2 | High-concurrency async REST API & SSE streaming |
+| **Database** | PostgreSQL 16 + SQLAlchemy 2.0 (asyncpg) + Alembic | Relational data store with ownership boundaries & migrations |
+| **Vector Store** | ChromaDB 0.6.3 | Local persistent vector database (isolated per-user collections) |
+| **Embeddings** | Sentence-Transformers `all-MiniLM-L6-v2` | Fast, offline CPU-based 384-dimensional dense embeddings |
+| **LLM Tier** | Groq `gpt-oss-120b` → Gemini `2.0-flash` → OpenRouter | High-speed primary inference with resilient fallback chains |
+| **Keyword Search** | `rank_bm25` | Sparse keyword retrieval for hybrid search blending |
+| **Query Correction** | `rapidfuzz` | High-speed fuzzy string matching and typo correction |
+| **Web Grounding** | Tavily Search API | Live internet search fallback for ungrounded queries |
+| **Biometrics** | WebAuthn / FIDO2 (`py_webauthn`) | Passwordless biometric passkey registration & authentication |
+| **Spaced Repetition** | SuperMemo SM-2 Algorithm | Dynamic interval and ease-factor calculation for flashcards |
+| **Frontend Tests** | Vitest + React Testing Library · Playwright E2E | Unit, component, and full-stack browser verification |
+| **Backend Tests** | pytest + pytest-asyncio | Unit, integration, retrieval metrics, and API contract suites |
 
 ---
 
@@ -367,58 +372,105 @@ OCR degradation behavior, and the eval pipeline.
 Synapse/
 ├── backend/                          # FastAPI app (API only — does NOT serve the UI)
 │   ├── app/
-│   │   ├── core/                     # config, db, security, logger, exceptions, limiter
-│   │   ├── api/v1/                   # routes: auth, users, documents, folders,
-│   │   │                             #         chat, study, analytics, eval
-│   │   ├── services/                 # business logic (chat, document, processing,
-│   │   │                             #         study, analytics, auth, folder, upload)
-│   │   ├── repositories/             # DB access (ownership enforced here)
-│   │   ├── ai/                       # loaders, processing, embeddings,
-│   │   │                             #         vectorstore, rag, llm, study, ocr
-│   │   ├── models/                   # SQLAlchemy models (16 application tables)
-│   │   ├── schemas/                  # Pydantic request/response models
-│   │   ├── eval/                     # retrieval-eval dataset + runner + metrics
-│   │   └── main.py                   # FastAPI app, middleware, error handlers
-│   ├── alembic/                      # migrations (10 revisions, applied in order)
-│   ├── tests/                        # pytest suite (auth, pipeline, retrieval,
-│   │   │                             #         quiz scoring, contract, metrics)
-│   ├── scripts/                      # manual walkthrough / seeding helpers
-│   ├── Dockerfile                    # Python 3.11-slim (Tesseract included)
-│   └── requirements.txt
-├── frontend/                         # React + TypeScript + Vite SPA
+│   │   ├── core/                     # config, database, security, logger, exceptions, limiter
+│   │   ├── api/v1/                   # route endpoints:
+│   │   │   ├── analytics_routes.py   #   dashboard, usage metrics, 53-week heatmap
+│   │   │   ├── auth_routes.py        #   signup, login, refresh, logout, OAuth (Google/MS)
+│   │   │   ├── chat_routes.py        #   SSE stream, conversation history, query correction
+│   │   │   ├── document_routes.py    #   upload, list, status poll, update, delete
+│   │   │   ├── folder_routes.py      #   folder CRUD & hierarchical organization
+│   │   │   ├── passkey_routes.py     #   WebAuthn passkey registration & authentication
+│   │   │   ├── study_routes.py       #   notes, adaptive quiz, SM-2 flashcard review
+│   │   │   └── user_routes.py        #   profile reading, preferences, avatar upload
+│   │   ├── services/                 # business logic & domain orchestrators:
+│   │   │   ├── analytics_service.py  #   dashboard aggregates, token cost accounting
+│   │   │   ├── auth_service.py       #   JWT token lifecycle, OAuth token exchange
+│   │   │   ├── chat_service.py       #   SSE prompt orchestration, web-search fallback
+│   │   │   ├── document_service.py   #   document metadata, lifecycle management
+│   │   │   ├── passkey_service.py    #   FIDO2 challenge generation & credential verification
+│   │   │   ├── processing_service.py #   async background parsing, chunking, embedding
+│   │   │   ├── study_service.py      #   SM-2 scheduling, quiz scoring, note generation
+│   │   │   └── upload_service.py     #   file validation, size guards, UUID disk persistence
+│   │   ├── repositories/             # SQLAlchemy DB access (strict user_id filtering)
+│   │   ├── ai/                       # AI & machine learning subsystems:
+│   │   │   ├── embeddings/           #   Sentence-Transformers embedding client
+│   │   │   ├── llm/                  #   Groq/Gemini/OpenRouter provider fallbacks & LRU cache
+│   │   │   ├── loaders/              #   PyMuPDF (PDF), python-docx (DOCX), text loader
+│   │   │   ├── ocr/                  #   Tesseract OCR engine with vision-LLM fallback
+│   │   │   ├── processing/           #   token-aware text chunking & text cleaning
+│   │   │   ├── rag/                  #   hybrid retriever (dense vector + BM25 RRF), prompt builder
+│   │   │   ├── search/               #   Tavily web search integration
+│   │   │   └── study/                #   structured JSON generators (quiz, flashcards, notes)
+│   │   ├── models/                   # SQLAlchemy models (17 tables including passkeys)
+│   │   ├── schemas/                  # Pydantic request/response validation schemas
+│   │   ├── eval/                     # dynamic dataset builder, metrics (MRR, NDCG, Precision@k)
+│   │   └── main.py                   # FastAPI application factory, CORS, error middleware
+│   ├── alembic/                      # database migrations (10 revisions applied in sequence)
+│   ├── tests/                        # pytest test suite (46 passed):
+│   │   ├── test_api_contract.py      #   FastAPI endpoint contracts & status codes
+│   │   ├── test_answer_grounding.py  #   RAG citation provenance & grounding verification
+│   │   ├── test_query_correction.py  #   rapidfuzz query correction & latency tests
+│   │   ├── test_retrieval_metrics.py #   MRR, NDCG, precision/recall benchmark verification
+│   │   └── test_quiz_scoring.py      #   SM-2 algorithm & quiz scoring validation
+│   ├── requirements.txt              # pinned backend Python dependencies
+│   └── Dockerfile                    # Python 3.11-slim production container
+│
+├── frontend/                         # React 19 + TypeScript + Vite 8 SPA
 │   ├── src/
-│   │   ├── api/                      # typed client (401→refresh→retry)
-│   │   ├── components/               # ui/ primitives + layout/ + CommandPalette
+│   │   ├── api/                      # typed API client modules (auto-refresh on 401):
+│   │   │   ├── analytics.ts, auth.ts, chat.ts, client.ts, documents.ts,
+│   │   │   └── eval.ts, passkey.ts, study.ts
+│   │   ├── components/               # reusable UI design system:
+│   │   │   ├── auth/                 #   PasskeyModal, AuthLegalModal
+│   │   │   ├── dashboard/            #   DashboardMemoryRadar, StudyHeatmap, BentoCards
+│   │   │   ├── layout/               #   Sidebar, Header, NotificationPanel, MobileDrawer
+│   │   │   ├── ui/                   #   Button, Input, Modal, Skeleton, StatusBadge, EmptyState
+│   │   │   ├── CitationChip.tsx      #   grounded document passage popup
+│   │   │   ├── WebCitationChip.tsx   #   live web source link pill
+│   │   │   ├── CommandPalette.tsx    #   keyboard-driven ⌘K omnibar
+│   │   │   └── VoiceWaveform.tsx     #   interactive audio visualizer
 │   │   ├── context/                  # AuthContext, TipsContext
-│   │   ├── hooks/                    # useTheme, useToast, useDocumentPolling, …
-│   │   ├── pages/                    # Dashboard, Documents, Chat, Quiz,
-│   │   │                             #         Flashcards, Notes, Analytics,
-│   │   │                             #         Eval, Profile, auth/
-│   │   ├── types/                    # mirrors backend Pydantic schemas
-│   │   └── styles/                   # design-system CSS (tokens in index.css)
-│   ├── public/                       # favicon, robots.txt, sitemap.xml, OG image
-│   ├── e2e/                          # Playwright end-to-end tests
-│   ├── Dockerfile                    # Node 22-alpine multi-stage build
-│   └── src/__tests__/                # Vitest unit/component tests
-├── docs/                             # architecture, setup, api,
-│   │                                 #         lighthouse-report
-├── .github/                          # PR template + issue templates
-├── docker-compose.yml · render.yaml · vercel.json (frontend/)
-└── README.md · CHANGELOG.md · CONTRIBUTING.md · LICENSE
+│   │   ├── hooks/                    # useTheme, useToast, useDocumentPolling, useDebounce
+│   │   ├── pages/                    # application route views:
+│   │   │   ├── Analytics.tsx         #   telemetry, token cost accounting, cache hit rate
+│   │   │   ├── Chat.tsx              #   SSE streaming conversation with citations & web mode
+│   │   │   ├── Dashboard.tsx         #   bento metrics, memory decay radar, upcoming reviews
+│   │   │   ├── Documents.tsx         #   drag-drop upload, folder organization, status capsules
+│   │   │   ├── EvalDashboard.tsx     #   retrieval quality metrics, dataset generator, trend chart
+│   │   │   ├── Flashcards.tsx        #   3D flip flashcard review with SM-2 quality ratings
+│   │   │   ├── NoteReader.tsx        #   distraction-free study note viewer & Markdown renderer
+│   │   │   ├── Notes.tsx             #   note generation & document scope filter
+│   │   │   ├── Profile.tsx           #   account preferences, passkey management, avatar upload
+│   │   │   ├── Quiz.tsx              #   interactive timed quiz, MCQ selector, instant feedback
+│   │   │   ├── Search.tsx            #   global multi-category workspace search
+│   │   │   └── auth/                 #   Login, Signup, Google/Microsoft OAuth callbacks
+│   │   ├── utils/                    # decay.ts (Ebbinghaus), timeBlock.ts, oauth.ts
+│   │   ├── styles/                   # app.css (components), auth.css, index.css (tokens)
+│   │   └── types/                    # api.ts (TypeScript interfaces mirroring Pydantic)
+│   ├── e2e/                          # Playwright end-to-end test suite (10 passed)
+│   ├── public/                       # favicon.svg, robots.txt, sitemap.xml, llms.txt
+│   └── package.json                  # React 19, Vite 8, Lucide icons, KaTeX, Framer Motion
+│
+├── docs/                             # architecture diagrams, setup guides, API docs
+├── .github/workflows/ci.yml          # GitHub Actions CI workflow (backend + frontend test gate)
+├── docker-compose.yml                # multi-container orchestration (FastAPI + React + Postgres)
+├── run_dev.py                        # unified concurrent development server runner
+└── README.md · CHANGELOG.md · CONTRIBUTING.md · LICENSE · SECURITY.md
 ```
 
 ---
 
 ## Database Schema
 
-Synapse uses **16 application tables** across auth, content, conversation, study,
-analytics, and evaluation. Cascading deletes flow from `users` down; `folders`
+Synapse uses **17 application tables** across auth, content, conversation, study,
+analytics, passkeys, and evaluation. Cascading deletes flow from `users` down; `folders`
 self-reference for nested organization. `document_chunks` links each row to a
-Chroma vector via `chroma_vector_id` (not a DB foreign key).
+Chroma vector via `chroma_vector_id`.
 
 ```mermaid
 erDiagram
   users ||--o| user_profiles : "has"
+  users ||--o{ user_passkeys : "registers"
   users ||--o| analytics : "has"
   users ||--o{ folders : "owns"
   users ||--o{ documents : "owns"
@@ -446,6 +498,14 @@ erDiagram
     bool is_active
     string last_refresh_jti "single-use refresh JTI"
     int daily_study_goal_minutes
+  }
+  user_passkeys {
+    uuid id PK
+    uuid user_id FK
+    string name "device label"
+    string credential_id UK
+    text public_key
+    int sign_count
   }
   user_profiles {
     uuid id PK
@@ -475,10 +535,12 @@ erDiagram
     uuid id PK
     uuid user_id FK
     uuid folder_id FK "nullable"
+    string original_filename
     string file_type
     int file_size_bytes
     string processing_status "pending|processing|completed|failed"
     int page_count
+    int chunk_count
     text error_message
   }
   document_chunks {
@@ -578,7 +640,7 @@ erDiagram
 
 Migrations live in `backend/alembic/` (10 revisions, applied in order from an
 empty database). `backend/app/models/` is the source of truth for every column,
-foreign key, and index. Alembic creates **17 tables total** (16 application tables
+foreign key, and index. Alembic creates **18 tables total** (17 application tables
 plus `alembic_version`).
 
 ---
@@ -593,75 +655,80 @@ The API is versioned under `/api/v1`. **Interactive docs:** Swagger UI at
 > client refreshes transparently and retries once. Errors use the uniform shape
 > `{"error": {"message": str, "code": str}}`.
 
-### Auth — `/api/v1/auth`
+### Auth & Passkeys — `/api/v1/auth`
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/auth/signup` | Create account → returns access + refresh tokens |
-| POST | `/auth/login` | Authenticate → tokens |
+| POST | `/auth/signup` | Register email + password account |
+| POST | `/auth/login` | Email + password login |
 | POST | `/auth/refresh` | Exchange refresh token for a new pair (rotates `jti`) |
-| POST | `/auth/logout` | Invalidate the refresh token |
+| POST | `/auth/logout` | Invalidate current refresh token |
+| POST | `/auth/oauth/google` | Google OAuth 2.0 exchange |
+| POST | `/auth/oauth/microsoft` | Microsoft OAuth 2.0 exchange |
+| POST | `/auth/passkey/register/options` | Request WebAuthn registration challenge |
+| POST | `/auth/passkey/register/verify` | Verify & register biometric passkey |
+| POST | `/auth/passkey/login/options` | Request WebAuthn authentication challenge |
+| POST | `/auth/passkey/login/verify` | Authenticate via biometric passkey |
+| GET | `/auth/passkey/list` | List registered passkeys for current user |
+| DELETE | `/auth/passkey/{id}` | Delete a registered passkey |
 
 ### Users — `/api/v1/users`
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/users/me` | Current user profile |
-| PATCH | `/users/me` | Update name / preferences / study goal |
-| POST | `/users/me/avatar` | Update avatar |
+| GET | `/users/me` | Current user profile & study goals |
+| PATCH | `/users/me` | Update name / study goal / preferences |
+| POST | `/users/me/avatar` | Upload profile image (PNG, JPEG, WebP) |
 
-### Documents & folders — `/api/v1/documents`
+### Documents & Folders — `/api/v1/documents`
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/documents/upload` | Upload + start background ingestion |
+| POST | `/documents/upload` | Upload document + start background ingestion |
 | GET | `/documents` | List user's documents (filter by `folder_id`) |
-| GET | `/documents/{id}` | Document detail |
-| GET | `/documents/{id}/status` | Processing status polling |
-| PATCH | `/documents/{id}` | Rename / move |
-| DELETE | `/documents/{id}` | Delete (vectors + file + row) |
-| POST | `/documents/folders` | Create folder |
-| GET | `/documents/folders` | List folders |
+| GET | `/documents/{id}` | Single document detail |
+| GET | `/documents/{id}/status` | Ingestion status polling (pending/processing/completed/failed) |
+| PATCH | `/documents/{id}` | Rename document or move to folder |
+| DELETE | `/documents/{id}` | Delete document (vectors + file + metadata) |
+| POST | `/documents/folders` | Create organizational folder |
+| GET | `/documents/folders` | List user folders |
 | DELETE | `/documents/folders/{id}` | Delete folder |
 
 ### Chat — `/api/v1/chat`
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/chat/message` | **SSE stream** — grounded, cited answer |
-| GET | `/chat/conversations` | List conversations |
-| GET | `/chat/conversations/{id}` | Conversation detail (messages + sources) |
-| PATCH | `/chat/conversations/{id}` | Rename conversation |
-| DELETE | `/chat/conversations/{id}` | Delete conversation |
-| PATCH | `/chat/conversations/{id}/messages/{id}` | Edit a message |
-| DELETE | `/chat/conversations/{id}/messages/{id}` | Delete a message |
+| POST | `/chat/message` | **SSE stream** — grounded, cited answer (supports web & doc mode) |
+| GET | `/chat/conversations` | List conversation threads |
+| GET | `/chat/conversations/{id}` | Conversation detail with messages & source citations |
+| PATCH | `/chat/conversations/{id}` | Rename conversation thread |
+| DELETE | `/chat/conversations/{id}` | Delete conversation thread |
+| PATCH | `/chat/conversations/{id}/messages/{id}` | Edit a message in thread |
+| DELETE | `/chat/conversations/{id}/messages/{id}` | Delete a message in thread |
 
-### Study — `/api/v1/study`
+### Study Tools — `/api/v1/study`
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/study/notes` | Generate notes / summaries |
-| GET | `/study/notes` · `/study/notes/{id}` | List / detail note |
-| PATCH / DELETE | `/study/notes/{id}` | Update / delete note |
-| POST | `/study/quiz` | Generate a quiz |
-| POST | `/study/quiz/submit` | Score submitted answers |
+| POST | `/study/notes` | Generate structured study notes / formula sheets |
+| GET | `/study/notes` · `/study/notes/{id}` | List / detail generated note |
+| PATCH / DELETE | `/study/notes/{id}` | Update / delete study note |
+| POST | `/study/quiz` | Generate adaptive quiz |
+| POST | `/study/quiz/submit` | Score submitted quiz answers |
 | GET | `/study/quiz` · `/study/quiz/{id}` | List / detail quiz |
 | PATCH / DELETE | `/study/quiz/{id}` | Update / delete quiz |
-| POST | `/study/flashcards` | Generate flashcards |
-| GET | `/study/flashcards` · `/study/flashcards/due` | All / due cards |
-| POST | `/study/flashcards/{id}/review` | Apply **SM-2** review |
+| POST | `/study/flashcards` | Generate spaced-repetition flashcards |
+| GET | `/study/flashcards` · `/study/flashcards/due` | All cards / due-today cards |
+| POST | `/study/flashcards/{id}/review` | Apply **SM-2** quality rating (0-5) |
 | PATCH / DELETE | `/study/flashcards/{id}` | Update / delete flashcard |
 
-### Analytics — `/api/v1/analytics`
+### Analytics & Heatmap — `/api/v1/analytics`
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/analytics/dashboard` | Summary tiles + weak/strong topics |
-| GET | `/analytics/usage` | Token / cost / cache-hit trends (query `days`) |
+| GET | `/analytics/dashboard` | Metric summary tiles, study streaks, weak/strong topics |
+| GET | `/analytics/usage` | Token, compute cost, and cache-hit trends (query `days`) |
+| GET | `/analytics/heatmap` | 371-day study activity history for streak heatmap |
 
-### Eval — `/api/v1/eval`
+### Eval Harness — `/api/v1/eval`
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/eval/run` | Run retrieval eval (precision/recall/MRR/NDCG + weight sweep) |
-| GET | `/eval/runs` | Historical runs for the trends chart |
-
-For full request/response shapes, see [`docs/api.md`](docs/api.md) (generated from
-the live OpenAPI schema). The API exposes **44 endpoints** across 9 groups
-(auth, users, folders, documents, chat, study, analytics, eval, health).
+| POST | `/eval/run` | Run retrieval eval (Precision@k, Recall@k, MRR, NDCG) |
+| GET | `/eval/runs` | Historical evaluation runs for dashboard trend chart |
 
 ---
 
@@ -671,15 +738,11 @@ the live OpenAPI schema). The API exposes **44 endpoints** across 9 groups
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| Python | **3.11** | 3.13 breaks the dependency build (`torch` / `sentence-transformers` / `chromadb`). Create the venv explicitly. |
-| Node.js | 20+ | For the Vite frontend (local dev used 24.x). |
-| PostgreSQL | 16 | Local instance, or Docker. |
-| Groq / Gemini / OpenRouter keys | — | Multi-tier LLM fallback (Groq primary, Gemini second, OpenRouter third). |
-| (Optional) Tesseract | — | For OCR of scanned images; the app degrades gracefully without it. |
-
-> **Python 3.11 only.** `backend/.python-version` pins `3.11`. On Windows use
-> `py -3.11`; elsewhere `python3.11`. Never `python -m venv .venv` (may resolve to
-> 3.13). Confirm with `python3.11 --version` before creating the environment.
+| Python | **3.11** | Pinned in `backend/.python-version`. |
+| Node.js | **20+** | Required for Vite frontend. |
+| PostgreSQL | **16** | Relational store (local or Docker container). |
+| Groq / Gemini API keys | — | Multi-tier LLM fallback chain. |
+| (Optional) Tesseract | — | Host OCR support; fallback to vision-LLM if absent. |
 
 ---
 
@@ -695,7 +758,7 @@ python run_dev.py
 
 ### 💻 Manual Service Execution
 
-#### 1. Backend (API only)
+#### 1. Backend (FastAPI)
 
 ```powershell
 cd backend
@@ -706,10 +769,6 @@ alembic upgrade head           # apply database migrations
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-- API Base: `http://127.0.0.1:8000/api/v1`
-- Swagger Docs: `http://127.0.0.1:8000/docs`
-- Health: `http://127.0.0.1:8000/health`
-
 #### 2. Frontend (React SPA)
 
 ```powershell
@@ -718,9 +777,6 @@ npm install
 cp .env.example .env           # set VITE_API_BASE_URL if needed (defaults to http://localhost:8000/api/v1)
 npm run dev                    # → http://localhost:5173
 ```
-
-The client defaults to `http://localhost:8000/api/v1`. Point it elsewhere by
-setting `VITE_API_BASE_URL` in `frontend/.env` (rebuild after changing).
 
 > 📖 For full command copy-paste blocks and test scripts, see the [**Development & Execution Runbook (`docs/commands.md`)**](docs/commands.md).
 
@@ -736,9 +792,6 @@ docker compose up --build
 Data (Chroma vectors, uploads, Postgres) persists across container restarts in mounted volumes under
 `backend/chroma_db`, `backend/storage`, and the named Postgres volume `pgdata`.
 
-See [`docs/setup.md`](docs/setup.md) for the full setup guide, including OCR engine
-setup, troubleshooting, and cloud deployment configurations.
-
 ---
 
 ## Testing
@@ -750,53 +803,22 @@ and pull request targeting `main`. It covers:
 
 - **Backend** — `pytest` on **Python 3.11** against a **real PostgreSQL 16**
   service container, with the `all-MiniLM-L6-v2` embedding model pre-downloaded
-  and cached. Runs strictly: any test failure **or** warning fails the job.
-- **Frontend** — Vitest unit/component tests, `oxlint`, and a production
+  and cached. Runs strictly: any test failure fails the job.
+- **Frontend** — Vitest unit/component tests, lint, and a production
   `vite build` (type-check + bundle) on **Node 20**.
 
-The full-stack Playwright e2e suite is **not** wired into per-PR CI (it requires
-a live LLM); it is run locally — see below. See the CI badge at the top of this
-README for the current status.
-
-### CI/CD Pipeline
-
-```mermaid
-flowchart TB
-    Push["Push / PR triggers workflow"] --> Parallel["Run jobs in parallel"]
-    Parallel -->|Backend| BackendJobs["pytest against real PostgreSQL 16<br/>fail-on-warning"]
-    Parallel -->|Frontend| FrontendJobs["oxlint · Vitest · vite build"]
-    BackendJobs -->|all green| Gate["Gate: all green → merge allowed"]
-    FrontendJobs -->|all green| Gate
-    Gate -->|any red| PRBlocked["PR blocked / CI fails"]
-    style Push fill:#f9f,stroke:#333,stroke-width:2px
-    style Gate fill:#bbf,stroke:#333,stroke-width:2px
-    style PRBlocked fill:#fbb,stroke:#333,stroke-width:2px
-```
-
-The full-stack Playwright e2e suite is **not** wired into per-PR CI (it requires
-a live LLM); it is run locally — see below. See the CI badge at the top of this
-README for the current status.
-
-### Local
+### Local Test Commands
 
 ```bash
 # Backend — pytest (real Postgres + real Chroma + real embeddings)
-cd backend && pytest                 # 35 passed, 0 failures, 0 warnings
+cd backend && pytest                 # 46 passed, 0 failures, 0 warnings
 
 # Frontend — Vitest unit/component (api client, hooks, UI primitives)
-cd frontend && npm test              # 40 passed across 12 test files
+cd frontend && npm test              # 49 passed across 14 test files
 
 # Frontend — Playwright e2e (signup → upload → chat citation → flashcard → quiz → analytics)
 cd frontend && npm run test:e2e      # 10 passed (against the real stack + live LLM)
 ```
-
-The Playwright suite uses `workers: 1` and client-side navigation to stay stable
-against a single local backend; it expects `GROQ_API_KEY` / `GEMINI_API_KEY` in
-the backend environment and boots its own backend (`uvicorn`, port 8011) and a
-production frontend preview (`vite preview`, port 4173) via the `webServer`
-config in `playwright.config.ts`. The backend e2e walkthrough
-(`scripts/manual_walkthrough.py`) is a standalone manual runner that hits a live
-server and is intentionally not collected by pytest.
 
 ---
 
@@ -816,154 +838,7 @@ that mirrors Vercel (gzip/brotli + immutable hashed assets).
 - **Failed (4xx/5xx) requests:** 0.
 - **Dead links / no-op buttons:** none.
 
-The single sub-95 mobile score (`/chat` at 95) is an inherent property of a
-streaming chat UI under emulated mobile throttling (the first token + citation
-chips arrive over SSE from a live LLM). It remains well inside the ≥ 90 target,
-and accessibility, best-practices, and SEO are perfect. Full methodology and
-per-fix notes: [`docs/lighthouse-report.md`](docs/lighthouse-report.md).
-
-### Engineering highlights
-
-**Hybrid search (BM25 + semantic).** Every query runs dense semantic search
-(Chroma) *and* a sparse BM25 index (`rank_bm25`, pure Python), normalized to 0..1
-and blended with tunable weights (`HYBRID_SEMANTIC_WEIGHT` /
-`HYBRID_BM25_WEIGHT`). Keyword-heavy queries that pure semantic search mis-ranks
-are recovered by BM25 — verified by a unit test and the retrieval eval.
-
-**Citations with source highlighting.** Each answer is grounded in retrieved
-chunks; the backend returns full provenance per chunk (`document_id`,
-`document_name`, `chunk_id`, `page_number`, `snippet_text`). The UI renders
-clickable chips; clicking opens the exact excerpt highlighted. This proves answers
-come from your material, not hallucination.
-
-**Retrieval eval dashboard (`/eval`).** A labelled dataset (question → expected
-answer → expected source triples) runs through the *real* pipeline. For each
-question the backend computes precision@k, recall@k, MRR, and NDCG, and persists
-an aggregate run. The dashboard plots score trends across runs — a concrete answer
-to *"how do you know your RAG actually retrieves the right context?"*
-
-```mermaid
-flowchart TB
-    EvalDataset["Labelled eval dataset"] --> Loop["Loop per question"]
-    Loop --> Embed["Embed query<br/>(same path as live chat)"]
-    Embed --> Retrieve["Hybrid retrieve<br/>(same retriever.py as live chat)"]
-    Retrieve --> Score["Score against expected documents<br/>(precision@k, recall@k, MRR, NDCG)"]
-    Score --> Aggregate["Aggregate across questions"]
-    Aggregate --> Persist["Persist to eval_runs table"]
-    Persist --> Dashboard["Dashboard trend chart"]
-    style EvalDataset fill:#bbf,stroke:#333,stroke-width:2px
-    style Dashboard fill:#bbf,stroke:#333,stroke-width:2px
-```
-
-**Query caching & cost analytics.** Before any LLM call, the pipeline checks an
-in-memory **LRU** keyed on `hash(user_id + normalized_query + document_scope)`; a
-cache hit skips the model entirely. On every call — cached or not — token counts
-and an estimated cost are persisted to `llm_usage_logs`. `GET /analytics/usage`
-aggregates tokens, cost, and cache-hit rate; the Analytics page renders a
-**Usage & Cost** card.
-
-**Spaced-repetition flashcards (SM-2).** Each card carries SM-2 state
-(`ease_factor`, `interval_days`, `repetitions`, `due_date`). Rating recall quality
-(Again/Hard/Good/Easy → quality 0/3/4/5) updates the ease factor and computes the
-next interval. `GET /study/flashcards/due` drives a focused "Due for review"
-session — real spaced repetition.
-
-```mermaid
-stateDiagram-v2
-  [*] --> New : card created (interval_days = 0, due)
-  New --> Learning : review (quality < 3)
-  New --> Reviewing : review (quality >= 3)
-  Learning --> Learning : quality < 3 (interval reset to 1d)
-  Learning --> Reviewing : quality >= 3 (interval grows)
-  Reviewing --> Reviewing : quality >= 3 (interval × ease_factor)
-  Reviewing --> Learning : quality < 3 (lapse → interval reset)
-  Reviewing --> [*] : deleted
-```
-
----
-
-## Deployment
-
-```mermaid
-flowchart TB
-  Dev["Developer"] -->|git push| GH[("GitHub")]
-  GH -->|build + host SPA| Vercel["Vercel: React SPA"]
-  GH -->|deploy service| Render["Render: FastAPI + Postgres 16"]
-  Render --> PG[("PostgreSQL 16")]
-  Render --> Disk1[("/app/chroma_db disk")]
-  Render --> Disk2[("/app/storage disk")]
-  Vercel -->|HTTPS /api/v1| Render
-  User["Browser"] -->|static assets| Vercel
-  User -->|API calls| Render
-```
-
-| Component | Where | Config |
-|-----------|-------|--------|
-| Frontend | Vercel (static, Vite) | root = `frontend/`; set `VITE_API_BASE_URL` at build |
-| Backend | Render / Railway | `render.yaml` (web + Postgres 16 + 2 disks) |
-| Local full-stack | Docker | `Dockerfile` + `docker-compose.yml` |
-
-**Backend (Render).** `render.yaml` defines a web service, attached Postgres 16,
-two persistent disks (`/app/chroma_db`, `/app/storage`), and runs
-`alembic upgrade head` as a pre-deploy step. Set `JWT_SECRET_KEY`,
-`GROQ_API_KEY`, `GEMINI_API_KEY`, and `ALLOWED_ORIGINS` (must include the Vercel
-URL) in the dashboard.
-
-**Frontend (Vercel).** `frontend/vercel.json` uses the Vite preset, outputs
-`dist`, and rewrites all paths to `index.html` (SPA). Set `VITE_API_BASE_URL` to
-the deployed API.
-
-See [`docs/setup.md`](docs/setup.md) for the full deploy runbook, including OCR
-engine setup and troubleshooting.
-
----
-
-## Configuration Reference
-
-**Backend** (`backend/.env`) — see [`backend/.env.example`](backend/.env.example).
-Required values must be set; the rest have sensible defaults.
-
-| Variable | Required | Description |
-|----------|:---:|-------------|
-| `DATABASE_URL` | ✅ | `postgresql+asyncpg://user:pass@host:5432/synapse` |
-| `JWT_SECRET_KEY` | ✅ | Signs access/refresh tokens (≥ 32 random chars) |
-| `GROQ_API_KEY` | ✅ | Primary LLM provider |
-| `GEMINI_API_KEY` | | Second fallback LLM provider |
-| `OPENROUTER_API_KEY` | | Third fallback LLM (Free Models Router / Nemotron) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | | Google OAuth 2.0 credentials for social sign-in |
-| `GOOGLE_REDIRECT_URI` | | Google OAuth redirect URI (default `http://localhost:5173/auth/callback/google`) |
-| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | | Microsoft Entra ID credentials for social sign-in |
-| `MICROSOFT_TENANT_ID` / `MICROSOFT_REDIRECT_URI` | | Microsoft OAuth tenant (default `common`) and redirect URI |
-| `TAVILY_API_KEY` | | Tavily search API key for live web search fallback |
-| `WEB_SEARCH_MAX_RESULTS` | | Max Tavily search results injected into context (default `5`) |
-| `CHROMA_PERSIST_PATH` | | Vector store dir (default `./chroma_db`) |
-| `STORAGE_PATH` | | Uploaded-file dir (default `./storage`) |
-| `ALLOWED_ORIGINS` | | CORS allow-list (must include the frontend origin) |
-| `JWT_ALGORITHM` | | Token algorithm (default `HS256`) |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | | Access token TTL (default `20`) |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | | Rotating refresh TTL (default `7`) |
-| `APP_ENV` | | `development` \| `production` |
-| `MAX_UPLOAD_SIZE_MB` | | Upload guardrail (default `50`) |
-| `ALLOWED_EXTENSIONS` | | `pdf,docx,txt,png,jpg,jpeg` |
-| `HYBRID_SEMANTIC_WEIGHT` | | Semantic blend weight (default `0.6`) |
-| `HYBRID_BM25_WEIGHT` | | BM25 blend weight (default `0.4`) |
-| `RESPONSE_CACHE_MAX_SIZE` | | LRU cache capacity (default `256`) |
-| `RESPONSE_CACHE_TTL_SECONDS` | | LRU cache TTL (default `3600`) |
-| `GROQ_INPUT_COST_PER_1M` / `GROQ_OUTPUT_COST_PER_1M` | | USD per 1M tokens for cost metering |
-| `GEMINI_INPUT_COST_PER_1M` / `GEMINI_OUTPUT_COST_PER_1M` | | USD per 1M tokens for cost metering |
-| `OCR_VISION_FALLBACK_ENABLED` | | Vision-LLM OCR fallback (default `false`) |
-| `OCR_LANGUAGE` / `OCR_DPI` | | Tesseract language pack / render DPI |
-| `CHROMA_TELEMETRY_OPTOUT` | | Set `true` to silence Chroma telemetry |
-
-**Frontend** (`frontend/.env`):
-
-| Variable | Required | Description |
-|----------|:---:|-------------|
-| `VITE_API_BASE_URL` | ✅ | API base URL (must include `/api/v1`, e.g. `http://localhost:8000/api/v1`) |
-| `VITE_GOOGLE_CLIENT_ID` | | Google OAuth Client ID for social login button |
-| `VITE_GOOGLE_REDIRECT_URI` | | Google OAuth callback URL (default `http://localhost:5173/auth/callback/google`) |
-| `VITE_MICROSOFT_CLIENT_ID` | | Microsoft OAuth Client ID for social login button |
-| `VITE_MICROSOFT_REDIRECT_URI` | | Microsoft OAuth callback URL (default `http://localhost:5173/auth/callback/microsoft`) |
+Full methodology and per-fix notes: [`docs/lighthouse-report.md`](docs/lighthouse-report.md).
 
 ---
 
@@ -972,46 +847,16 @@ Required values must be set; the rest have sensible defaults.
 For vulnerability reporting instructions and security disclosures, see [`SECURITY.md`](SECURITY.md).
 
 - **Passwords** are hashed with bcrypt (`passlib`); plaintext is never stored.
+- **Biometric Passkeys** adhere strictly to FIDO2 / WebAuthn Level 3 specifications.
 - **JWT auth** uses a 20-minute access token and a 7-day refresh token.
 - **Refresh-token rotation** — `auth_service.refresh` rejects any presented `jti`
-  that is not the stored `last_refresh_jti` and rotates it on every success, so a
-  refresh token is single-use and cannot be replayed. `logout` nulls
-  `last_refresh_jti`.
+  that is not the stored `last_refresh_jti` and rotates it on every success.
 - **Data ownership** — repositories filter every read by `user_id`; one user can
-  never read another's documents, conversations, or study data. Enforced in the
-  data-access layer, not the routes.
+  never read another's documents, conversations, or study data.
 - **Uniform error shape** — exceptions never leak stack traces; clients receive
   `{"error": {"message", "code"}}`.
 - **Upload guardrails** — extension allow-list and size cap (`MAX_UPLOAD_SIZE_MB`).
 - **Rate limiting** — `slowapi` guards the API; tune via `core/limiter.py`.
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant S as Auth Service
-    U->>S: Login
-    S->>S: Issue access & refresh tokens
-    Note right of S: Store last_refresh_jti
-    Note over U,S: Access token expires (after 20m)
-    S-->>U: 401 error (access token expired)
-    U->>S: Refresh request (with refresh token)
-    S->>S: Decode refresh token, extract jti
-    alt jti matches stored last_refresh_jti
-        S->>S: Issue new access & refresh tokens
-        S->>S: Update last_refresh_jti (rotate)
-        S-->>U: New tokens
-    else jti does not match (replay)
-        S-->>U: Reject (Unauthorized)
-    end
-    U->>S: Logout (with refresh token)
-    S->>S: Decode refresh token, extract jti
-    alt jti matches stored last_refresh_jti
-        S->>S: Set last_refresh_jti = null
-        S-->>U: Logout successful
-    else
-        S-->>U: Ignore (token already used/invalid)
-    end
-```
 
 ---
 
@@ -1020,34 +865,11 @@ sequenceDiagram
 | Decision | Why | Trade-off accepted |
 |----------|-----|-------------------|
 | Hand-rolled RAG vs LangChain | Full control over retrieval quality and performance tuning | Increased implementation complexity |
-| ChromaDB vs a managed vector DB | Full control over privacy and cost | Not production-scalable (single-node/file-persisted) |
-| Hybrid retrieval (semantic + BM25) vs semantic-only | Better handling of keyword queries | Double resource usage for index maintenance |
-| Multi-tier LLM fallback vs single provider | Better reliability through redundancy | Increased latency and cost |
-| Local embeddings vs an embedding API | No cloud dependence | Limited to CPU performance |
-| Spaced-repetition algorithm choice (SM-2) vs a simpler scheme | Proven algorithm with historical efficacy | Implementation complexity |
-| Local knowledge base vs cloud API | Data privacy and control | Limited to local storage capacity |
-
-## Known Limitations
-- Free-tier LLM rate limits (Groq/Gemini) require fallback management.
-- OCR requires Tesseract on host (performance degrades without it).
-- ChromaDB is single-node/file-persisted (not production-scale).
-- Playwright E2E tests run locally, not in CI.
-- Full-stack E2E still not wired into CI.
-
-## Roadmap
-
-- **Full-stack e2e in CI** — backend unit tests (pytest, real PostgreSQL 16) and
-  frontend unit/component tests, lint, and build now run automatically in CI on
-  every push and PR (see the status badge). The Playwright e2e suite still runs
-  locally against a live LLM; wiring it into CI (a scheduled/manual run against
-  the real stack with `GROQ_API_KEY` / `GEMINI_API_KEY` secrets) is the
-  remaining step.
-- **Multi-document chat scope + inline citation anchors** in the streamed answer.
-- **Streaming study generation** — flashcards/quiz questions appear progressively.
-- **Usage-based rate limiting & per-user cost caps** from `llm_usage_logs` metering.
-- **OCR vision fallback on by default in prod** once Tesseract isn't guaranteed.
-- **Self-hosted web fonts** (woff2) to restore the custom type without a CDN
-  dependency.
+| ChromaDB vs a managed vector DB | Full control over privacy, cost, and per-user collection isolation | Not distributed/multi-region |
+| Hybrid retrieval (semantic + BM25) vs semantic-only | Superior handling of keyword & jargon queries | Double index maintenance overhead |
+| Multi-tier LLM fallback vs single provider | Resilience against upstream 429 rate limits | Fallback invocation latency |
+| Local embeddings vs an embedding API | Zero cloud embedding costs and zero network latency | Uses CPU resources during ingestion |
+| Spaced-repetition (SM-2) vs fixed intervals | Proven cognitive science memory retention scheduling | Implementation complexity |
 
 ---
 

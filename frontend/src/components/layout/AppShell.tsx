@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
 import { Icon } from "../ui/Icon";
+import "../../styles/app.css";
 
 const LS_KEY = "synapse_sidebar_v2";
 

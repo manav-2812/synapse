@@ -169,12 +169,19 @@ class AnalyticsService:
             for q in quizzes[:10]
         ]
 
+        scores: list[float] = [q.score for q in quizzes if q.score is not None]
+        avg_score = (
+            sum(scores) / len(scores)
+            if scores
+            else analytics.average_quiz_score
+        )
+
         return {
             "summary": {
-                "documents_uploaded_count": analytics.documents_uploaded_count,
+                "documents_uploaded_count": len(docs),
                 "questions_asked_count": analytics.questions_asked_count,
-                "quizzes_taken_count": analytics.quizzes_taken_count,
-                "average_quiz_score": analytics.average_quiz_score,
+                "quizzes_taken_count": len(scores) if scores else analytics.quizzes_taken_count,
+                "average_quiz_score": avg_score,
                 "total_study_minutes": total_study_minutes,
                 "study_streak": study_streak,
                 "today_study_minutes": today_minutes,

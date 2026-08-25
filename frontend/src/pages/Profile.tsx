@@ -518,6 +518,9 @@ export default function Profile() {
                 value={goal}
                 onChange={(e) => setGoal(Number(e.target.value))}
                 className="profile-range-slider"
+                style={{
+                  background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${(goal / 180) * 100}%, var(--surface-3) ${(goal / 180) * 100}%, var(--surface-3) 100%)`,
+                }}
                 aria-label="Daily study goal in minutes"
               />
               <div className="profile-slider-markers">

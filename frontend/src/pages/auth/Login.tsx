@@ -9,6 +9,8 @@ import { Input } from "../../components/ui/Input";
 import { Icon } from "../../components/ui/Icon";
 import { BrandLogo } from "../../components/ui/BrandLogo";
 import { AuthLegalModal, type LegalType } from "../../components/auth/AuthLegalModal";
+import { useTheme } from "../../hooks/useTheme";
+import "../../styles/auth.css";
 
 function getRedirect(): string {
   const r = localStorage.getItem("synapse_redirect");
@@ -21,6 +23,7 @@ function getRedirect(): string {
 
 export default function Login() {
   const { login, loginWithPasskey } = useAuth();
+  const { themeMode, setThemeMode } = useTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -87,7 +90,45 @@ export default function Login() {
   }
 
   return (
-    <div className="notion-page">
+    <main className="notion-page">
+      <div className="notion-auth-topbar">
+        <div className="notion-theme-segmented" role="radiogroup" aria-label="Theme mode switcher">
+          <button
+            type="button"
+            className={`notion-theme-btn ${themeMode === "light" ? "active" : ""}`}
+            onClick={() => setThemeMode("light")}
+            title="Light mode"
+            aria-label="Light mode"
+            aria-checked={themeMode === "light"}
+            role="radio"
+          >
+            <Icon name="sun" size={14} />
+          </button>
+          <button
+            type="button"
+            className={`notion-theme-btn ${themeMode === "system" ? "active" : ""}`}
+            onClick={() => setThemeMode("system")}
+            title="System preference"
+            aria-label="System theme"
+            aria-checked={themeMode === "system"}
+            role="radio"
+          >
+            <Icon name="monitor" size={14} />
+          </button>
+          <button
+            type="button"
+            className={`notion-theme-btn ${themeMode === "dark" ? "active" : ""}`}
+            onClick={() => setThemeMode("dark")}
+            title="Dark mode"
+            aria-label="Dark mode"
+            aria-checked={themeMode === "dark"}
+            role="radio"
+          >
+            <Icon name="moon" size={14} />
+          </button>
+        </div>
+      </div>
+
       <div className="notion-content-wrap">
         {/* Top Logo & Name */}
         <div className="notion-brand-header">
@@ -147,7 +188,7 @@ export default function Login() {
           </div>
 
           <Button type="submit" fullWidth loading={busy} className="notion-btn-primary">
-            Continue
+            Sign in
           </Button>
         </form>
 
@@ -235,6 +276,6 @@ export default function Login() {
 
       {/* Legal Modal */}
       <AuthLegalModal type={legalModal} onClose={() => setLegalModal(null)} />
-    </div>
+    </main>
   );
 }

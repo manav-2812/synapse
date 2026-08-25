@@ -466,6 +466,9 @@ export function CommandPalette() {
 
   if (!open) return null;
 
+  const userSpaceTitle = user?.full_name ? `${user.full_name}'s Space` : "your workspace";
+  const selectedItem = filtered[active] || null;
+
   return (
     <div
       className="syn-cmd-overlay"
@@ -484,12 +487,12 @@ export function CommandPalette() {
         {/* ── Top Executive Search Bar ── */}
         <div className="syn-cmd-search-bar">
           <div className="syn-cmd-search-icon">
-            <Icon name="search" size={20} />
+            <Icon name="search" size={19} />
           </div>
           <input
             ref={inputRef}
             className="syn-cmd-input"
-            placeholder="Type a command or search documents, chats, flashcards..."
+            placeholder={`Search or ask a question in ${userSpaceTitle}...`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onInputKey}
@@ -517,19 +520,26 @@ export function CommandPalette() {
             </div>
           )}
           <div className="syn-cmd-esc-wrapper">
-            <kbd className="syn-cmd-esc-kbd">ESC</kbd>
+            <button
+              type="button"
+              className="syn-cmd-close-btn"
+              onClick={close}
+              aria-label="Close search"
+            >
+              <kbd className="syn-cmd-esc-kbd">ESC</kbd>
+            </button>
           </div>
         </div>
 
-        {/* ── Minimalist Segmented Tabs ── */}
+        {/* ── Minimalist Segmented Filter Pills ── */}
         <div className="syn-cmd-filters-bar">
           {[
-            { id: "all" as const, label: "All Commands" },
+            { id: "all" as const, label: "All" },
             { id: "documents" as const, label: "Documents", count: docs.length },
-            { id: "chats" as const, label: "Conversations", count: chats.length },
-            { id: "actions" as const, label: "Actions & AI" },
-            { id: "study" as const, label: "Study Tools", count: flashcards.length + quizzes.length },
+            { id: "chats" as const, label: "Chats", count: chats.length },
             { id: "notes" as const, label: "Notes", count: notes.length },
+            { id: "study" as const, label: "Study Tools", count: flashcards.length + quizzes.length },
+            { id: "actions" as const, label: "Actions & AI" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -545,94 +555,139 @@ export function CommandPalette() {
           ))}
         </div>
 
-        {/* ── Results Container ── */}
-        <div className="syn-cmd-list" ref={listRef}>
-          {filtered.length === 0 ? (
-            <div className="syn-cmd-empty">
-              <div className="syn-cmd-empty-icon">
-                <Icon name="search" size={26} />
+        {/* ── Main Split View Body: Results List + Preview Pane ── */}
+        <div className="syn-cmd-body">
+          {/* Left Results List */}
+          <div className="syn-cmd-list" ref={listRef}>
+            {filtered.length === 0 ? (
+              <div className="syn-cmd-empty">
+                <div className="syn-cmd-empty-icon">
+                  <Icon name="search" size={24} />
+                </div>
+                <h3 className="syn-cmd-empty-title">
+                  No matches for &ldquo;{query}&rdquo;
+                </h3>
+                <p className="syn-cmd-empty-desc">
+                  Search across your workspace notes, documents, quizzes, and conversations.
+                </p>
+                {query && (
+                  <button
+                    type="button"
+                    className="syn-cmd-empty-action"
+                    onClick={() => {
+                      close();
+                      navigate(`/chat?q=${encodeURIComponent(query.trim())}`);
+                    }}
+                  >
+                    <Icon name="sparkles" size={15} />
+                    <span>Ask AI Assistant: &ldquo;{query.trim()}&rdquo;</span>
+                  </button>
+                )}
               </div>
-              <h3 className="syn-cmd-empty-title">
-                No commands matching &ldquo;{query}&rdquo;
-              </h3>
-              <p className="syn-cmd-empty-desc">
-                Search your workspace across indexed documents, chat histories, active flashcard decks, and system actions.
-              </p>
-              {query && (
-                <button
-                  type="button"
-                  className="syn-cmd-empty-action"
-                  onClick={() => {
-                    close();
-                    navigate(`/chat?q=${encodeURIComponent(query.trim())}`);
-                  }}
-                >
-                  <Icon name="sparkles" size={16} />
-                  <span>Synthesize with AI: &ldquo;{query.trim()}&rdquo;</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            filtered.map((item, i) => {
-              const prevItem = filtered[i - 1];
-              const showCategory =
-                !query && (!prevItem || prevItem.category !== item.category);
+            ) : (
+              filtered.map((item, i) => {
+                const prevItem = filtered[i - 1];
+                const showCategory =
+                  !query && (!prevItem || prevItem.category !== item.category);
 
-              return (
-                <div key={item.id} className="syn-cmd-group-wrapper">
-                  {showCategory && (
-                    <div className="syn-cmd-section-header">
-                      <span className="syn-cmd-section-title">{item.category}</span>
-                      <span className="syn-cmd-section-line" />
+                return (
+                  <div key={item.id} className="syn-cmd-group-wrapper">
+                    {showCategory && (
+                      <div className="syn-cmd-section-header">
+                        <span className="syn-cmd-section-title">{item.category}</span>
+                      </div>
+                    )}
+                    <button
+                      className={`syn-cmd-item ${i === active ? "active" : ""}`}
+                      onMouseEnter={() => setActive(i)}
+                      onClick={() => run(item)}
+                      type="button"
+                    >
+                      <div className={`syn-cmd-item-glyph ${item.tone || "neutral"}`}>
+                        <Icon name={item.icon} size={16} />
+                      </div>
+
+                      <div className="syn-cmd-item-info">
+                        <div className="syn-cmd-title-row">
+                          <span className="syn-cmd-item-title">{item.title}</span>
+                          {item.badge && <span className="syn-cmd-badge">{item.badge}</span>}
+                        </div>
+                        {item.subtitle && (
+                          <span className="syn-cmd-item-subtitle">{item.subtitle}</span>
+                        )}
+                      </div>
+
+                      {item.hint && <span className="syn-cmd-hint">{item.hint}</span>}
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Right Preview Panel (Notion-style) */}
+          <div className="syn-cmd-preview">
+            {selectedItem ? (
+              <div className="syn-cmd-preview-card">
+                <div className="syn-cmd-preview-head">
+                  <span className="syn-cmd-preview-tag">{selectedItem.category}</span>
+                  <div className="syn-cmd-preview-actions">
+                    <button
+                      type="button"
+                      className="syn-cmd-preview-btn"
+                      title="Open item"
+                      onClick={() => run(selectedItem)}
+                    >
+                      <Icon name="externalLink" size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="syn-cmd-preview-body">
+                  <div className="syn-cmd-preview-icon-wrap">
+                    <Icon name={selectedItem.icon} size={28} />
+                  </div>
+                  <h3 className="syn-cmd-preview-title">{selectedItem.title}</h3>
+                  {selectedItem.subtitle && (
+                    <p className="syn-cmd-preview-desc">{selectedItem.subtitle}</p>
+                  )}
+                  {selectedItem.meta && (
+                    <div className="syn-cmd-preview-meta">
+                      <span>{selectedItem.meta}</span>
                     </div>
                   )}
+                </div>
+
+                <div className="syn-cmd-preview-footer">
                   <button
-                    className={`syn-cmd-item ${i === active ? "active" : ""}`}
-                    onMouseEnter={() => setActive(i)}
-                    onClick={() => run(item)}
                     type="button"
+                    className="syn-cmd-preview-action-btn"
+                    onClick={() => run(selectedItem)}
                   >
-                    <div className={`syn-cmd-item-glyph ${item.tone || "neutral"}`}>
-                      <Icon name={item.icon} size={17} />
-                    </div>
-
-                    <div className="syn-cmd-item-info">
-                      <div className="syn-cmd-title-row">
-                        <span className="syn-cmd-item-title">{item.title}</span>
-                        {item.badge && <span className="syn-cmd-badge">{item.badge}</span>}
-                      </div>
-                      {item.subtitle && (
-                        <span className="syn-cmd-item-subtitle">{item.subtitle}</span>
-                      )}
-                    </div>
-
-                    {item.meta && <span className="syn-cmd-meta">{item.meta}</span>}
-                    {item.hint && <span className="syn-cmd-hint">{item.hint}</span>}
-
-                    {i === active ? (
-                      <div className="syn-cmd-enter-prompt">
-                        <span className="syn-cmd-enter-label">Open</span>
-                        <kbd className="syn-cmd-enter-key">↵</kbd>
-                      </div>
-                    ) : null}
+                    <span>Open in workspace</span>
+                    <Icon name="arrowRight" size={14} />
                   </button>
                 </div>
-              );
-            })
-          )}
+              </div>
+            ) : (
+              <div className="syn-cmd-preview-empty">
+                <Icon name="search" size={24} />
+                <span>Select an item to preview</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Executive Bottom Status Bar ── */}
         <div className="syn-cmd-footer">
           <div className="syn-cmd-shortcuts">
             <div className="syn-cmd-shortcut-item">
-              <kbd className="syn-cmd-kbd">↑</kbd>
-              <kbd className="syn-cmd-kbd">↓</kbd>
-              <span>Navigate</span>
+              <kbd className="syn-cmd-kbd">Ctrl+↵</kbd>
+              <span>Open</span>
             </div>
             <div className="syn-cmd-shortcut-item">
-              <kbd className="syn-cmd-kbd">↵</kbd>
-              <span>Execute</span>
+              <kbd className="syn-cmd-kbd">↑↓</kbd>
+              <span>Navigate</span>
             </div>
             <div className="syn-cmd-shortcut-item">
               <kbd className="syn-cmd-kbd">Tab</kbd>
@@ -640,17 +695,14 @@ export function CommandPalette() {
             </div>
             <div className="syn-cmd-shortcut-item">
               <kbd className="syn-cmd-kbd">Esc</kbd>
-              <span>Dismiss</span>
+              <span>Close</span>
             </div>
           </div>
 
           <div className="syn-cmd-footer-right">
             <span className="syn-cmd-brand-tag">
-              <BrandLogo size={16} />
-              <span>SYNAPSE Spotlight</span>
-            </span>
-            <span className="syn-cmd-counter">
-              {filtered.length} {filtered.length === 1 ? "match" : "matches"}
+              <BrandLogo size={14} />
+              <span>Synapse Search</span>
             </span>
           </div>
         </div>

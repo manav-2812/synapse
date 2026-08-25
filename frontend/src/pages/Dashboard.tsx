@@ -10,6 +10,10 @@ import { useCountUp } from "../hooks/useCountUp";
 import { Icon } from "../components/ui/Icon";
 import { Button } from "../components/ui/Button";
 import { StudyHeatmap } from "../components/ui/StudyHeatmap";
+import { DashboardFocusPulse } from "../components/dashboard/DashboardFocusPulse";
+import { DashboardNeuralGraph } from "../components/dashboard/DashboardNeuralGraph";
+import { DashboardMemoryRadar } from "../components/dashboard/DashboardMemoryRadar";
+import { getTimeBlockConfig, extractFirstName } from "../utils/timeBlock";
 import type {
   DashboardResponse,
   HeatmapDay,
@@ -17,6 +21,7 @@ import type {
   FlashcardResponse,
   FolderResponse,
   DocumentResponse,
+  QuizResponse,
 } from "../types/api";
 
 /** Animates a number from 0 on first mount — no bounce on re-renders */
@@ -209,6 +214,7 @@ export default function Dashboard() {
   const [flashcardsList, setFlashcardsList] = useState<FlashcardResponse[]>([]);
   const [foldersList, setFoldersList] = useState<FolderResponse[]>([]);
   const [docsList, setDocsList] = useState<DocumentResponse[]>([]);
+  const [quizzesList, setQuizzesList] = useState<QuizResponse[]>([]);
 
   // UI & interactive control states
   const [loading, setLoading] = useState(true);
@@ -224,13 +230,14 @@ export default function Dashboard() {
     else setRefreshing(true);
 
     try {
-      const [dashRes, heatRes, notesRes, fcRes, foldersRes, docsRes] = await Promise.allSettled([
+      const [dashRes, heatRes, notesRes, fcRes, foldersRes, docsRes, quizzesRes] = await Promise.allSettled([
         analyticsApi.dashboard(),
         analyticsApi.heatmap(),
         studyApi.listNotes(),
         studyApi.listFlashcards(),
         documentsApi.listFolders(),
         documentsApi.list(),
+        studyApi.listQuizzes(),
       ]);
 
       if (dashRes.status === "fulfilled") setData(dashRes.value);
@@ -239,6 +246,7 @@ export default function Dashboard() {
       if (fcRes.status === "fulfilled") setFlashcardsList(fcRes.value);
       if (foldersRes.status === "fulfilled") setFoldersList(foldersRes.value);
       if (docsRes.status === "fulfilled") setDocsList(docsRes.value);
+      if (quizzesRes.status === "fulfilled") setQuizzesList(quizzesRes.value);
 
       if (isSilent) {
         toast("success", "Dashboard Updated", "All study metrics and sessions refreshed.");
@@ -258,6 +266,22 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboardData();
+
+    // 1. Silent revalidation when tab or window regains focus
+    function handleFocus() {
+      loadDashboardData();
+    }
+    window.addEventListener("focus", handleFocus);
+
+    // 2. Periodic background telemetry sync every 30 seconds
+    const intervalId = setInterval(() => {
+      loadDashboardData();
+    }, 30000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(intervalId);
+    };
   }, [loadDashboardData]);
 
   // Click outside listener for dropdowns
@@ -272,11 +296,12 @@ export default function Dashboard() {
   }, []);
 
   const s = data?.summary;
-  const firstName = (user?.full_name || user?.email || "there").split(" ")[0];
+  const firstName = extractFirstName(user) || "there";
 
   const now = new Date();
   const hour = now.getHours();
-  const part = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+  const timeBlock = getTimeBlockConfig(hour, firstName);
+  const part = timeBlock.part;
   const dateLabel = now.toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -290,9 +315,10 @@ export default function Dashboard() {
   const realNotesCount = notesList.length > 0 ? notesList.length : (s?.documents_uploaded_count ? s.documents_uploaded_count * 2 : 0);
   const realFlashcardsCount = flashcardsList.length > 0 ? flashcardsList.length : (s?.quizzes_taken_count ? s.quizzes_taken_count * 8 : 0);
   const dueFlashcardsCount = useMemo(() => {
-    const due = flashcardsList.filter((f) => f.is_due);
-    return due.length > 0 ? due.length : (flashcardsList.length > 0 ? flashcardsList.length : 0);
+    return flashcardsList.filter((f) => f.is_due).length;
   }, [flashcardsList]);
+
+  const attemptedQuizzesCount = s?.quizzes_taken_count ?? 0;
 
   // Real Subject / Category Extractor
   const availableSubjects = useMemo(() => {
@@ -397,10 +423,25 @@ export default function Dashboard() {
         <div className="dash-head-text">
           <p className="dash-head-date">{dateLabel}</p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <h1 className="dash-head-greeting-large">Good {part}, {firstName}!</h1>
+            <h1 className="dash-head-greeting-large">{timeBlock.greeting}!</h1>
           </div>
         </div>
       </div>
+
+      {/* ── 1. Adaptive Dynamic AI Focus Pulse ── */}
+      <DashboardFocusPulse
+        dueCardsCount={dueCardsCount}
+        todayStudyMins={todayStudyMins}
+        studyGoalMins={studyGoalMins}
+        streak={streak}
+        avgScore={quizScore}
+        onActionClick={(target) => {
+          if (target === "flashcards") navigate("/flashcards");
+          else if (target === "notes") navigate("/notes");
+          else if (target === "quiz") navigate("/quizzes");
+          else navigate("/chat");
+        }}
+      />
 
       {/* ── Metric Hierarchy: Hero Metric Card + Categorized Secondary Groups ── */}
       <div className="dash-metrics-hierarchy-deck">
@@ -465,11 +506,11 @@ export default function Dashboard() {
                 <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                 </svg>
-                <div className="bento-compact-top">
-                  <span className="bento-compact-lbl">Notes</span>
-                  <Icon name="note" size={13} />
+                <div className="bento-compact-icon-wrap">
+                  <Icon name="note" size={16} />
                 </div>
                 <div className="bento-compact-num"><AnimatedNum value={notesList.length} /></div>
+                <div className="bento-compact-lbl">Notes</div>
                 <div className="bento-compact-sub">{uniqueSubjectsCount} Topics</div>
               </div>
 
@@ -478,12 +519,12 @@ export default function Dashboard() {
                 <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
                 </svg>
-                <div className="bento-compact-top">
-                  <span className="bento-compact-lbl">Flashcards</span>
-                  <Icon name="card" size={13} />
+                <div className="bento-compact-icon-wrap">
+                  <Icon name="card" size={16} />
                 </div>
                 <div className="bento-compact-num"><AnimatedNum value={flashcardsList.length} /></div>
-                <div className="bento-compact-sub">{dueFlashcardsCount > 0 ? `${dueFlashcardsCount} Due` : "All Done"}</div>
+                <div className="bento-compact-lbl">Flashcards</div>
+                <div className="bento-compact-sub">{dueFlashcardsCount > 0 ? `${dueFlashcardsCount} Due Today` : "All Done"}</div>
               </div>
 
               {/* Documents */}
@@ -491,11 +532,11 @@ export default function Dashboard() {
                 <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
                 </svg>
-                <div className="bento-compact-top">
-                  <span className="bento-compact-lbl">Documents</span>
-                  <Icon name="folder" size={13} />
+                <div className="bento-compact-icon-wrap">
+                  <Icon name="folder" size={16} />
                 </div>
                 <div className="bento-compact-num"><AnimatedNum value={docsList.length} /></div>
+                <div className="bento-compact-lbl">Documents</div>
                 <div className="bento-compact-sub">Indexed</div>
               </div>
             </div>
@@ -509,12 +550,12 @@ export default function Dashboard() {
                 <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/>
                 </svg>
-                <div className="bento-compact-top">
-                  <span className="bento-compact-lbl">Quizzes</span>
-                  <Icon name="quiz" size={13} />
+                <div className="bento-compact-icon-wrap">
+                  <Icon name="quiz" size={16} />
                 </div>
-                <div className="bento-compact-num"><AnimatedNum value={s?.quizzes_taken_count ?? 0} /></div>
-                <div className="bento-compact-sub">{quizScore}% Avg Score</div>
+                <div className="bento-compact-num"><AnimatedNum value={quizzesList.length} /></div>
+                <div className="bento-compact-lbl">Quizzes</div>
+                <div className="bento-compact-sub">{attemptedQuizzesCount > 0 ? `${attemptedQuizzesCount} Solved` : `${quizScore}% Avg Score`}</div>
               </div>
 
               {/* AI Chat */}
@@ -522,11 +563,11 @@ export default function Dashboard() {
                 <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
                 </svg>
-                <div className="bento-compact-top">
-                  <span className="bento-compact-lbl">AI Queries</span>
-                  <Icon name="chat" size={13} />
+                <div className="bento-compact-icon-wrap">
+                  <Icon name="chat" size={16} />
                 </div>
                 <div className="bento-compact-num"><AnimatedNum value={s?.questions_asked_count ?? 0} /></div>
+                <div className="bento-compact-lbl">AI Queries</div>
                 <div className="bento-compact-sub">Solved</div>
               </div>
 
@@ -535,9 +576,8 @@ export default function Dashboard() {
                 <svg className="bento-feature-watermark" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
                 </svg>
-                <div className="bento-compact-top">
-                  <span className="bento-compact-lbl">Study Time</span>
-                  <Icon name="chart" size={13} />
+                <div className="bento-compact-icon-wrap">
+                  <Icon name="chart" size={16} />
                 </div>
                 <div className="bento-compact-num">
                   <AnimatedNum
@@ -546,6 +586,7 @@ export default function Dashboard() {
                     suffix={s?.total_study_minutes && s.total_study_minutes >= 60 ? "h" : "m"}
                   />
                 </div>
+                <div className="bento-compact-lbl">Study Time</div>
                 <div className="bento-compact-sub">Total Logged</div>
               </div>
             </div>
@@ -553,12 +594,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Modern Bento Study Deck (Matching User Reference) ── */}
+      {/* ── Modern Bento Study Deck ── */}
       <div className="bento-deck-container">
+        {/* Row 1: Goal Progress & Weekly Trend */}
         <div className="bento-deck-top-grid">
-          {/* Card 1: Goal Progress Card (Half size / 50% width) */}
+          {/* Card 1: Goal Progress Card */}
           <div className="bento-goal-card" onClick={() => navigate("/analytics")}>
-            {/* Watermark rings — decorative background pattern */}
+            {/* Watermark rings */}
             <svg className="bento-goal-trail-svg" viewBox="0 0 400 220" preserveAspectRatio="xMaxYMid meet" aria-hidden="true">
               <circle cx="310" cy="110" r="90" fill="none" stroke="rgba(130,120,200,0.13)" strokeWidth="38" />
               <circle cx="310" cy="110" r="140" fill="none" stroke="rgba(130,120,200,0.08)" strokeWidth="28" />
@@ -644,22 +686,24 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
           {/* Card 2: Study Time Trend Graph */}
           <StudyTimeChartCard weeklyData={weeklyDays} />
         </div>
 
+        {/* Row 2: Study Notes, Flashcard Deck, and Flow-State Soundscape */}
         <div className="bento-deck-top-grid">
-          {/* Card 3: Total Notes */}
-          <div className="bento-card bento-note-card" onClick={() => navigate("/notes")}>
-            {/* Watermark — decorative background blobs */}
+          {/* Card 3: Notes */}
+          <div
+            className="bento-card bento-folder-card"
+            onClick={() => navigate("/notes")}
+          >
             <svg style={{ position: "absolute", top: 0, right: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }} viewBox="0 0 400 220" preserveAspectRatio="xMaxYMid meet" aria-hidden="true">
-              {/* Wave arcs */}
-              <path d="M 180 260 Q 250 160 320 200 Q 390 240 430 140" fill="none" stroke="rgba(120,110,220,0.13)" strokeWidth="28" strokeLinecap="round" />
-              <path d="M 200 280 Q 280 170 360 215 Q 420 250 460 130" fill="none" stroke="rgba(120,110,220,0.08)" strokeWidth="20" strokeLinecap="round" />
-              <path d="M 300 20 Q 360 80 340 140 Q 320 190 380 200" fill="none" stroke="rgba(120,110,220,0.10)" strokeWidth="16" strokeLinecap="round" />
+              <rect x="270" y="30" width="105" height="135" rx="14" fill="none" stroke="rgba(99,102,241,0.13)" strokeWidth="10" transform="rotate(10 322 97)" />
+              <rect x="290" y="45" width="105" height="135" rx="14" fill="none" stroke="rgba(99,102,241,0.08)" strokeWidth="8" transform="rotate(22 342 112)" />
             </svg>
-            <div className="bento-note-top" style={{ position: "relative", zIndex: 1 }}>
-              <div className="bento-note-icon-circle">
+            <div className="bento-folder-top" style={{ position: "relative", zIndex: 1 }}>
+              <div className="bento-folder-icon-circle" style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)", boxShadow: "0 4px 14px rgba(99, 102, 241, 0.3)" }}>
                 <Icon name="book" size={22} />
               </div>
             </div>
@@ -674,7 +718,7 @@ export default function Dashboard() {
             <div className="bento-folder-sub-row" style={{ position: "relative", zIndex: 1 }}>
               <span
                 className="bento-folder-sub-item"
-                title="Subjects covered in notes"
+                title="Number of distinct topics in your notes"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate("/notes");
@@ -685,7 +729,7 @@ export default function Dashboard() {
               </span>
               <span
                 className="bento-folder-sub-item"
-                title="Last note created"
+                title="Most recent note"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate("/notes");
@@ -693,31 +737,6 @@ export default function Dashboard() {
               >
                 <Icon name="clock" size={14} />
                 <span>{notesList[0]?.created_at ? timeAgo(notesList[0].created_at) : recentNoteTitle.length > 15 ? recentNoteTitle.slice(0, 14) + "…" : recentNoteTitle}</span>
-              </span>
-              <span
-                className="bento-folder-sub-item"
-                title="AI study synthesis"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate("/chat?q=Summarize%20my%20key%20study%20notes");
-                }}
-              >
-                <svg
-                  width={14}
-                  height={14}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ display: "inline-block", verticalAlign: "middle" }}
-                >
-                  <path d="M12 4.5v15" />
-                  <path d="M12 4.5C10.5 4.5 9.2 5.5 9 7c-1.3 0-2.5 1-2.5 2.5 0 .4.1.8.3 1.1C5.7 11.2 5 12.3 5 13.5c0 1.5 1.1 2.7 2.6 2.9.1 1.7 1.6 3.1 3.4 3.1h1" />
-                  <path d="M12 4.5C13.5 4.5 14.8 5.5 15 7c1.3 0 2.5 1 2.5 2.5 0 .4-.1.8-.3 1.1.9.6 1.8 1.7 1.8 2.9 0 1.5-1.1 2.7-2.6 2.9-.1 1.7-1.6 3.1-3.4 3.1h-1" />
-                </svg>
-                <span>AI Summary</span>
               </span>
             </div>
           </div>
@@ -727,11 +746,9 @@ export default function Dashboard() {
             className="bento-card bento-folder-card"
             onClick={() => navigate("/flashcards")}
           >
-            {/* Watermark — stacked card shapes */}
             <svg style={{ position: "absolute", top: 0, right: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }} viewBox="0 0 400 220" preserveAspectRatio="xMaxYMid meet" aria-hidden="true">
               <rect x="260" y="60" width="130" height="85" rx="14" fill="none" stroke="rgba(148,100,240,0.14)" strokeWidth="10" transform="rotate(-12 325 102)" />
               <rect x="275" y="75" width="130" height="85" rx="14" fill="none" stroke="rgba(148,100,240,0.10)" strokeWidth="8" transform="rotate(-4 340 117)" />
-              <rect x="288" y="88" width="130" height="85" rx="14" fill="none" stroke="rgba(148,100,240,0.07)" strokeWidth="6" transform="rotate(5 353 130)" />
             </svg>
             <div className="bento-folder-top" style={{ position: "relative", zIndex: 1 }}>
               <div className="bento-folder-icon-circle" style={{ background: "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)", boxShadow: "0 4px 14px rgba(168, 85, 247, 0.3)" }}>
@@ -760,24 +777,6 @@ export default function Dashboard() {
               </span>
               <span
                 className="bento-folder-sub-item"
-                title="Last reviewed"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate("/flashcards");
-                }}
-              >
-                <Icon name="clock" size={14} />
-                {(() => {
-                  const lastReviewed = flashcardsList
-                    .map(f => f.last_reviewed_at)
-                    .filter(Boolean)
-                    .sort()
-                    .reverse()[0];
-                  return <span>{lastReviewed ? `Reviewed ${timeAgo(lastReviewed)}` : `${Math.max(0, flashcardsList.length - dueCardsCount)} Mastered`}</span>;
-                })()}
-              </span>
-              <span
-                className="bento-folder-sub-item"
                 title="Flashcards reviewed percentage"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -791,7 +790,27 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Card 3: Study Consistency Heatmap (Transformed into Bento Card) */}
+        {/* Row 3: ✦ Telemetry & Synaptic Mind Map Deck ✦ */}
+        <div className="bento-deck-telemetry-grid">
+          <DashboardNeuralGraph
+            notesList={notesList}
+            foldersList={foldersList}
+            docsList={docsList}
+            flashcardsList={flashcardsList}
+            dashboardData={data}
+            avgScore={quizScore}
+          />
+          <DashboardMemoryRadar
+            dueCardsCount={dueCardsCount}
+            totalCards={flashcardsList.length}
+            avgQuizScore={quizScore}
+            flashcardsList={flashcardsList}
+            notesList={notesList}
+            docsList={docsList}
+          />
+        </div>
+
+        {/* Row 4: Study Consistency Heatmap */}
         <div className="bento-card bento-heatmap-card">
           {/* Subtle decorative watermark pattern */}
           <svg className="bento-heatmap-watermark-svg" viewBox="0 0 500 240" preserveAspectRatio="xMaxYMid meet" aria-hidden="true">

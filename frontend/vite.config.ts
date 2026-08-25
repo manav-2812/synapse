@@ -12,6 +12,11 @@ export default defineConfig({
     },
   },
   build: {
+    modulePreload: {
+      resolveDependencies(_filename: string, deps: string[]) {
+        return deps.filter((d) => !d.includes('pdf-vendor'))
+      },
+    },
     // Split the large, rarely-changing vendor (react / react-dom /
     // react-router) from app code so route-level chunks stay small
     // and cache well (Phase 4 / perf).
@@ -22,9 +27,19 @@ export default defineConfig({
             if (
               id.includes('react') ||
               id.includes('scheduler') ||
-              id.includes('history')
+              id.includes('history') ||
+              id.includes('react-router')
             ) {
               return 'react-vendor'
+            }
+            if (id.includes('jspdf') || id.includes('html2canvas')) {
+              return 'pdf-vendor'
+            }
+            if (id.includes('highlight.js')) {
+              return 'hljs-vendor'
+            }
+            if (id.includes('lucide-react')) {
+              return 'icons-vendor'
             }
             return 'vendor'
           }

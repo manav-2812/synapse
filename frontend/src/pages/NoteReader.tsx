@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import { studyApi } from "../api/study";
 import { ApiError } from "../api/client";
 import { useToast } from "../hooks/useToast";
@@ -325,6 +323,11 @@ export default function NoteReader() {
     toast("info", "Generating PDF…", "Preparing your document for download.");
 
     try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
       const safeTitle = note.title.replace(/[/\\?%*:|"<>]/g, "_").trim() || "Notes";
       const element = contentRef.current;
 

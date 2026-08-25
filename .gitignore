@@ -20,6 +20,7 @@ venv/
 # --- App data (gitignored per spec) ---
 backend/storage/
 backend/chroma_db/
+chroma_db/
 
 # --- Local data dirs ---
 data/
@@ -43,6 +44,7 @@ Thumbs.db
 frontend/dist/
 frontend/dist-lh/
 frontend/lighthouse-reports/
+frontend/lh-*.json
 frontend/test-results/
 backend/test-results/
 backend/pytest_baseline.txt

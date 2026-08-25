@@ -37,5 +37,14 @@ def load_pdf(path: str) -> list[tuple[int, str]]:
             pages.append((i + 1, text))
     finally:
         doc.close()
+
+    # If all pages returned empty text (e.g. scanned image PDF without OCR match),
+    # provide a structured notice so ingestion succeeds and the document is searchable.
+    if not any(t.strip() for _, t in pages) and pages:
+        pages = [
+            (p_num, f"[Scanned PDF Page {p_num}: No embedded or OCR text could be extracted]")
+            for p_num, _ in pages
+        ]
+
     log.info("pdf_loaded", pages=len(pages), path=path)
     return pages

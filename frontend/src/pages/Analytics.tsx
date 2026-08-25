@@ -133,7 +133,7 @@ export default function Analytics() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span className="topic-diag-badge mid" style={{ fontSize: 11.5 }}>
+            <span className="analytics-kpi-badge">
               30-Day Window
             </span>
           </div>
@@ -141,24 +141,44 @@ export default function Analytics() {
 
         {usage && (
           <>
-            <div className="trend-comp-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
-              <div className="trend-comp-item">
-                <span className="trend-comp-lbl">Total Requests</span>
-                <span className="trend-comp-num">{usage.requests}</span>
+            <div className="note-stats-strip" style={{ gridTemplateColumns: "repeat(4, 1fr)", marginBottom: 16 }}>
+              <div className="note-stat-item">
+                <div className="note-stat-icon-wrap">
+                  <Icon name="chat" size={17} />
+                </div>
+                <div className="note-stat-content">
+                  <span className="note-stat-val">{usage.requests}</span>
+                  <span className="note-stat-lbl">Total Requests</span>
+                </div>
               </div>
-              <div className="trend-comp-item">
-                <span className="trend-comp-lbl">Tokens Processed</span>
-                <span className="trend-comp-num">{formatTokens(usage.total_tokens)}</span>
+              <div className="note-stat-item">
+                <div className="note-stat-icon-wrap">
+                  <Icon name="layers" size={17} />
+                </div>
+                <div className="note-stat-content">
+                  <span className="note-stat-val">{formatTokens(usage.total_tokens)}</span>
+                  <span className="note-stat-lbl">Tokens Processed</span>
+                </div>
               </div>
-              <div className="trend-comp-item">
-                <span className="trend-comp-lbl">Estimated Compute Cost</span>
-                <span className="trend-comp-num">
-                  {usage.total_cost > 0 ? `$${usage.total_cost.toFixed(4)}` : "$0.00"}
-                </span>
+              <div className="note-stat-item">
+                <div className="note-stat-icon-wrap">
+                  <Icon name="activity" size={17} />
+                </div>
+                <div className="note-stat-content">
+                  <span className="note-stat-val">
+                    {usage.total_cost > 0 ? `$${usage.total_cost.toFixed(4)}` : "$0.00"}
+                  </span>
+                  <span className="note-stat-lbl">Estimated Compute Cost</span>
+                </div>
               </div>
-              <div className="trend-comp-item">
-                <span className="trend-comp-lbl">Cache Hit Rate</span>
-                <span className="trend-comp-num">{Math.round(usage.cache_hit_rate * 100)}%</span>
+              <div className="note-stat-item">
+                <div className="note-stat-icon-wrap">
+                  <Icon name="zap" size={17} />
+                </div>
+                <div className="note-stat-content">
+                  <span className="note-stat-val">{Math.round(usage.cache_hit_rate * 100)}%</span>
+                  <span className="note-stat-lbl">Cache Hit Rate</span>
+                </div>
               </div>
             </div>
 

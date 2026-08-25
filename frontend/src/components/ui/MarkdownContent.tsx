@@ -77,10 +77,10 @@ function CodeBlock({
 
 /**
  * Replace [Source N] / 【Source N】 / [1] / 【1】 / [^1] patterns with pill-badge spans so citations
- * get a distinct visual treatment in the rendered bubble.
+ * get a distinct visual treatment in the rendered bubble. Supports both with/without spaces.
  */
-const CITE_SPLIT = /(\[(?:Source\s+)?\^?\d+\]|【(?:Source\s+)?\^?\d+】)/gi;
-const CITE_TEST = /^(\[(?:Source\s+)?\^?\d+\]|【(?:Source\s+)?\^?\d+】)$/i;
+const CITE_SPLIT = /(\[(?:Source\s*)?\^?\d+\]|【(?:Source\s*)?\^?\d+】)/gi;
+const CITE_TEST = /^(\[(?:Source\s*)?\^?\d+\]|【(?:Source\s*)?\^?\d+】)$/i;
 
 function getSourceIndex(label: string): number | null {
   const match = label.match(/\d+/);
@@ -165,23 +165,40 @@ function renderWithCitationPills(
   sources: SourceResponse[],
   onCitationClick?: (source: SourceResponse) => void,
 ): ReactNode[] {
-  const parts = text.split(CITE_SPLIT);
-  return parts.map((part, i) => {
-    if (CITE_TEST.test(part)) {
-      const cleanLabel = part.replaceAll("[", "").replaceAll("]", "").replaceAll("【", "").replaceAll("】", "").trim();
-      const sourceIndex = getSourceIndex(cleanLabel);
-      return <CitationPill key={i} label={cleanLabel} source={sourceIndex === null ? undefined : sources[sourceIndex]} onClick={onCitationClick} />;
+  // Support embedded HTML line breaks like <br> / <br/> / <br /> cleanly
+  const brSegments = text.split(/(<br\s*\/?>)/gi);
+  return brSegments.flatMap((seg, segIdx) => {
+    if (/^<br\s*\/?>$/i.test(seg)) {
+      return [<br key={`br-${segIdx}`} className="md-br" />];
     }
-    return part;
+    const parts = seg.split(CITE_SPLIT);
+    return parts.map((part, i) => {
+      if (CITE_TEST.test(part)) {
+        const cleanLabel = part.replaceAll("[", "").replaceAll("]", "").replaceAll("【", "").replaceAll("】", "").trim();
+        const sourceIndex = getSourceIndex(cleanLabel);
+        return (
+          <CitationPill
+            key={`cite-${segIdx}-${i}`}
+            label={cleanLabel}
+            source={sourceIndex === null ? undefined : sources[sourceIndex]}
+            onClick={onCitationClick}
+          />
+        );
+      }
+      return part;
+    });
   });
 }
 
 function sanitizeListChildren(children: ReactNode): ReactNode {
+  const cleanStr = (str: string) =>
+    str.replace(/^[•⁃◦▪\s]+/, "").replace(/^(\d+[\.\)]|\([0-9a-zA-Z]+\))\s+/, "");
+
   if (typeof children === "string") {
-    return children.replace(/^[•⁃◦▪\s]+/, "");
+    return cleanStr(children);
   }
   if (Array.isArray(children) && children.length > 0 && typeof children[0] === "string") {
-    const cleaned = children[0].replace(/^[•⁃◦▪\s]+/, "");
+    const cleaned = cleanStr(children[0]);
     return [cleaned, ...children.slice(1)];
   }
   return children;
@@ -278,8 +295,8 @@ function createComponents(
   thead({ children }) { return <thead className="md-thead">{children}</thead>; },
   tbody({ children }) { return <tbody>{children}</tbody>; },
   tr({ children }) { return <tr className="md-tr">{children}</tr>; },
-  th({ children }) { return <th className="md-th">{children}</th>; },
-  td({ children }) { return <td className="md-td">{children}</td>; },
+  th({ children }) { return <th className="md-th">{processChildrenWithCitations(children, sources, onCitationClick)}</th>; },
+  td({ children }) { return <td className="md-td">{processChildrenWithCitations(children, sources, onCitationClick)}</td>; },
 
     // Text nodes are handled in paragraph and list renderers above so each
     // citation can resolve against this message's source list.

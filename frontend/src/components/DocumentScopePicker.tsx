@@ -133,11 +133,15 @@ export function DocumentScopePicker({
   const selectedDocs = docs.filter((d) => value.includes(d.id));
 
   const displayText =
-    value.length === 0
-      ? "All Documents"
-      : value.length === 1
-        ? selectedDocs[0]?.original_filename || "1 Document"
-        : `${value.length} Documents`;
+    minimal
+      ? value.length === 0
+        ? "All Documents"
+        : value.length === 1
+          ? selectedDocs[0]?.original_filename || "1 Document"
+          : `${value.length} Documents`
+      : value.length === 0
+        ? "All Documents"
+        : "+ Add Document";
 
   const panel = open && panelPos
     ? createPortal(
@@ -234,9 +238,9 @@ export function DocumentScopePicker({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        title={value.length === 1 ? selectedDocs[0]?.original_filename : undefined}
+        title={minimal && value.length === 1 ? selectedDocs[0]?.original_filename : undefined}
       >
-        {!minimal && <Icon name="doc" size={12} />}
+        {!minimal && (value.length === 0 ? <Icon name="doc" size={12} /> : null)}
         <span className="scope-trigger-text">
           {displayText}
         </span>
@@ -248,8 +252,9 @@ export function DocumentScopePicker({
       {!minimal && value.length > 0 && (
         <div className="scope-chips">
           {selectedDocs.map((d) => (
-            <span key={d.id} className="scope-chip">
-              {d.original_filename}
+            <span key={d.id} className="scope-chip" title={d.original_filename}>
+              <Icon name="doc" size={12} />
+              <span className="scope-chip-title">{d.original_filename}</span>
               <button
                 type="button"
                 className="scope-x"

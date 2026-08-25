@@ -79,8 +79,8 @@ class StudyService:
         note = GeneratedNote(
             user_id=user_id,
             note_type=ntype,
-            title=str(data.get("title", "Generated Notes"))[:255],
-            content=str(data.get("content", "")),
+            title=str(data.get("title", "Generated Notes")).replace("\x00", "")[:255],
+            content=str(data.get("content", "")).replace("\x00", ""),
             document_scope=scope or [],
         )
         return await self.repo.create_note(note)
@@ -94,7 +94,7 @@ class StudyService:
         data = await self._generate_json(system, user)
 
         if isinstance(data, dict):
-            raw_title = str(data.get("title") or "").strip()
+            raw_title = str(data.get("title") or "").replace("\x00", "").strip()
             title = raw_title[:255] if raw_title else f"{diff.value.title()} Quiz"
             items = data.get("questions") or []
         elif isinstance(data, list):
@@ -112,15 +112,14 @@ class StudyService:
             q = Question(
                 quiz_id=quiz.id,
                 question_type=QuestionType.MCQ,
-                prompt=str(item.get("prompt", "")),
-                options=list(item.get("options") or []),
-                correct_answer=str(item.get("correct_answer", "")),
-                explanation=item.get("explanation"),
+                prompt=str(item.get("prompt", "")).replace("\x00", ""),
+                options=[str(opt).replace("\x00", "") for opt in (item.get("options") or [])],
+                correct_answer=str(item.get("correct_answer", "")).replace("\x00", ""),
+                explanation=str(item.get("explanation", "")).replace("\x00", ""),
                 order_index=i,
             )
             self.session.add(q)
         await self.session.flush()
-        # Eager-load the relationship so the route can serialize without a lazy (sync) load.
         await self.session.refresh(quiz, ["questions"])
         return quiz
 
@@ -139,8 +138,8 @@ class StudyService:
             Flashcard(
                 user_id=user_id,
                 document_id=doc_id,
-                front=str(item.get("front", "")),
-                back=str(item.get("back", "")),
+                front=str(item.get("front", "")).replace("\x00", ""),
+                back=str(item.get("back", "")).replace("\x00", ""),
                 ease_factor=DEFAULT_EASE_FACTOR,
                 interval_days=0,
                 repetitions=0,

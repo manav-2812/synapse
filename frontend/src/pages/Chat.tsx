@@ -11,6 +11,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useVoiceInput } from "../hooks/useVoiceInput";
 import { VoiceWaveform } from "../components/VoiceWaveform";
 import { chatApi } from "../api/chat";
+import { documentsApi } from "../api/documents";
+import { analyticsApi } from "../api/analytics";
+import { studyApi } from "../api/study";
 import { ApiError } from "../api/client";
 import { useToast } from "../hooks/useToast";
 import { useTheme } from "../hooks/useTheme";
@@ -26,10 +29,15 @@ import { MarkdownContent } from "../components/ui/MarkdownContent";
 import { CitationChip } from "../components/CitationChip";
 import { MessageActionToolbar } from "../components/MessageActionToolbar";
 import { WebCitationChip } from "../components/WebCitationChip";
+import { getTimeBlockConfig, extractFirstName } from "../utils/timeBlock";
 import type {
   ConversationListItem,
   SourceResponse,
   UserMeResponse,
+  DocumentResponse,
+  DashboardResponse,
+  FlashcardResponse,
+  QueryCorrectionPayload,
 } from "../types/api";
 
 interface ChatMessage {
@@ -37,9 +45,10 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   sources: SourceResponse[];
+  correction?: QueryCorrectionPayload;
 }
 
-interface SuggestionItem {
+export interface SuggestionItem {
   icon: string;
   cmd: string;
   title: string;
@@ -47,36 +56,185 @@ interface SuggestionItem {
   prompt: string;
 }
 
-const NOTION_SUGGESTIONS: SuggestionItem[] = [
-  {
-    icon: "doc",
-    cmd: "/summarize",
-    title: "Executive Summary",
-    desc: "Key concepts, arguments & core takeaways",
-    prompt: "Provide a clear summary of the core concepts, main arguments, and key takeaways from my uploaded study documents.",
-  },
-  {
-    icon: "help",
-    cmd: "/quiz",
-    title: "Active Recall Quiz",
-    desc: "Test retention with 5 tailored questions",
-    prompt: "Generate a 5-question active recall quiz based on the key concepts in my study materials, including answers and explanations.",
-  },
-  {
-    icon: "lightbulb",
-    cmd: "/explain",
-    title: "Explain with Analogies",
-    desc: "Break down complex topics simply",
-    prompt: "Explain the most complex and foundational concepts in my documents using simple language and memorable analogies.",
-  },
-  {
-    icon: "layers",
-    cmd: "/compare",
-    title: "Compare & Contrast",
-    desc: "Connect themes and contrast related ideas",
-    prompt: "Analyze the relationships, similarities, and contrasts between the major themes covered in these documents.",
-  },
-];
+function cleanDocTitle(filename?: string | null): string {
+  if (!filename) return "study material";
+  return (
+    filename
+      .replace(/^[\d_-]+/, "")
+      .replace(/\.(pdf|docx?|txt|png|jpe?g|md)$/i, "")
+      .replace(/[_-]+/g, " ")
+      .trim() || filename
+  );
+}
+
+export function buildContextAwareSuggestions(
+  documents: DocumentResponse[] = [],
+  dashboard?: DashboardResponse | null,
+  dueCards: FlashcardResponse[] = [],
+): SuggestionItem[] {
+  // If no documents and no due cards, return sensible default suggestions
+  if (documents.length === 0 && dueCards.length === 0) {
+    return [
+      {
+        icon: "doc",
+        cmd: "/summarize",
+        title: "Executive Summary",
+        desc: "Key concepts, arguments & core takeaways",
+        prompt: "Provide a clear summary of the core concepts, main arguments, and key takeaways from my uploaded study documents.",
+      },
+      {
+        icon: "help",
+        cmd: "/quiz",
+        title: "Active Recall Quiz",
+        desc: "Test retention with 5 tailored questions",
+        prompt: "Generate a 5-question active recall quiz based on the key concepts in my study materials, including answers and explanations.",
+      },
+      {
+        icon: "lightbulb",
+        cmd: "/explain",
+        title: "Explain with Analogies",
+        desc: "Break down complex topics simply",
+        prompt: "Explain the most complex and foundational concepts in my documents using simple language and memorable analogies.",
+      },
+      {
+        icon: "layers",
+        cmd: "/compare",
+        title: "Compare & Contrast",
+        desc: "Connect themes and contrast related ideas",
+        prompt: "Analyze the relationships, similarities, and contrasts between the major themes covered in these documents.",
+      },
+    ];
+  }
+
+  // Sort documents by created descending
+  const sortedDocs = [...documents].sort((a, b) => {
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+    return timeB - timeA;
+  });
+
+  const doc1 = sortedDocs[0];
+  const doc2 = sortedDocs[1];
+  const doc1Title = cleanDocTitle(doc1?.original_filename);
+  const doc2Title = cleanDocTitle(doc2?.original_filename);
+
+  const weakTopics = dashboard?.topic_performance?.filter((t) => t.score < 75) || [];
+  const topWeakTopic = weakTopics[0]?.topic;
+
+  const suggestions: SuggestionItem[] = [];
+
+  // Card 1: Executive Summary (/summarize)
+  if (doc1) {
+    suggestions.push({
+      icon: "doc",
+      cmd: "/summarize",
+      title: "Executive Summary",
+      desc: `Core concepts & takeaways from "${doc1Title}"`,
+      prompt: `Provide a structured executive summary of "${doc1.original_filename}", outlining core concepts, key mechanisms, and main takeaways.`,
+    });
+  } else {
+    suggestions.push({
+      icon: "doc",
+      cmd: "/summarize",
+      title: "Executive Summary",
+      desc: "Key concepts, arguments & core takeaways",
+      prompt: "Provide a clear summary of the core concepts, main arguments, and key takeaways from my uploaded study documents.",
+    });
+  }
+
+  // Card 2: Compare & Contrast (/compare)
+  if (doc1 && doc2) {
+    suggestions.push({
+      icon: "layers",
+      cmd: "/compare",
+      title: "Compare & Contrast",
+      desc: `Compare "${doc1Title}" vs "${doc2Title}"`,
+      prompt: `Analyze the similarities, differences, and thematic connections between "${doc1.original_filename}" and "${doc2.original_filename}".`,
+    });
+  } else if (doc1) {
+    suggestions.push({
+      icon: "layers",
+      cmd: "/compare",
+      title: "Thematic Synthesis",
+      desc: `Cross-examine core models in "${doc1Title}"`,
+      prompt: `Analyze and contrast the different approaches, principles, and paradigms discussed in "${doc1.original_filename}".`,
+    });
+  } else {
+    suggestions.push({
+      icon: "layers",
+      cmd: "/compare",
+      title: "Compare & Contrast",
+      desc: "Connect themes and contrast related ideas",
+      prompt: "Analyze the relationships, similarities, and contrasts between the major themes covered in these documents.",
+    });
+  }
+
+  // Card 3: Active Recall Quiz (/quiz)
+  if (dueCards.length > 0) {
+    const targetCard = dueCards[0];
+    const cardTopic = targetCard.front?.slice(0, 32) || doc1Title;
+    suggestions.push({
+      icon: "help",
+      cmd: "/quiz",
+      title: "Active Recall Drill",
+      desc: `Strengthen ${dueCards.length} due items (${cardTopic}…)`,
+      prompt: `Generate a focused 5-question active recall drill based on my due flashcards, especially around ${cardTopic}, with detailed feedback for each answer.`,
+    });
+  } else if (topWeakTopic) {
+    suggestions.push({
+      icon: "help",
+      cmd: "/quiz",
+      title: "Active Recall Quiz",
+      desc: `Target knowledge gaps in ${topWeakTopic}`,
+      prompt: `Generate a 5-question diagnostic quiz focused on ${topWeakTopic} to test and solidify my understanding.`,
+    });
+  } else if (doc1) {
+    suggestions.push({
+      icon: "help",
+      cmd: "/quiz",
+      title: "Active Recall Quiz",
+      desc: `Test retention on "${doc1Title}" with 5 questions`,
+      prompt: `Generate a 5-question active recall quiz testing mastery of "${doc1.original_filename}", including answer explanations.`,
+    });
+  } else {
+    suggestions.push({
+      icon: "help",
+      cmd: "/quiz",
+      title: "Active Recall Quiz",
+      desc: "Test retention with 5 tailored questions",
+      prompt: "Generate a 5-question active recall quiz based on the key concepts in my study materials, including answers and explanations.",
+    });
+  }
+
+  // Card 4: Explain with Analogies (/explain)
+  if (topWeakTopic) {
+    suggestions.push({
+      icon: "lightbulb",
+      cmd: "/explain",
+      title: "Explain with Analogies",
+      desc: `Simplify tricky concepts in ${topWeakTopic}`,
+      prompt: `Explain the most confusing and foundational concepts in ${topWeakTopic} using memorable real-world analogies and intuitive step-by-step breakdown.`,
+    });
+  } else if (doc1) {
+    suggestions.push({
+      icon: "lightbulb",
+      cmd: "/explain",
+      title: "Explain with Analogies",
+      desc: `Deconstruct complex ideas in "${doc1Title}"`,
+      prompt: `Explain the foundational theories and complex mechanisms in "${doc1.original_filename}" using simple language and vivid analogies.`,
+    });
+  } else {
+    suggestions.push({
+      icon: "lightbulb",
+      cmd: "/explain",
+      title: "Explain with Analogies",
+      desc: "Break down complex topics simply",
+      prompt: "Explain the most complex and foundational concepts in my documents using simple language and memorable analogies.",
+    });
+  }
+
+  return suggestions;
+}
 
 function groupConversations(list: ConversationListItem[]) {
   const now = new Date();
@@ -111,93 +269,6 @@ function groupConversations(list: ConversationListItem[]) {
   return groups;
 }
 
-interface TimeBlockConfig {
-  icon: string;
-  message: string;
-  color: string;
-}
-
-function extractFirstName(user?: UserMeResponse | null): string {
-  if (!user) return "";
-  if (user.full_name) {
-    const raw = user.full_name.trim().split(/\s+/)[0] || "";
-    return raw ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : "";
-  }
-  if (user.email) {
-    const handle = user.email.split("@")[0] || "";
-    // If handle is separated by dot/dash/underscore/digits (e.g. manav.baghel -> manav)
-    const namePart = handle.split(/[._\-\d]/)[0] || handle;
-    if (namePart.toLowerCase().startsWith("manav")) {
-      return "Manav";
-    }
-    return namePart ? namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase() : "";
-  }
-  return "";
-}
-
-function getTimeBlockConfig(firstName?: string): TimeBlockConfig {
-  const hour = new Date().getHours();
-
-  // 12am – 4am: Late-night grind (deep purple)
-  if (hour >= 0 && hour < 4) {
-    return {
-      icon: "✦",
-      message: firstName
-        ? `Late-night grind, ${firstName}. We've got you.`
-        : "Late-night grind. We've got you.",
-      color: "#a855f7",
-    };
-  }
-  // 4am – 8am: Early start (soft orange)
-  if (hour >= 4 && hour < 8) {
-    return {
-      icon: "✳",
-      message: firstName
-        ? `Early start, ${firstName}. Let's get ahead today.`
-        : "Early start. Let's get ahead today.",
-      color: "#f97316",
-    };
-  }
-  // 8am – 12pm: Peak focus hours (bright accent)
-  if (hour >= 8 && hour < 12) {
-    return {
-      icon: "◆",
-      message: firstName
-        ? `Peak focus hours, ${firstName}.`
-        : "Peak focus hours.",
-      color: "#0ea5e9",
-    };
-  }
-  // 12pm – 4pm: Midday review session (warm gold)
-  if (hour >= 12 && hour < 16) {
-    return {
-      icon: "●",
-      message: firstName
-        ? `Midday review session, ${firstName}.`
-        : "Midday review session.",
-      color: "#eab308",
-    };
-  }
-  // 4pm – 8pm: Wrapping up today's topics (teal)
-  if (hour >= 16 && hour < 20) {
-    return {
-      icon: "▲",
-      message: firstName
-        ? `Wrapping up today's topics, ${firstName}.`
-        : "Wrapping up today's topics.",
-      color: "#14b8a6",
-    };
-  }
-  // 8pm – 12am: Evening deep-dive mode (indigo)
-  return {
-    icon: "✦",
-    message: firstName
-      ? `Evening deep-dive mode, ${firstName}.`
-      : "Evening deep-dive mode.",
-    color: "#6366f1",
-  };
-}
-
 export default function Chat() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -206,19 +277,66 @@ export default function Chat() {
   const [searchParams] = useSearchParams();
 
   const firstName = extractFirstName(user);
-  const timeBlock = getTimeBlockConfig(firstName);
+  const timeBlock = getTimeBlockConfig(new Date().getHours(), firstName);
+
+  const [contextDocuments, setContextDocuments] = useState<DocumentResponse[]>([]);
+  const [contextDashboard, setContextDashboard] = useState<DashboardResponse | null>(null);
+  const [contextDueCards, setContextDueCards] = useState<FlashcardResponse[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadContextData() {
+      try {
+        const [docsRes, dashRes, dueRes] = await Promise.allSettled([
+          documentsApi.list(),
+          analyticsApi.dashboard(),
+          studyApi.dueFlashcards(),
+        ]);
+        if (!active) return;
+        if (docsRes.status === "fulfilled") setContextDocuments(docsRes.value);
+        if (dashRes.status === "fulfilled") setContextDashboard(dashRes.value);
+        if (dueRes.status === "fulfilled") setContextDueCards(dueRes.value);
+      } catch {
+        // Fallback gracefully
+      }
+    }
+    void loadContextData();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const dynamicSuggestions = useMemo(() => {
+    return buildContextAwareSuggestions(contextDocuments, contextDashboard, contextDueCards);
+  }, [contextDocuments, contextDashboard, contextDueCards]);
 
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [scopeIds, setScopeIds] = useState<string[]>([]);
+  const docParam = searchParams.get("doc") || searchParams.get("scope");
+  const [scopeIds, setScopeIds] = useState<string[]>(() => {
+    if (docParam) {
+      return docParam.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  });
   const [busy, setBusy] = useState(false);
   const [loadingConv, setLoadingConv] = useState(true);
+
+  useEffect(() => {
+    const p = searchParams.get("doc") || searchParams.get("scope");
+    if (p) {
+      const ids = p.split(",").map((s) => s.trim()).filter(Boolean);
+      if (ids.length > 0) {
+        setScopeIds(ids);
+      }
+    }
+  }, [searchParams]);
   const [activeSource, setActiveSource] = useState<SourceResponse | null>(null);
   const [conversationsOpen, setConversationsOpen] = useState(true);
   const [webMode, setWebMode] = useState(false);
-  const [insightMode, setInsightMode] = useState(false);
+  const [insightMode, setInsightMode] = useState(true);
 
   const [renamingConv, setRenamingConv] = useState<string | null>(null);
   const [convDraft, setConvDraft] = useState("");
@@ -248,6 +366,8 @@ export default function Chat() {
       return new Set<string>();
     }
   });
+
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(true);
 
   interface ChatGroup {
     id: string;
@@ -591,11 +711,21 @@ export default function Chat() {
     return () => window.cancelAnimationFrame(frame);
   }, [messages]);
 
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+
   function handleThreadScroll() {
     const thread = threadRef.current;
     if (!thread) return;
-    shouldFollowLatestRef.current =
+    const isNearBottom =
       thread.scrollHeight - thread.scrollTop - thread.clientHeight < 96;
+    shouldFollowLatestRef.current = isNearBottom;
+    setShowScrollBottom(!isNearBottom);
+  }
+
+  function scrollToBottom() {
+    const thread = threadRef.current;
+    if (!thread) return;
+    thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
   }
 
   useEffect(() => {
@@ -870,6 +1000,7 @@ export default function Chat() {
             }
           },
           onSources: (s: SourceResponse[]) => patchAssistant({ sources: s }),
+          onCorrection: (c: QueryCorrectionPayload) => patchAssistant({ correction: c }),
           onToken: (t: string) =>
             setMessages((prev) =>
               prev.map((m) =>
@@ -969,6 +1100,224 @@ export default function Chat() {
     setInput(text);
     setTimeout(() => void send(text), 0);
   }
+
+  const renderComposerContent = () => (
+    <>
+      {isListening ? (
+        <div className="voice-dictation-card" role="region" aria-label="Voice input active">
+          <div className="voice-dictation-top">
+            <span className="voice-dictation-label">Listening...</span>
+          </div>
+          <div className="voice-dictation-body">
+            <div className="voice-waveform-wrap">
+              <VoiceWaveform audioStream={audioStream} isListening={isListening} />
+            </div>
+            <div className="voice-dictation-actions">
+              <button
+                type="button"
+                className="voice-cancel-btn"
+                onClick={handleVoiceCancel}
+                title="Cancel voice input (Esc)"
+                aria-label="Cancel voice input"
+              >
+                <Icon name="close" size={17} />
+              </button>
+              <button
+                type="button"
+                className="voice-confirm-btn"
+                onClick={handleVoiceConfirm}
+                title="Confirm voice input (Enter)"
+                aria-label="Confirm voice input"
+              >
+                <Icon name="check" size={17} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="composer">
+          <textarea
+            ref={textareaRef}
+            placeholder="How can I help you today?"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKey}
+            rows={1}
+            className="composer-textarea"
+          />
+
+          <div className="composer-bottom-bar">
+            {/* ── Left Side: Segmented Source Toggle Switch (Insight vs Web) ── */}
+            <div className="composer-bottom-left">
+              <div className="composer-source-segmented" role="radiogroup" aria-label="Knowledge source switch">
+                <button
+                  type="button"
+                  className={`composer-source-seg-btn${insightMode ? " active" : ""}`}
+                  title="Insight Source — answers strictly from your uploaded documents"
+                  aria-checked={insightMode}
+                  role="radio"
+                  onClick={() => {
+                    setInsightMode(true);
+                    setWebMode(false);
+                  }}
+                >
+                  <Icon name="search" size={13} className="source-seg-icon" />
+                  <span>Insight Source</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`composer-source-seg-btn${webMode ? " active" : ""}`}
+                  title="Web Source — answers from live web search"
+                  aria-checked={webMode}
+                  role="radio"
+                  onClick={() => {
+                    setWebMode(true);
+                    setInsightMode(false);
+                  }}
+                >
+                  <Icon name="globe" size={13} className="source-seg-icon" />
+                  <span>Web Source</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ── Right Side: Document Picker -> Model -> Mic -> Send ── */}
+            <div className="composer-bottom-right">
+              {/* Select Document (styled same as model selector pill) */}
+              <div className="composer-scope-wrapper">
+                <DocumentScopePicker
+                  value={scopeIds}
+                  onChange={setScopeIds}
+                  allowUpload
+                  popupDirection="up"
+                  size="sm"
+                  minimal
+                />
+              </div>
+
+              {/* Model Selector Pill */}
+              <div ref={modelMenuRef} className="composer-model-dropdown-wrap">
+                <button
+                  type="button"
+                  className="composer-model-pill"
+                  onClick={() => setShowModelMenu(!showModelMenu)}
+                  title="Select AI Model / Pipeline"
+                >
+                  <span>{selectedModel}</span>
+                  <Icon name="chevronDown" size={13} />
+                </button>
+
+                {showModelMenu && (
+                  <div className="composer-model-menu">
+                    {[
+                      {
+                        id: "synapse-hybrid",
+                        name: "Synapse Hybrid RAG",
+                        desc: "Dense Vector + BM25 keyword retrieval",
+                      },
+                      {
+                        id: "custom-models",
+                        name: "Custom Models (Coming Soon)",
+                        desc: "Fine-tuned domain models",
+                        disabled: true,
+                      },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        disabled={m.disabled}
+                        className={`cm-item ${selectedModel === m.name ? "active" : ""} ${m.disabled ? "disabled" : ""}`}
+                        onClick={() => {
+                          if (!m.disabled) {
+                            setSelectedModel(m.name);
+                            setShowModelMenu(false);
+                          }
+                        }}
+                      >
+                        <div className="cm-item-text">
+                          <span className="cm-item-title">{m.name}</span>
+                          <span className="cm-item-desc">{m.desc}</span>
+                        </div>
+                        {selectedModel === m.name && <Icon name="check" size={12} />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Microphone Voice Button */}
+              <button
+                type="button"
+                className={`composer-voice-btn${!voiceSupported ? " is-disabled" : ""}`}
+                title={
+                  !voiceSupported
+                    ? "Voice input isn't supported in this browser — try Chrome or Edge."
+                    : "Start voice input"
+                }
+                aria-label="Start voice input"
+                disabled={!voiceSupported}
+                onClick={handleVoiceToggle}
+              >
+                <Icon name="mic" size={17} />
+              </button>
+
+              {/* Send Button */}
+              {input.trim() && (
+                <button
+                  type="button"
+                  className="composer-send-btn"
+                  onClick={() => void send()}
+                  disabled={busy || !input.trim()}
+                  title="Send (Enter)"
+                  aria-label="Send message"
+                >
+                  {busy ? (
+                    <span className="spinner spinner-sm" />
+                  ) : (
+                    <Icon name="send" size={14} />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Voice error feedback ── */}
+      {voiceError === "permission-denied" && (
+        <div className="voice-status-row voice-status-error" role="alert">
+          <Icon name="mic" size={13} />
+          <span>
+            Microphone access was blocked. Enable it in your browser&rsquo;s site
+            settings and try again.
+          </span>
+          <button
+            type="button"
+            className="voice-status-dismiss"
+            aria-label="Dismiss"
+            onClick={clearVoiceError}
+          >
+            <Icon name="close" size={12} />
+          </button>
+        </div>
+      )}
+      {voiceError === "recognition-error" && (
+        <div className="voice-status-row voice-status-error" role="alert">
+          <Icon name="mic" size={13} />
+          <span>Voice input failed — please try again or type your question.</span>
+          <button
+            type="button"
+            className="voice-status-dismiss"
+            aria-label="Dismiss"
+            onClick={clearVoiceError}
+          >
+            <Icon name="close" size={12} />
+          </button>
+        </div>
+      )}
+    </>
+  );
 
   const activeTitle = activeId
     ? conversations.find((c) => c.id === activeId)?.title
@@ -1368,370 +1717,195 @@ export default function Chat() {
             <div className="chat-notion-empty-wrap">
               <div className="chat-notion-empty">
                 <h1 className="chat-notion-title">
-                  <span className="time-block-icon" style={{ color: timeBlock.color }}>
-                    {timeBlock.icon}
-                  </span>{" "}
-                  {timeBlock.message}
+                  <img src="/favicon.svg" alt="Synapse" className="chat-greeting-logo" />
+                  <span>{timeBlock.message}</span>
                 </h1>
 
-                <div className="prompt-grid-header">
-                  <span className="prompt-grid-label">SUGGESTED STUDY ACTIONS</span>
+                {/* Search in Middle */}
+                <div className="chat-empty-composer-wrap">
+                  {renderComposerContent()}
                 </div>
 
-                <div className="prompt-cards-grid">
-                  {NOTION_SUGGESTIONS.map((s) => (
-                    <button
-                      key={s.cmd}
-                      type="button"
-                      className="prompt-card"
-                      onClick={() => populatePrompt(s.prompt)}
-                    >
-                      <div className="prompt-card-top">
-                        <div className="prompt-card-icon">
-                          <Icon name={s.icon} size={15} />
-                        </div>
-                        <span className="prompt-card-cmd">{s.cmd}</span>
-                      </div>
-                      <div className="prompt-card-body">
-                        <span className="prompt-card-title">{s.title}</span>
-                        <span className="prompt-card-desc">{s.desc}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                {/* Suggested Action Cards Down Below Search */}
+                {showSuggestions && (
+                  <div className="chat-suggestions-section">
+                    <div className="prompt-grid-header">
+                      <span className="prompt-grid-label">SUGGESTED STUDY ACTIONS</span>
+                      <button
+                        type="button"
+                        className="prompt-grid-close-btn"
+                        onClick={() => setShowSuggestions(false)}
+                        title="Dismiss suggestions"
+                        aria-label="Dismiss suggestions"
+                      >
+                        <Icon name="close" size={13} />
+                      </button>
+                    </div>
+
+                    <div className="prompt-cards-grid">
+                      {dynamicSuggestions.map((s) => (
+                        <button
+                          key={s.cmd}
+                          type="button"
+                          className="prompt-card"
+                          onClick={() => populatePrompt(s.prompt)}
+                        >
+                          <div className="prompt-card-top">
+                            <div className="prompt-card-icon">
+                              <Icon name={s.icon} size={15} />
+                            </div>
+                            <span className="prompt-card-cmd">{s.cmd}</span>
+                          </div>
+                          <div className="prompt-card-body">
+                            <span className="prompt-card-title">{s.title}</span>
+                            <span className="prompt-card-desc">{s.desc}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
-            <div className="thread" ref={threadRef} onScroll={handleThreadScroll}>
-              {messages.map((m, idx) => {
-                const isStreamingThis = busy && idx === messages.length - 1 && m.role === "assistant";
+            <>
+              <div className="thread" ref={threadRef} onScroll={handleThreadScroll}>
+                {messages.map((m, idx) => {
+                  const isStreamingThis = busy && idx === messages.length - 1 && m.role === "assistant";
 
-                return (
-                  <div
-                    key={m.id}
-                    className={`msg msg-${m.role}${isStreamingThis ? " msg-streaming" : ""}`}
-                    style={{ "--i": idx } as CSSProperties}
-                  >
-                    <div className="msg-body">
-                      <div className="msg-header">
-                        <span className="msg-sender-label">
-                          {m.role === "user" ? "You" : "Synapse"}
-                        </span>
-                        {m.role === "assistant" &&
-                          m.sources.length > 0 &&
-                          m.sources[0]?.source_type === "web" && (
-                            <span className="web-answer-badge" title="Answer sourced from the web, not your uploaded documents">
-                              <Icon name="externalLink" size={11} />
-                              Web
-                            </span>
-                          )}
-                      </div>
-                      {editingMsg === m.id ? (
-                        <div className="msg-edit">
-                          <textarea
-                            className="input"
-                            autoFocus
-                            value={msgDraft}
-                            onChange={(e) => setMsgDraft(e.target.value)}
-                            rows={Math.min(12, Math.max(2, msgDraft.split("\n").length))}
-                          />
-                          <div className="row" style={{ gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
-                            <Button variant="ghost" className="btn-sm" onClick={() => setEditingMsg(null)}>
-                              Cancel
-                            </Button>
-                            <Button className="btn-sm" onClick={() => void commitEditMsg(m)}>
-                              Save
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="msg-bubble">
-                            {m.content ? (
-                              m.role === "assistant" ? (
-                                <MarkdownContent
-                                  isStreaming={isStreamingThis}
-                                  sources={m.sources}
-                                  onCitationClick={setActiveSource}
-                                >
-                                  {m.content}
-                                </MarkdownContent>
-                              ) : (
-                                m.content
-                              )
-                            ) : busy ? (
-                              <span className="typing" aria-label="Generating response">
-                                <span className="dot" />
-                                <span className="dot" />
-                                <span className="dot" />
+                  return (
+                    <div
+                      key={m.id}
+                      className={`msg msg-${m.role}${isStreamingThis ? " msg-streaming" : ""}`}
+                      style={{ "--i": idx } as CSSProperties}
+                    >
+                      <div className="msg-body">
+                        <div className="msg-header">
+                          <span className="msg-sender-label">
+                            {m.role === "user" ? "You" : "Synapse"}
+                          </span>
+                          {m.role === "assistant" &&
+                            m.sources.length > 0 &&
+                            m.sources[0]?.source_type === "web" && (
+                              <span className="web-answer-badge" title="Answer sourced from the web, not your uploaded documents">
+                                <Icon name="externalLink" size={11} />
+                                Web
                               </span>
-                            ) : (
-                              ""
                             )}
+                        </div>
+                        {editingMsg === m.id ? (
+                          <div className="msg-edit">
+                            <textarea
+                              className="input"
+                              autoFocus
+                              value={msgDraft}
+                              onChange={(e) => setMsgDraft(e.target.value)}
+                              rows={Math.min(12, Math.max(2, msgDraft.split("\n").length))}
+                            />
+                            <div className="row" style={{ gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                              <Button variant="ghost" className="btn-sm" onClick={() => setEditingMsg(null)}>
+                                Cancel
+                              </Button>
+                              <Button className="btn-sm" onClick={() => void commitEditMsg(m)}>
+                                Save
+                              </Button>
+                            </div>
                           </div>
-                          {m.sources.length > 0 && (
-                            <div className="source-chips">
-                              {m.sources.map((src, i) =>
-                                src.source_type === "web" ? (
-                                  <WebCitationChip
-                                    key={i}
-                                    source={src}
-                                    index={i + 1}
-                                  />
+                        ) : (
+                          <>
+                            {m.role === "assistant" && m.correction && m.correction.corrections.length > 0 && (
+                              <div className="msg-correction-notice" aria-live="polite">
+                                <Icon name="search" size={12} className="mcn-icon" />
+                                <span>
+                                  Searched for{" "}
+                                  {m.correction.corrections.map((c, i, arr) => (
+                                    <span key={i}>
+                                      <strong>&lsquo;{c.corrected}&rsquo;</strong>
+                                      {c.original.toLowerCase() !== c.corrected.toLowerCase() ? (
+                                        <> instead of &lsquo;{c.original}&rsquo;</>
+                                      ) : null}
+                                      {i < arr.length - 1 ? ", " : ""}
+                                    </span>
+                                  ))}
+                                </span>
+                              </div>
+                            )}
+                            <div className="msg-bubble">
+                              {m.content ? (
+                                m.role === "assistant" ? (
+                                  <MarkdownContent
+                                    isStreaming={isStreamingThis}
+                                    sources={m.sources}
+                                    onCitationClick={setActiveSource}
+                                  >
+                                    {m.content}
+                                  </MarkdownContent>
                                 ) : (
-                                  <CitationChip
-                                    key={i}
-                                    source={src}
-                                    onClick={() => setActiveSource(src)}
-                                  />
+                                  m.content
                                 )
+                              ) : busy ? (
+                                <span className="typing" aria-label="Generating response">
+                                  <span className="dot" />
+                                  <span className="dot" />
+                                  <span className="dot" />
+                                </span>
+                              ) : (
+                                ""
                               )}
                             </div>
-                          )}
-                        </>
-                      )}
-                      {editingMsg !== m.id && (
-                        <MessageActionToolbar
-                          role={m.role}
-                          content={m.content}
-                          scopeIds={scopeIds}
-                          onEdit={m.role === "user" ? () => beginEditMsg(m) : undefined}
-                          onDelete={() => void removeMsg(m)}
-                          onRegenerate={m.role === "assistant" ? () => regenerateAssistantMessage(idx) : undefined}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="composer-container">
-            {isListening ? (
-              <div className="voice-dictation-card" role="region" aria-label="Voice input active">
-                <div className="voice-dictation-top">
-                  <span className="voice-dictation-label">Listening...</span>
-                </div>
-                <div className="voice-dictation-body">
-                  <div className="voice-waveform-wrap">
-                    <VoiceWaveform audioStream={audioStream} isListening={isListening} />
-                  </div>
-                  <div className="voice-dictation-actions">
-                    <button
-                      type="button"
-                      className="voice-cancel-btn"
-                      onClick={handleVoiceCancel}
-                      title="Cancel voice input (Esc)"
-                      aria-label="Cancel voice input"
-                    >
-                      <Icon name="close" size={17} />
-                    </button>
-                    <button
-                      type="button"
-                      className="voice-confirm-btn"
-                      onClick={handleVoiceConfirm}
-                      title="Confirm voice input (Enter)"
-                      aria-label="Confirm voice input"
-                    >
-                      <Icon name="check" size={17} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="composer">
-                <textarea
-                  ref={textareaRef}
-                  placeholder="How can I help you today?"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={onKey}
-                  rows={1}
-                  className="composer-textarea"
-                />
-
-                <div className="composer-bottom-bar">
-                  {/* ── Left Side: Insight Source + Web Source Toggles ── */}
-                  <div className="composer-bottom-left">
-                    <button
-                      type="button"
-                      className={`composer-insight-pill-btn${insightMode ? " active" : ""}`}
-                      title={
-                        insightMode
-                          ? "Insight Source active — answers strictly from your uploaded documents (click to turn off)"
-                          : "Insight Source — answer strictly from uploaded documents"
-                      }
-                      aria-pressed={insightMode}
-                      onClick={() => {
-                        setInsightMode((prev) => {
-                          const next = !prev;
-                          if (next) setWebMode(false);
-                          return next;
-                        });
-                      }}
-                    >
-                      <Icon name="search" size={13} className="insight-pill-icon" />
-                      <span>Insight Source</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`composer-web-pill-btn${webMode ? " active" : ""}`}
-                      title={
-                        webMode
-                          ? "Web Source active — answers from live web search (click to turn off)"
-                          : "Web Source — answer from live web search"
-                      }
-                      aria-pressed={webMode}
-                      onClick={() => {
-                        setWebMode((prev) => {
-                          const next = !prev;
-                          if (next) setInsightMode(false);
-                          return next;
-                        });
-                      }}
-                    >
-                      <Icon name="globe" size={14} className="web-pill-globe-icon" />
-                      <span>Web Source</span>
-                    </button>
-                  </div>
-
-                  {/* ── Right Side: Document Picker -> Model -> Mic -> Send ── */}
-                  <div className="composer-bottom-right">
-                    {/* Select Document (styled same as model selector pill) */}
-                    <div className="composer-scope-wrapper">
-                      <DocumentScopePicker
-                        value={scopeIds}
-                        onChange={setScopeIds}
-                        allowUpload
-                        popupDirection="up"
-                        size="sm"
-                        minimal
-                      />
-                    </div>
-
-                    {/* Model Selector Pill */}
-                    <div ref={modelMenuRef} className="composer-model-dropdown-wrap">
-                      <button
-                        type="button"
-                        className="composer-model-pill"
-                        onClick={() => setShowModelMenu(!showModelMenu)}
-                        title="Select AI Model / Pipeline"
-                      >
-                        <span>{selectedModel}</span>
-                        <Icon name="chevronDown" size={13} />
-                      </button>
-
-                      {showModelMenu && (
-                        <div className="composer-model-menu">
-                          {[
-                            {
-                              id: "synapse-hybrid",
-                              name: "Synapse Hybrid RAG",
-                              desc: "Dense Vector + BM25 keyword retrieval",
-                            },
-                            {
-                              id: "custom-models",
-                              name: "Custom Models (Coming Soon)",
-                              desc: "Fine-tuned domain models",
-                              disabled: true,
-                            },
-                          ].map((m) => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              disabled={m.disabled}
-                              className={`cm-item ${selectedModel === m.name ? "active" : ""} ${m.disabled ? "disabled" : ""}`}
-                              onClick={() => {
-                                if (!m.disabled) {
-                                  setSelectedModel(m.name);
-                                  setShowModelMenu(false);
-                                }
-                              }}
-                            >
-                              <div className="cm-item-text">
-                                <span className="cm-item-title">{m.name}</span>
-                                <span className="cm-item-desc">{m.desc}</span>
+                            {m.sources.length > 0 && (
+                              <div className="source-chips">
+                                {m.sources.map((src, i) =>
+                                  src.source_type === "web" ? (
+                                    <WebCitationChip
+                                      key={i}
+                                      source={src}
+                                      index={i + 1}
+                                    />
+                                  ) : (
+                                    <CitationChip
+                                      key={i}
+                                      source={src}
+                                      onClick={() => setActiveSource(src)}
+                                    />
+                                  )
+                                )}
                               </div>
-                              {selectedModel === m.name && <Icon name="check" size={12} />}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Microphone Voice Button */}
-                    <button
-                      type="button"
-                      className={`composer-voice-btn${!voiceSupported ? " is-disabled" : ""}`}
-                      title={
-                        !voiceSupported
-                          ? "Voice input isn't supported in this browser — try Chrome or Edge."
-                          : "Start voice input"
-                      }
-                      aria-label="Start voice input"
-                      disabled={!voiceSupported}
-                      onClick={handleVoiceToggle}
-                    >
-                      <Icon name="mic" size={17} />
-                    </button>
-
-                    {/* Send Button */}
-                    {input.trim() && (
-                      <button
-                        type="button"
-                        className="composer-send-btn"
-                        onClick={() => void send()}
-                        disabled={busy || !input.trim()}
-                        title="Send (Enter)"
-                        aria-label="Send message"
-                      >
-                        {busy ? (
-                          <span className="spinner spinner-sm" />
-                        ) : (
-                          <Icon name="send" size={14} />
+                            )}
+                          </>
                         )}
-                      </button>
-                    )}
-                  </div>
-                </div>
+                        {editingMsg !== m.id && (
+                          <MessageActionToolbar
+                            role={m.role}
+                            content={m.content}
+                            scopeIds={scopeIds}
+                            onEdit={m.role === "user" ? () => beginEditMsg(m) : undefined}
+                            onDelete={() => void removeMsg(m)}
+                            onRegenerate={m.role === "assistant" ? () => regenerateAssistantMessage(idx) : undefined}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
 
-            {/* ── Voice error feedback ── */}
-            {voiceError === "permission-denied" && (
-              <div className="voice-status-row voice-status-error" role="alert">
-                <Icon name="mic" size={13} />
-                <span>
-                  Microphone access was blocked. Enable it in your browser&rsquo;s site
-                  settings and try again.
-                </span>
-                <button
-                  type="button"
-                  className="voice-status-dismiss"
-                  aria-label="Dismiss"
-                  onClick={clearVoiceError}
-                >
-                  <Icon name="close" size={12} />
-                </button>
+              <div className="composer-container">
+                {showScrollBottom && (
+                  <button
+                    type="button"
+                    className="thread-scroll-bottom-btn"
+                    onClick={scrollToBottom}
+                    title="Scroll to latest messages"
+                    aria-label="Scroll to bottom"
+                  >
+                    <Icon name="arrowDown" size={15} />
+                  </button>
+                )}
+                {renderComposerContent()}
               </div>
-            )}
-            {voiceError === "recognition-error" && (
-              <div className="voice-status-row voice-status-error" role="alert">
-                <Icon name="mic" size={13} />
-                <span>Voice input failed — please try again or type your question.</span>
-                <button
-                  type="button"
-                  className="voice-status-dismiss"
-                  aria-label="Dismiss"
-                  onClick={clearVoiceError}
-                >
-                  <Icon name="close" size={12} />
-                </button>
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </section>
 
         {activeSource && (

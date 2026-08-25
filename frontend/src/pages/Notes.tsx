@@ -129,21 +129,37 @@ export default function Notes() {
   const formulaCount = useMemo(() => notes.filter((n) => n.note_type === "formula_sheet").length, [notes]);
   const examCount = useMemo(() => notes.filter((n) => n.note_type === "exam_answer").length, [notes]);
 
+  function scrollToNotes(tab?: typeof activeTab) {
+    if (tab) setActiveTab(tab);
+    setLibCollapsed(false);
+    const el = document.getElementById("notes-library-section");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   return (
     <div className="note-page-layout">
       {/* ── Page Header ── */}
-      <div className="note-head">
-        <div className="note-head-text">
-          <h1 className="note-head-title">Study Notes & Synthesis</h1>
-          <p className="note-head-sub">
-            Summarize your documents into study-ready notes, Cornell sheets, and exam answers.
+      <div className="quiz-head">
+        <div className="quiz-head-text">
+          <h1 className="quiz-head-title">Study Notes & Syntheses</h1>
+          <p className="quiz-head-sub">
+            Generate grounded markdown study sheets, summaries, formula indexes, and exam answers.
           </p>
         </div>
       </div>
 
       {/* ── Live Analytics Stats Strip ── */}
       <div className="note-stats-strip">
-        <div className="note-stat-item">
+        <div
+          className="note-stat-item"
+          onClick={() => scrollToNotes("all")}
+          title="Click to view all notes"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && scrollToNotes("all")}
+        >
           <div className="note-stat-icon-wrap">
             <Icon name="notebookPen" size={17} />
           </div>
@@ -153,7 +169,14 @@ export default function Notes() {
           </div>
         </div>
 
-        <div className="note-stat-item">
+        <div
+          className="note-stat-item"
+          onClick={() => scrollToNotes("short_notes")}
+          title="Click to view short notes"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && scrollToNotes("short_notes")}
+        >
           <div className="note-stat-icon-wrap">
             <Icon name="stickyNote" size={17} />
           </div>
@@ -163,7 +186,14 @@ export default function Notes() {
           </div>
         </div>
 
-        <div className="note-stat-item">
+        <div
+          className="note-stat-item"
+          onClick={() => scrollToNotes("long_notes")}
+          title="Click to view long summaries"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && scrollToNotes("long_notes")}
+        >
           <div className="note-stat-icon-wrap">
             <Icon name="layers" size={17} />
           </div>
@@ -173,7 +203,14 @@ export default function Notes() {
           </div>
         </div>
 
-        <div className="note-stat-item">
+        <div
+          className="note-stat-item"
+          onClick={() => scrollToNotes("formula_sheet")}
+          title="Click to view formulas & exams"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && scrollToNotes("formula_sheet")}
+        >
           <div className="note-stat-icon-wrap">
             <Icon name="calculator" size={17} />
           </div>
@@ -255,7 +292,7 @@ export default function Notes() {
       )}
 
       {/* ── Collapsible Notes Library ── */}
-      <div className={`doc-collapsible-box${libCollapsed ? " is-collapsed" : ""}`}>
+      <div id="notes-library-section" className={`doc-collapsible-box${libCollapsed ? " is-collapsed" : ""}`}>
         <div className="doc-collapsible-header" onClick={() => setLibCollapsed((prev) => !prev)}>
           <div className="doc-collapsible-left">
             <button
@@ -406,10 +443,26 @@ export default function Notes() {
                       onClick={() => navigate(`/notes/${n.id}`)}
                     >
                       <div className="note-card-head">
-                        <span className="note-type-pill">
-                          <Icon name={formatDef?.icon || "doc"} size={11} />
-                          {formatDef?.label || n.note_type}
-                        </span>
+                        <div className="note-card-head-left">
+                          <span className="note-type-pill">
+                            <Icon name={formatDef?.icon || "doc"} size={11} />
+                            {formatDef?.label || n.note_type}
+                          </span>
+                          <button
+                            type="button"
+                            className="note-read-pill-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/notes/${n.id}`);
+                            }}
+                            title="Read note"
+                          >
+                            <span className="note-read-icon">
+                              <Icon name="eye" size={13} />
+                            </span>
+                            <span>Read</span>
+                          </button>
+                        </div>
 
                         <div className="quiz-row-actions" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -436,18 +489,6 @@ export default function Notes() {
                           <span>·</span>
                           <span>{formatRelative(n.created_at)}</span>
                         </span>
-
-                        <Button
-                          variant="secondary"
-                          className="btn-sm"
-                          style={{ fontSize: 11.5, padding: "3px 8px" }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/notes/${n.id}`);
-                          }}
-                        >
-                          <Icon name="eye" size={12} /> Read
-                        </Button>
                       </div>
                     </div>
                   );
@@ -484,14 +525,17 @@ export default function Notes() {
                       </div>
 
                       <div className="quiz-row-actions" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="secondary"
-                          className="btn-sm"
-                          style={{ fontSize: 11.5, padding: "3px 8px" }}
+                        <button
+                          type="button"
+                          className="note-read-pill-btn"
                           onClick={() => navigate(`/notes/${n.id}`)}
+                          title="Read note"
                         >
-                          <Icon name="eye" size={12} /> Read
-                        </Button>
+                          <span className="note-read-icon">
+                            <Icon name="eye" size={13} />
+                          </span>
+                          <span>Read</span>
+                        </button>
                         <button
                           className="quiz-icon-btn btn-del"
                           aria-label={`Delete ${n.title}`}

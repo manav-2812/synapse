@@ -61,6 +61,107 @@ function getFileBadgeColor(category: FileCategory): { label: string } {
   }
 }
 
+interface PillDropdownOption<T extends string> {
+  value: T;
+  label: string;
+}
+
+const STATUS_OPTIONS: PillDropdownOption<StatusFilter>[] = [
+  { value: "all", label: "All" },
+  { value: "completed", label: "Ready" },
+  { value: "processing", label: "Processing" },
+  { value: "failed", label: "Failed" },
+];
+
+const SORT_OPTIONS: PillDropdownOption<SortOption>[] = [
+  { value: "date_desc", label: "Newest Added" },
+  { value: "date_asc", label: "Oldest Added" },
+  { value: "name_asc", label: "Name (A → Z)" },
+  { value: "name_desc", label: "Name (Z → A)" },
+  { value: "size_desc", label: "Largest Size" },
+  { value: "size_asc", label: "Smallest Size" },
+];
+
+function PillDropdown<T extends string>({
+  value,
+  options,
+  onChange,
+  prefix,
+  ariaLabel,
+}: {
+  value: T;
+  options: PillDropdownOption<T>[];
+  onChange: (val: T) => void;
+  prefix?: string;
+  ariaLabel?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [open]);
+
+  const selectedOpt = options.find((o) => o.value === value) || options[0];
+
+  return (
+    <div className={`doc-pill-dropdown-wrap ${open ? "is-open" : ""}`} ref={ref}>
+      <button
+        type="button"
+        className={`doc-pill-dropdown-btn ${open ? "is-open" : ""}`}
+        onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel || prefix || selectedOpt.label}
+      >
+        <span>{prefix ? `${prefix}: ${selectedOpt.label}` : selectedOpt.label}</span>
+        <Icon name="chevronDown" size={12} className={`doc-pill-chevron ${open ? "is-open" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="doc-pill-dropdown-menu" role="listbox">
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                className={`doc-pill-dropdown-item ${isSelected ? "is-selected" : ""}`}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                role="option"
+                aria-selected={isSelected}
+              >
+                <span>{prefix ? `${prefix}: ${opt.label}` : opt.label}</span>
+                {isSelected && <Icon name="check" size={13} className="doc-pill-dropdown-check" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Documents() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -375,6 +476,10 @@ export default function Documents() {
   const totalStorage = useMemo(() => docs.reduce((acc, d) => acc + (d.file_size_bytes || 0), 0), [docs]);
   const readyDocsCount = useMemo(() => docs.filter((d) => d.processing_status === "completed").length, [docs]);
   const processingCount = useMemo(() => docs.filter((d) => d.processing_status === "processing" || d.processing_status === "pending").length, [docs]);
+  const pdfCount = useMemo(() => docs.filter((d) => getFileCategory(d.original_filename, d.file_type) === "pdf").length, [docs]);
+  const docxCount = useMemo(() => docs.filter((d) => getFileCategory(d.original_filename, d.file_type) === "docx").length, [docs]);
+  const txtCount = useMemo(() => docs.filter((d) => getFileCategory(d.original_filename, d.file_type) === "txt").length, [docs]);
+  const imageCount = useMemo(() => docs.filter((d) => getFileCategory(d.original_filename, d.file_type) === "image").length, [docs]);
 
   // Filtering & Sorting
   const filteredDocs = useMemo(() => {
@@ -383,8 +488,14 @@ export default function Documents() {
       : docs;
 
     if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((d) => d.original_filename.toLowerCase().includes(q));
+      const q = search.trim().toLowerCase();
+      result = result.filter((d) => {
+        const nameMatch = (d.original_filename || "").toLowerCase().includes(q);
+        const typeMatch = (d.file_type || "").toLowerCase().includes(q);
+        const folder = folders.find((f) => f.id === d.folder_id);
+        const folderMatch = folder ? folder.name.toLowerCase().includes(q) : false;
+        return nameMatch || typeMatch || folderMatch;
+      });
     }
 
     if (categoryFilter !== "all") {
@@ -403,20 +514,20 @@ export default function Documents() {
         case "date_asc":
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         case "name_asc":
-          return a.original_filename.localeCompare(b.original_filename);
+          return (a.original_filename || "").localeCompare(b.original_filename || "");
         case "name_desc":
-          return b.original_filename.localeCompare(a.original_filename);
+          return (b.original_filename || "").localeCompare(a.original_filename || "");
         case "size_desc":
-          return b.file_size_bytes - a.file_size_bytes;
+          return (b.file_size_bytes || 0) - (a.file_size_bytes || 0);
         case "size_asc":
-          return a.file_size_bytes - b.file_size_bytes;
+          return (a.file_size_bytes || 0) - (b.file_size_bytes || 0);
         default:
           return 0;
       }
     });
 
     return result;
-  }, [docs, activeFolder, search, categoryFilter, statusFilter, sortBy]);
+  }, [docs, activeFolder, search, categoryFilter, statusFilter, sortBy, folders]);
 
   const scopeIds = useMemo(() => Array.from(selected), [selected]);
 
@@ -528,14 +639,20 @@ export default function Documents() {
       >
         <div className="doc-studio-main">
           <div className="doc-studio-icon-wrap">
-            <Icon name="upload" size={24} />
+            <Icon name="upload" size={22} />
           </div>
           <div className="doc-studio-info">
-            <h3 className="doc-studio-title">
-              Drag & drop study documents here
-            </h3>
+            <div className="doc-studio-title-row">
+              <h3 className="doc-studio-title">
+                Drag & drop study documents here
+              </h3>
+              <span className="doc-studio-pill-tag">
+                <span className="doc-studio-pill-dot" />
+                OCR & Vector Indexed
+              </span>
+            </div>
             <p className="doc-studio-sub">
-              Upload course PDFs, lecture transcripts, and notes. Synapse indexes and grounds every chat, quiz, and summary.
+              Upload course PDFs, lecture transcripts, and notes. Synapse parses, chunks, and grounds every chat, quiz, and Cornell summary.
             </p>
             <div className="doc-studio-actions">
               <button
@@ -549,49 +666,61 @@ export default function Documents() {
                 <Icon name="upload" size={14} />
                 <span>Browse Local Files</span>
               </button>
-              <span className="doc-studio-limit">Up to 50 MB per document</span>
+              <span className="doc-studio-limit-pill">Up to 50 MB per file</span>
             </div>
           </div>
         </div>
 
         <div className="doc-studio-formats-grid">
           <div className="doc-format-card">
-            <div className="doc-format-card-icon" style={{ color: "#ef4444" }}>
-              <Icon name="doc" size={16} />
+            <div className="doc-format-card-top">
+              <div className="doc-format-card-icon">
+                <Icon name="doc" size={16} />
+              </div>
+              <span className="doc-format-ext-badge">PDF</span>
             </div>
             <div className="doc-format-card-text">
               <span className="doc-format-card-name">PDF Documents</span>
-              <span className="doc-format-card-desc">Textbooks, slides, papers</span>
+              <span className="doc-format-card-desc">Textbooks, slides & papers</span>
             </div>
           </div>
 
           <div className="doc-format-card">
-            <div className="doc-format-card-icon" style={{ color: "#2563eb" }}>
-              <Icon name="fileText" size={16} />
+            <div className="doc-format-card-top">
+              <div className="doc-format-card-icon">
+                <Icon name="fileText" size={16} />
+              </div>
+              <span className="doc-format-ext-badge">DOCX</span>
             </div>
             <div className="doc-format-card-text">
-              <span className="doc-format-card-name">Word & DOCX</span>
-              <span className="doc-format-card-desc">Essays, sheets, outlines</span>
+              <span className="doc-format-card-name">Word & Office</span>
+              <span className="doc-format-card-desc">Essays, sheets & outlines</span>
             </div>
           </div>
 
           <div className="doc-format-card">
-            <div className="doc-format-card-icon" style={{ color: "#10b981" }}>
-              <Icon name="stickyNote" size={16} />
+            <div className="doc-format-card-top">
+              <div className="doc-format-card-icon">
+                <Icon name="stickyNote" size={16} />
+              </div>
+              <span className="doc-format-ext-badge">TXT / MD</span>
             </div>
             <div className="doc-format-card-text">
-              <span className="doc-format-card-name">Plain Text / MD</span>
-              <span className="doc-format-card-desc">Markdown, transcripts, code</span>
+              <span className="doc-format-card-name">Markdown & Notes</span>
+              <span className="doc-format-card-desc">Code, transcripts & logs</span>
             </div>
           </div>
 
           <div className="doc-format-card">
-            <div className="doc-format-card-icon" style={{ color: "#8b5cf6" }}>
-              <Icon name="image" size={16} />
+            <div className="doc-format-card-top">
+              <div className="doc-format-card-icon">
+                <Icon name="image" size={16} />
+              </div>
+              <span className="doc-format-ext-badge">IMG / SCAN</span>
             </div>
             <div className="doc-format-card-text">
-              <span className="doc-format-card-name">Scans & Images</span>
-              <span className="doc-format-card-desc">Diagrams, charts, photos</span>
+              <span className="doc-format-card-name">Scans & Diagrams</span>
+              <span className="doc-format-card-desc">Photos, charts & whiteboards</span>
             </div>
           </div>
         </div>
@@ -691,27 +820,33 @@ export default function Documents() {
       {/* ── Control Toolbar: Search, Filters, Sorters & View Mode ── */}
       <div className="doc-control-bar">
         {/* Live Search Pill */}
-        <div className="note-search-pill-wrap" style={{ flex: "1 1 240px", minWidth: 200 }}>
+        <div
+          className="note-search-pill-wrap doc-search-pill-container"
+          onClick={() => searchInputRef.current?.focus()}
+        >
           <Icon name="search" size={13} className="note-search-pill-icon" />
           <input
             ref={searchInputRef}
             type="text"
             className="note-search-pill-input"
-            placeholder="Search documents by name… (Press /)"
+            placeholder="Search documents by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {search ? (
+          {search && (
             <button
+              type="button"
               className="note-search-pill-clear"
-              onClick={() => setSearch("")}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSearch("");
+                searchInputRef.current?.focus();
+              }}
               aria-label="Clear search"
               title="Clear search"
             >
               <Icon name="close" size={11} />
             </button>
-          ) : (
-            <span className="doc-search-kbd">/</span>
           )}
         </div>
 
@@ -731,7 +866,7 @@ export default function Documents() {
             onClick={() => setCategoryFilter("pdf")}
           >
             <Icon name="doc" size={12} />
-            <span>PDF</span>
+            <span>PDF ({pdfCount})</span>
           </button>
           <button
             type="button"
@@ -739,7 +874,7 @@ export default function Documents() {
             onClick={() => setCategoryFilter("docx")}
           >
             <Icon name="fileText" size={12} />
-            <span>DOCX</span>
+            <span>DOCX ({docxCount})</span>
           </button>
           <button
             type="button"
@@ -747,7 +882,7 @@ export default function Documents() {
             onClick={() => setCategoryFilter("txt")}
           >
             <Icon name="stickyNote" size={12} />
-            <span>TXT</span>
+            <span>TXT ({txtCount})</span>
           </button>
           <button
             type="button"
@@ -755,41 +890,26 @@ export default function Documents() {
             onClick={() => setCategoryFilter("image")}
           >
             <Icon name="image" size={12} />
-            <span>Images</span>
+            <span>Images ({imageCount})</span>
           </button>
         </div>
 
-        {/* Status Filter */}
-        <div className="doc-select-wrap">
-          <select
-            className="doc-select-control"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            aria-label="Filter by processing status"
-          >
-            <option value="all">Status: All</option>
-            <option value="completed">Status: Ready</option>
-            <option value="processing">Status: Processing</option>
-            <option value="failed">Status: Failed</option>
-          </select>
-        </div>
+        {/* Status Filter Pill Dropdown */}
+        <PillDropdown<StatusFilter>
+          value={statusFilter}
+          options={STATUS_OPTIONS}
+          onChange={setStatusFilter}
+          prefix="Status"
+          ariaLabel="Filter by processing status"
+        />
 
-        {/* Sort */}
-        <div className="doc-select-wrap">
-          <select
-            className="doc-select-control"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            aria-label="Sort documents"
-          >
-            <option value="date_desc">Newest Added</option>
-            <option value="date_asc">Oldest Added</option>
-            <option value="name_asc">Name (A → Z)</option>
-            <option value="name_desc">Name (Z → A)</option>
-            <option value="size_desc">Largest Size</option>
-            <option value="size_asc">Smallest Size</option>
-          </select>
-        </div>
+        {/* Sort Pill Dropdown */}
+        <PillDropdown<SortOption>
+          value={sortBy}
+          options={SORT_OPTIONS}
+          onChange={setSortBy}
+          ariaLabel="Sort documents"
+        />
 
         {/* View Toggle */}
         <div className="doc-view-toggle">
@@ -1320,6 +1440,7 @@ export default function Documents() {
                 <Button
                   variant="secondary"
                   className="btn-sm"
+                  style={{ borderRadius: 999, height: 36, padding: "0 16px" }}
                   onClick={() => {
                     const d = inspectDoc;
                     setInspectDoc(null);
@@ -1331,6 +1452,7 @@ export default function Documents() {
                 <Button
                   variant="secondary"
                   className="btn-sm"
+                  style={{ borderRadius: 999, height: 36, padding: "0 16px" }}
                   onClick={() => {
                     const d = inspectDoc;
                     setInspectDoc(null);
@@ -1344,6 +1466,7 @@ export default function Documents() {
               <Button
                 variant="danger"
                 className="btn-sm"
+                style={{ borderRadius: 999, height: 36, padding: "0 16px" }}
                 onClick={() => {
                   const d = inspectDoc;
                   setInspectDoc(null);
@@ -1389,7 +1512,7 @@ export default function Documents() {
           </div>
 
           <div className="row" style={{ marginTop: 16, justifyContent: "flex-end" }}>
-            <Button variant="ghost" onClick={() => setMoveDoc(null)}>
+            <Button variant="ghost" style={{ borderRadius: 999, height: 36, padding: "0 16px" }} onClick={() => setMoveDoc(null)}>
               Cancel
             </Button>
           </div>
@@ -1428,7 +1551,7 @@ export default function Documents() {
           </div>
 
           <div className="row" style={{ marginTop: 16, justifyContent: "flex-end" }}>
-            <Button variant="ghost" onClick={() => setMoveSelectedOpen(false)}>
+            <Button variant="ghost" style={{ borderRadius: 999, height: 36, padding: "0 16px" }} onClick={() => setMoveSelectedOpen(false)}>
               Cancel
             </Button>
           </div>
@@ -1446,13 +1569,19 @@ export default function Documents() {
             if (e.key === "Enter") void createFolder();
           }}
         />
-        <div className="row" style={{ marginTop: 14, justifyContent: "flex-end", gap: 8 }}>
-          <Button variant="ghost" onClick={() => setCreateOpen(false)}>
+        <div className="row" style={{ marginTop: 16, justifyContent: "flex-end", gap: 8 }}>
+          <Button variant="ghost" style={{ borderRadius: 999, height: 38, padding: "0 18px" }} onClick={() => setCreateOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={() => void createFolder()} disabled={!newFolder.trim()}>
+          <button
+            type="button"
+            className="btn-generate-notes-pill"
+            style={{ height: 38, padding: "0 22px" }}
+            onClick={() => void createFolder()}
+            disabled={!newFolder.trim()}
+          >
             Create Collection
-          </Button>
+          </button>
         </div>
       </Modal>
 
@@ -1463,10 +1592,10 @@ export default function Documents() {
           This permanently removes the file, extracted vectors, and grounded indexing.
         </p>
         <div className="row" style={{ marginTop: 18, justifyContent: "flex-end", gap: 8 }}>
-          <Button variant="ghost" onClick={() => setDeleteDoc(null)}>
+          <Button variant="ghost" style={{ borderRadius: 999, height: 38, padding: "0 18px" }} onClick={() => setDeleteDoc(null)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={() => void confirmDelete()}>
+          <Button variant="danger" style={{ borderRadius: 999, height: 38, padding: "0 20px" }} onClick={() => void confirmDelete()}>
             Delete Permanently
           </Button>
         </div>
@@ -1478,10 +1607,10 @@ export default function Documents() {
           Delete <strong>{selected.size} selected documents</strong> permanently from your workspace?
         </p>
         <div className="row" style={{ marginTop: 18, justifyContent: "flex-end", gap: 8 }}>
-          <Button variant="ghost" onClick={() => setBulkDeleteOpen(false)}>
+          <Button variant="ghost" style={{ borderRadius: 999, height: 38, padding: "0 18px" }} onClick={() => setBulkDeleteOpen(false)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={() => void confirmBulkDelete()}>
+          <Button variant="danger" style={{ borderRadius: 999, height: 38, padding: "0 20px" }} onClick={() => void confirmBulkDelete()}>
             Delete All ({selected.size})
           </Button>
         </div>
@@ -1497,13 +1626,19 @@ export default function Documents() {
             if (e.key === "Enter") void commitRename();
           }}
         />
-        <div className="row" style={{ marginTop: 14, justifyContent: "flex-end", gap: 8 }}>
-          <Button variant="ghost" onClick={() => setRenameDoc(null)}>
+        <div className="row" style={{ marginTop: 16, justifyContent: "flex-end", gap: 8 }}>
+          <Button variant="ghost" style={{ borderRadius: 999, height: 38, padding: "0 18px" }} onClick={() => setRenameDoc(null)}>
             Cancel
           </Button>
-          <Button onClick={() => void commitRename()} disabled={!renameValue.trim()}>
-            Save
-          </Button>
+          <button
+            type="button"
+            className="btn-generate-notes-pill"
+            style={{ height: 38, padding: "0 22px" }}
+            onClick={() => void commitRename()}
+            disabled={!renameValue.trim()}
+          >
+            Save Changes
+          </button>
         </div>
       </Modal>
     </div>

@@ -78,6 +78,29 @@ describe("MarkdownContent", () => {
     expect(container.querySelectorAll(".md-td").length).toBe(4);
   });
 
+  it("converts citation tags inside table cells into styled pills", () => {
+    const { container } = render(
+      <MarkdownContent>
+        {"| Step | Details |\n|---|---|\n| 1. Ingest | OCR module in ai/* 【Source4】 |\n| 2. Index | ChromaDB [Source 1] + BM25 【Source2】 |"}
+      </MarkdownContent>
+    );
+    const pills = container.querySelectorAll(".md-cite-pill");
+    expect(pills.length).toBe(3);
+    expect(pills[0].textContent).toBe("Source 4");
+    expect(pills[1].textContent).toBe("Source 1");
+    expect(pills[2].textContent).toBe("Source 2");
+  });
+
+  it("converts embedded <br> tags into line breaks", () => {
+    const { container } = render(
+      <MarkdownContent>
+        {"First line.<br>Second line.<br/>Third line."}
+      </MarkdownContent>
+    );
+    const brs = container.querySelectorAll(".md-br");
+    expect(brs.length).toBe(2);
+  });
+
   it("displays streaming cursor when isStreaming is true", () => {
     const { container } = render(
       <MarkdownContent isStreaming={true}>

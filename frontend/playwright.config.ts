@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import process from "node:process";
 
 // End-to-end tests run against the REAL backend (127.0.0.1:8011) and a
 // production build of the frontend served by `vite preview` (webServer below).
@@ -36,14 +37,14 @@ export default defineConfig({
       url: "http://127.0.0.1:8011/health",
       cwd: "D:/PROJECTS/Synapse/backend",
       timeout: 60_000,
-      reuseExistingServer: false,
+      reuseExistingServer: true,
     },
     {
       command:
         "npm run build && npm run preview -- --host 127.0.0.1 --port 4173 --strictPort",
       url: "http://127.0.0.1:4173",
       timeout: 180_000,
-      reuseExistingServer: false,
+      reuseExistingServer: true,
       env: {
         VITE_API_BASE_URL: "http://127.0.0.1:8011/api/v1",
       },

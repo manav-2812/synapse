@@ -1,0 +1,9 @@
+# Synapse — AI Study Assistant
+> Synapse turns course notes, textbooks, and lecture materials into an intelligent study workspace.
+
+## Documentation & Features
+- [Home & Login](https://synapse.vercel.app/login): Sign in to your Synapse account.
+- [Study Dashboard](https://synapse.vercel.app/dashboard): Manage courses, documents, and learning analytics.
+- [RAG Document Chat](https://synapse.vercel.app/chat): Grounded conversations with exact citations.
+- [Interactive Quizzes](https://synapse.vercel.app/quiz): Adaptive test-prep quizzes with explanations.
+- [Smart Flashcards](https://synapse.vercel.app/flashcards): Spaced-repetition memory engine.

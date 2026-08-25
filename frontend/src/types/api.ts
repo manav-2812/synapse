@@ -191,8 +191,20 @@ export interface ConversationRenameRequest {
 export interface MessageUpdateRequest {
   content: string;
 }
+export interface QueryCorrectionItem {
+  original: string;
+  corrected: string;
+}
+
+export interface QueryCorrectionPayload {
+  original_query: string;
+  corrected_query: string;
+  corrections: QueryCorrectionItem[];
+}
+
 export type ChatStreamEvent =
   | { type: "conversation"; value: ChatConversationPayload }
+  | { type: "correction"; value: QueryCorrectionPayload }
   | { type: "sources"; value: SourceResponse[] }
   | { type: "token"; value: string }
   | { type: "done"; value: ChatDonePayload | null }

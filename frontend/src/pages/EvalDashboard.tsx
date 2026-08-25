@@ -287,61 +287,69 @@ export default function EvalDashboard() {
       </div>
 
       {/* ── 4-Tile Core Benchmarks Strip ── */}
-      <div className="eval-stats-strip" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
+      <div className="note-stats-strip" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
         {/* Precision@k */}
-        <div className="eval-stat-item">
-          <div className="eval-stat-top">
-            <span className="eval-stat-lbl">Precision@k</span>
-            <span style={{ color: "var(--accent)" }}><Icon name="eval" size={16} /></span>
+        <div className="note-stat-item">
+          <div className="note-stat-icon-wrap">
+            <Icon name="eval" size={17} />
           </div>
-          <span className="eval-stat-val">
-            {loading ? "…" : agg ? `${(agg.precision_at_k * 100).toFixed(1)}%` : "—"}
-          </span>
-          <span className="eval-stat-sub">
-            {agg ? `Top-${activeRun?.k ?? 5} retrieval relevance` : "Run benchmark to calculate"}
-          </span>
+          <div className="note-stat-content">
+            <span className="note-stat-val">
+              {loading ? "…" : agg ? `${(agg.precision_at_k * 100).toFixed(1)}%` : "—"}
+            </span>
+            <span className="note-stat-lbl">Precision@k</span>
+            <span className="note-stat-sub" style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+              {agg ? `Top-${activeRun?.k ?? 5} relevance` : "Run benchmark"}
+            </span>
+          </div>
         </div>
 
         {/* Recall@k */}
-        <div className="eval-stat-item">
-          <div className="eval-stat-top">
-            <span className="eval-stat-lbl">Recall@k</span>
-            <span style={{ color: "var(--ok)" }}><Icon name="checkCircle" size={16} /></span>
+        <div className="note-stat-item">
+          <div className="note-stat-icon-wrap">
+            <Icon name="checkCircle" size={17} />
           </div>
-          <span className="eval-stat-val">
-            {loading ? "…" : agg ? `${(agg.recall_at_k * 100).toFixed(1)}%` : "—"}
-          </span>
-          <span className="eval-stat-sub">
-            {agg ? `${agg.n_passed} of ${agg.n_evaluated} probes passed` : "Grounded retrieval coverage"}
-          </span>
+          <div className="note-stat-content">
+            <span className="note-stat-val">
+              {loading ? "…" : agg ? `${(agg.recall_at_k * 100).toFixed(1)}%` : "—"}
+            </span>
+            <span className="note-stat-lbl">Recall@k</span>
+            <span className="note-stat-sub" style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+              {agg ? `${agg.n_passed}/${agg.n_evaluated} passed` : "Grounded coverage"}
+            </span>
+          </div>
         </div>
 
         {/* Mean Reciprocal Rank */}
-        <div className="eval-stat-item">
-          <div className="eval-stat-top">
-            <span className="eval-stat-lbl">MRR Score</span>
-            <span style={{ color: "var(--info)" }}><Icon name="layers" size={16} /></span>
+        <div className="note-stat-item">
+          <div className="note-stat-icon-wrap">
+            <Icon name="layers" size={17} />
           </div>
-          <span className="eval-stat-val">
-            {loading ? "…" : agg ? agg.mrr.toFixed(3) : "—"}
-          </span>
-          <span className="eval-stat-sub">
-            {agg ? (agg.mrr >= 0.8 ? "Optimal rank accuracy" : agg.mrr >= 0.5 ? "Good retrieval rank" : "Needs calibration") : "First relevant rank position"}
-          </span>
+          <div className="note-stat-content">
+            <span className="note-stat-val">
+              {loading ? "…" : agg ? agg.mrr.toFixed(3) : "—"}
+            </span>
+            <span className="note-stat-lbl">MRR Score</span>
+            <span className="note-stat-sub" style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+              {agg ? (agg.mrr >= 0.8 ? "Optimal rank" : "Good rank") : "Rank position"}
+            </span>
+          </div>
         </div>
 
         {/* Total Probes Evaluated */}
-        <div className="eval-stat-item">
-          <div className="eval-stat-top">
-            <span className="eval-stat-lbl">Dataset Probes</span>
-            <span style={{ color: "var(--text-muted)" }}><Icon name="doc" size={16} /></span>
+        <div className="note-stat-item">
+          <div className="note-stat-icon-wrap">
+            <Icon name="doc" size={17} />
           </div>
-          <span className="eval-stat-val">
-            {loading ? "…" : agg ? agg.n_evaluated : "0"}
-          </span>
-          <span className="eval-stat-sub">
-            {agg ? `Auto-generated from indexed documents` : "Dynamically synthesized"}
-          </span>
+          <div className="note-stat-content">
+            <span className="note-stat-val">
+              {loading ? "…" : agg ? agg.n_evaluated : "0"}
+            </span>
+            <span className="note-stat-lbl">Dataset Probes</span>
+            <span className="note-stat-sub" style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+              Synthesized
+            </span>
+          </div>
         </div>
       </div>
 
@@ -435,11 +443,11 @@ export default function EvalDashboard() {
               </div>
 
               {/* Search input */}
-              <div className="quiz-search-wrap">
-                <Icon name="search" size={13} className="quiz-search-icon" />
+              <div className="note-search-pill-wrap">
+                <Icon name="search" size={13} className="note-search-pill-icon" />
                 <input
                   type="text"
-                  className="quiz-search-input"
+                  className="note-search-pill-input"
                   placeholder="Search questions or answers..."
                   value={tableFilter}
                   onChange={(e) => setTableFilter(e.target.value)}
@@ -447,7 +455,7 @@ export default function EvalDashboard() {
                 {tableFilter && (
                   <button
                     type="button"
-                    className="quiz-search-clear"
+                    className="note-search-pill-clear"
                     onClick={() => setTableFilter("")}
                     title="Clear filter"
                   >
@@ -624,7 +632,7 @@ export default function EvalDashboard() {
                       style={{
                         cursor: "pointer",
                         background: isSelected ? "var(--surface-2)" : undefined,
-                        borderLeft: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
+                        borderLeft: isSelected ? "3px solid var(--text-h)" : "3px solid transparent",
                         padding: "14px 18px",
                       }}
                       onClick={() => setSelectedRunId(h.id)}
@@ -644,7 +652,7 @@ export default function EvalDashboard() {
                               </span>
                             )}
                             {isSelected && (
-                              <span className="topic-diag-badge mid" style={{ fontSize: 10, padding: "1px 6px" }}>
+                              <span className="eval-status-pill pass" style={{ fontSize: 10, padding: "1px 6px" }}>
                                 Active
                               </span>
                             )}
@@ -663,14 +671,14 @@ export default function EvalDashboard() {
 
                       <button
                         type="button"
-                        className="btn btn-secondary btn-sm"
-                        style={{ fontSize: 11.5, padding: "4px 10px" }}
+                        className={`eval-inspect-pill ${isSelected ? "is-active" : ""}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedRunId(h.id);
                         }}
                       >
-                        {isSelected ? "Viewing Probes" : "Inspect Run"}
+                        <Icon name={isSelected ? "check" : "eye"} size={12} />
+                        <span>{isSelected ? "Viewing Probes" : "Inspect Run"}</span>
                       </button>
                     </div>
                   );
