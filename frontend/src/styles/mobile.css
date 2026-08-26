@@ -1,0 +1,2920 @@
+/* ==========================================================================
+   SYNAPSE MOBILE RESPONSIVENESS OVERRIDES
+   Strictly scoped to <= 768px viewports. Desktop (1440px+) is 100% untouched.
+   ========================================================================== */
+
+/* Base reset for mobile-only elements on desktop (hidden on >768px) */
+.sidebar-mobile-backdrop,
+.chat-mobile-conv-backdrop {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   1. GLOBAL MOBILE LAYOUT, SHELL & TOUCH TARGETS (<= 768px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #root {
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell {
+    grid-template-columns: 1fr !important;
+    padding-bottom: 0 !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-content {
+    padding: 58px 14px 24px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Hamburger floating button — 44x44px minimum tap target, clean & transparent */
+  .top-corner-hamburger-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    top: 6px !important;
+    left: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    color: var(--text-h) !important;
+    z-index: 120 !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+  }
+
+  .top-corner-hamburger-btn:hover,
+  .top-corner-hamburger-btn:active {
+    background: transparent !important;
+    color: var(--accent) !important;
+  }
+
+  /* Mobile Sidebar Drawer */
+  .sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    z-index: 1000 !important;
+    background: var(--bg) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35) !important;
+    transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+    border-right: 1px solid var(--border-strong) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .sidebar.sidebar-collapsed {
+    display: none !important;
+  }
+
+  .sidebar-mobile-backdrop {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 999 !important;
+    animation: fade-in 180ms ease both !important;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Bottom Navigation (Hidden on Mobile) */
+  .bottom-nav {
+    display: none !important;
+  }
+
+  /* Typography Scaling */
+  h1 {
+    font-size: clamp(20px, 5.5vw, 28px) !important;
+    line-height: 1.25 !important;
+    word-break: break-word !important;
+  }
+
+  h2 {
+    font-size: clamp(17px, 4.5vw, 22px) !important;
+    line-height: 1.3 !important;
+  }
+
+  h3 {
+    font-size: clamp(15px, 4vw, 18px) !important;
+  }
+
+  /* All interactive buttons >= 40px - 44px minimum tap targets */
+  button, .btn, .icon-btn, [role="button"] {
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+
+  .btn--sm {
+    min-height: 36px !important;
+  }
+
+  /* Tactile Tap Feedback & Micro-Animations on Mobile */
+  .note-card,
+  .doc-card,
+  .quiz-stat-card,
+  .note-stat-item,
+  .doc-stat-item,
+  .analytics-kpi-tile,
+  .topic-diag-item,
+  .profile-card,
+  .notion-tile,
+  .quiz-opt-card,
+  .doc-inspector-study-card {
+    transition: transform 140ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 140ms ease !important;
+  }
+
+  .note-card:active,
+  .doc-card:active,
+  .quiz-stat-card:active,
+  .note-stat-item:active,
+  .doc-stat-item:active,
+  .analytics-kpi-tile:active,
+  .topic-diag-item:active,
+  .notion-tile:active,
+  .quiz-opt-card:active,
+  .doc-inspector-study-card:active {
+    transform: scale(0.982) !important;
+  }
+
+  .btn:active,
+  .btn-generate-notes-pill:active,
+  .doc-studio-browse-btn:active,
+  .action-pill-btn:active,
+  .quiz-tab-btn:active,
+  .notion-btn-primary:active {
+    transform: scale(0.97) !important;
+  }
+
+  /* Contextual Tip Cards */
+  .tip {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    margin: 8px 0 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .tip-body {
+    flex: 1 1 180px !important;
+  }
+
+  .tip-title {
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+  }
+
+  .tip-text {
+    font-size: 12px !important;
+  }
+
+  .tip-actions {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 12px !important;
+    margin-top: 4px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. HOME / DASHBOARD RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  /* AI Focus Pulse banner */
+  .dash-focus-pulse {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 10px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .dash-focus-pulse-text {
+    font-size: 13px !important;
+    flex: 1 1 180px !important;
+  }
+
+  /* Bento Learn Hub Grid -> 2 columns */
+  .bento-learn-top-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .bento-streak-tile {
+    grid-column: 1 / -1 !important;
+    padding: 14px 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .bento-compact-tile {
+    min-height: 100px !important;
+    padding: 12px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .bento-compact-num {
+    font-size: 22px !important;
+  }
+
+  .bento-compact-lbl {
+    font-size: 11px !important;
+  }
+
+  /* Goal Progress Card & Study Time Chart side-by-side -> stack */
+  .bento-learn-split-grid,
+  .dash-split-grid,
+  .dash-category-cards-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .bento-goal-card,
+  .bento-chart-card {
+    border-radius: 18px !important;
+    padding: 14px 16px !important;
+  }
+
+  .bento-chart-svg {
+    width: 100% !important;
+    height: 130px !important;
+  }
+
+  /* Deck top grid -> 2 columns */
+  .bento-deck-top-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .bento-hero-unit {
+    grid-column: 1 / -1 !important;
+  }
+
+  /* Neural Knowledge Graph */
+  .neural-graph-card {
+    border-radius: 18px !important;
+    padding: 14px !important;
+  }
+
+  .neural-graph-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .neural-graph-head-right {
+    width: 100% !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .neural-canvas-wrapper {
+    height: 300px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. CHAT PAGE RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .app-shell:has(.chat-layout) .app-content {
+    padding: 0 !important;
+    padding-bottom: 0 !important;
+    height: 100vh !important;
+  }
+
+  .chat-layout {
+    grid-template-columns: 1fr !important;
+    height: 100% !important;
+    position: relative !important;
+  }
+
+  /* Conversation history panel drawer on mobile */
+  .conv-panel {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 290px !important;
+    max-width: 85vw !important;
+    z-index: 1050 !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
+    transform: translateX(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    background: var(--surface) !important;
+  }
+
+  .chat-layout.conversations-collapsed .conv-panel {
+    transform: translateX(-105%) !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+  }
+
+  /* Chat mobile backdrop */
+  .chat-mobile-conv-backdrop {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.45) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 1040 !important;
+    animation: fade-in 180ms ease both !important;
+  }
+
+  /* Chat main column */
+  .chat-main-pane,
+  .chat-main {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    padding-top: 40px !important;
+  }
+
+  .chat-main-header {
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
+    padding: 6px 8px !important;
+  }
+
+  .chat-main .tip {
+    margin-top: 46px !important;
+  }
+
+  .chat-corner-toggle-btn {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  /* Chat Empty State & Greeting Header on Mobile */
+  .chat-notion-empty-wrap {
+    padding: 24px 16px 32px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .chat-notion-empty {
+    max-width: 100% !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  .chat-notion-title {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 14px !important;
+    font-size: clamp(24px, 6.5vw, 28px) !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.035em !important;
+    line-height: 1.25 !important;
+    margin: 0 0 28px !important;
+    white-space: normal !important;
+    color: var(--text-h) !important;
+  }
+
+  [data-theme="dark"] .chat-notion-title span {
+    background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.82) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .chat-greeting-logo {
+    width: 44px !important;
+    height: 44px !important;
+    object-fit: contain !important;
+    filter: drop-shadow(0 6px 16px rgba(99, 102, 241, 0.35)) !important;
+    animation: float-soft 3s ease-in-out infinite alternate !important;
+  }
+
+  @keyframes float-soft {
+    0% { transform: translateY(0px); }
+    100% { transform: translateY(-4px); }
+  }
+
+  .chat-empty-composer-wrap {
+    width: 100% !important;
+    margin: 0 0 16px !important;
+  }
+
+  /* Chat composer bar on mobile */
+  .composer-container {
+    padding: 8px 12px 14px !important;
+  }
+
+  .composer {
+    padding: 14px 14px 12px !important;
+    border-radius: 22px !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border-strong) !important;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+  }
+
+  [data-theme="dark"] .composer {
+    background: rgba(18, 18, 24, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .composer:focus-within {
+    border-color: var(--accent) !important;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+  }
+
+  .composer textarea,
+  .composer .composer-textarea {
+    font-size: 15.5px !important;
+    line-height: 1.45 !important;
+    min-height: 44px !important;
+    padding: 2px 0 10px !important;
+    color: var(--text-h) !important;
+  }
+
+  .composer textarea::placeholder,
+  .composer .composer-textarea::placeholder {
+    color: var(--text-faint) !important;
+    opacity: 0.8 !important;
+  }
+
+  .composer-bottom-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  /* Insight Source & Web Source Switch on Mobile */
+  .composer-bottom-left {
+    display: flex !important;
+    width: 100% !important;
+  }
+
+  .composer-source-segmented {
+    display: inline-flex !important;
+    width: 100% !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    border-radius: 14px !important;
+    padding: 3px !important;
+    gap: 3px !important;
+    box-sizing: border-box !important;
+  }
+
+  [data-theme="light"] .composer-source-segmented,
+  :root:not([data-theme="dark"]) .composer-source-segmented {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  .composer-source-seg-btn {
+    flex: 1 1 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    height: 34px !important;
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    border-radius: 11px !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  [data-theme="dark"] .composer-source-seg-btn.active {
+    background: #ffffff !important;
+    color: #09090b !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 10px rgba(255, 255, 255, 0.22) !important;
+  }
+
+  [data-theme="dark"] .composer-source-seg-btn.active .source-seg-icon {
+    color: #09090b !important;
+  }
+
+  [data-theme="light"] .composer-source-seg-btn.active,
+  :root:not([data-theme="dark"]) .composer-source-seg-btn.active {
+    background: #09090b !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16) !important;
+  }
+
+  [data-theme="light"] .composer-source-seg-btn.active .source-seg-icon,
+  :root:not([data-theme="dark"]) .composer-source-seg-btn.active .source-seg-icon {
+    color: #ffffff !important;
+  }
+
+  .composer-bottom-right {
+    display: flex !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-left: 0 !important;
+  }
+
+  .composer-scope-wrapper,
+  .composer-model-dropdown-wrap {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  .composer-scope-wrapper .scope-trigger,
+  .composer-model-pill {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    color: var(--text-h) !important;
+    transition: background 0.15s ease, border-color 0.15s ease !important;
+  }
+
+  [data-theme="light"] .composer-scope-wrapper .scope-trigger,
+  [data-theme="light"] .composer-model-pill,
+  :root:not([data-theme="dark"]) .composer-scope-wrapper .scope-trigger,
+  :root:not([data-theme="dark"]) .composer-model-pill {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  .composer-scope-wrapper .scope-trigger:hover,
+  .composer-model-pill:hover {
+    background: rgba(255, 255, 255, 0.09) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .composer-voice-btn,
+  .composer-send-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    border-radius: 12px !important;
+    flex-shrink: 0 !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: var(--text-h) !important;
+    display: grid !important;
+    place-items: center !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+  }
+
+  [data-theme="light"] .composer-voice-btn,
+  :root:not([data-theme="dark"]) .composer-voice-btn {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Hide Suggested Study Action Cards on Mobile */
+  .chat-suggestions-section {
+    display: none !important;
+  }
+
+  /* Document Scope Picker Popover on Mobile */
+  .scope-dropdown-menu {
+    max-width: calc(100vw - 24px) !important;
+    max-height: 280px !important;
+    padding: 6px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    z-index: 99999 !important;
+  }
+
+  .scope-dropdown-menu .cm-item {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 46px !important;
+    padding: 8px 10px !important;
+    box-sizing: border-box !important;
+    border-radius: 8px !important;
+  }
+
+  .scope-dropdown-menu .cm-item-text {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    text-align: left !important;
+  }
+
+  .scope-dropdown-menu .cm-item-title {
+    display: block !important;
+    font-size: 12.5px !important;
+    line-height: 1.35 !important;
+    font-weight: 500 !important;
+    color: var(--text-h) !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .scope-dropdown-menu .cm-item-desc {
+    display: block !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    color: var(--text-faint) !important;
+  }
+
+  .msg-bubble {
+    max-width: 100% !important;
+    font-size: 14px !important;
+  }
+
+  /* Citation Chips */
+  .citation-chip,
+  .web-source-chip {
+    padding: 4px 10px !important;
+    font-size: 11.5px !important;
+    min-height: 36px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. DOCUMENTS PAGE RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .doc-page-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    padding-top: 4px !important;
+  }
+
+  /* Page Header with Hamburger Button Clearance */
+  .doc-head {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding-left: 36px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .doc-head-title {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.03em !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
+  }
+
+  .doc-head-sub {
+    font-size: 12.5px !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+  }
+
+  .doc-head-actions {
+    display: flex !important;
+    gap: 8px !important;
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+
+  .doc-head-actions button,
+  .doc-head-actions .btn-generate-notes-pill {
+    flex: 1 1 140px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    font-size: 13px !important;
+    border-radius: 12px !important;
+    justify-content: center !important;
+  }
+
+  /* 4 Stat Cards -> 2x2 Grid */
+  .doc-stats-strip,
+  .doc-stat-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .doc-stat-item {
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    min-height: 64px !important;
+  }
+
+  .doc-stat-val {
+    font-size: 18px !important;
+  }
+
+  .doc-stat-lbl {
+    font-size: 11px !important;
+  }
+
+  /* Document Dropzone Studio on Mobile */
+  .doc-dropzone-studio {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 14px 12px !important;
+    border-radius: 18px !important;
+    gap: 12px !important;
+  }
+
+  .doc-studio-main {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  .doc-studio-icon-wrap {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 12px !important;
+  }
+
+  .doc-studio-title {
+    font-size: 14.5px !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+  }
+
+  .doc-studio-sub {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .doc-studio-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .doc-studio-browse-btn {
+    height: 34px !important;
+    padding: 0 14px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+  }
+
+  .doc-studio-limit-pill {
+    font-size: 11px !important;
+  }
+
+  .doc-studio-formats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .doc-format-card {
+    padding: 10px !important;
+    border-radius: 12px !important;
+    background: var(--surface-2) !important;
+    border: 1px solid var(--border) !important;
+    min-height: 72px !important;
+  }
+
+  .doc-format-card-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 6px !important;
+  }
+
+  .doc-format-card-icon {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 8px !important;
+  }
+
+  .doc-format-card-name {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--text-h) !important;
+  }
+
+  .doc-format-card-desc {
+    font-size: 10.5px !important;
+    line-height: 1.25 !important;
+    color: var(--text-faint) !important;
+  }
+
+  /* Folders / Collections Hub */
+  .doc-folders-hub {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding-bottom: 8px !important;
+  }
+
+  .doc-folders-list {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    width: 100% !important;
+    padding: 2px 0 !important;
+  }
+
+  .doc-folder-pill,
+  .doc-folder-chip-wrap,
+  .doc-new-folder-chip {
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Control Toolbar (Search, Filter, Sort, View) */
+  .doc-control-bar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .doc-search-pill-container {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+
+  .doc-control-bar .note-filter-pill-group,
+  .doc-control-bar .quiz-filter-tabs {
+    width: 100% !important;
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding: 2px 0 !important;
+  }
+
+  .doc-control-bar .quiz-tab-btn {
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    border-radius: 999px !important;
+  }
+
+  .doc-control-bar .doc-pill-dropdown-wrap {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  .doc-control-bar .doc-pill-dropdown-btn {
+    width: 100% !important;
+    height: 38px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    border-radius: 10px !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+  }
+
+  .doc-view-toggle {
+    height: 38px !important;
+    border-radius: 10px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Action Buttons */
+  .docs-top-actions,
+  .doc-action-btns {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .docs-top-actions button,
+  .doc-action-btns button {
+    flex: 1 1 140px !important;
+    min-height: 44px !important;
+  }
+
+  /* Table / Card List */
+  .doc-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Mobile Action buttons & Checkbox on Doc Cards */
+  .doc-hover-actions {
+    opacity: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  .doc-mini-btn {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 8px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+  }
+
+  .doc-checkbox {
+    width: 18px !important;
+    height: 18px !important;
+    opacity: 0.8 !important;
+    margin-left: 4px !important;
+    cursor: pointer !important;
+  }
+
+  .doc-card {
+    border-radius: 16px !important;
+    padding: 12px 14px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .doc-card-title {
+    font-size: 13.5px !important;
+    line-height: 1.35 !important;
+    word-break: break-word !important;
+  }
+
+  .doc-table-container,
+  .docs-table-container {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Document Inspector Modal & Details on Mobile */
+  .modal-overlay {
+    padding: 12px !important;
+    align-items: center !important;
+  }
+
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100vh - 32px) !important;
+    border-radius: 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+  }
+
+  .modal-head {
+    padding: 14px 16px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .modal-body {
+    padding: 14px 16px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex: 1 1 auto !important;
+    max-height: calc(85vh - 60px) !important;
+  }
+
+  .doc-inspector-content {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+
+  .doc-inspector-top {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .doc-inspector-icon {
+    width: 40px !important;
+    height: 40px !important;
+    flex-shrink: 0 !important;
+    border-radius: 12px !important;
+  }
+
+  .doc-inspector-header-info,
+  .doc-inspector-title-wrap {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  .doc-inspector-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    line-height: 1.35 !important;
+    margin: 0 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    color: var(--text-h) !important;
+  }
+
+  .doc-inspector-meta-line {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+  }
+
+  .doc-inspector-study-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .doc-inspector-study-card {
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    gap: 2px !important;
+    min-height: 96px !important;
+    box-sizing: border-box !important;
+    justify-content: flex-start !important;
+  }
+
+  .doc-study-ico {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 8px !important;
+    margin-bottom: 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .doc-study-label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+  }
+
+  .doc-study-desc {
+    font-size: 10.5px !important;
+    line-height: 1.25 !important;
+    color: var(--text-faint) !important;
+  }
+
+  .doc-inspector-meta-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .doc-inspector-content .spread {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+    margin-top: 14px !important;
+    padding-top: 12px !important;
+  }
+
+  .doc-inspector-content .spread .row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .doc-inspector-content .spread button {
+    width: 100% !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    justify-content: center !important;
+    font-size: 12.5px !important;
+    border-radius: 10px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. NOTES PAGE & NOTEREADER RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .note-page-layout,
+  .notes-page-layout {
+    padding-top: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  /* Page Header with Hamburger Button Clearance */
+  .note-head,
+  .notes-head {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding-left: 36px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .note-head-text,
+  .notes-head-text {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+
+  .note-head-title,
+  .notes-head-title {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.03em !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
+    word-break: normal !important;
+  }
+
+  .note-head-sub,
+  .notes-head-sub {
+    font-size: 12.5px !important;
+    line-height: 1.4 !important;
+    margin: 4px 0 0 !important;
+  }
+
+  /* 4 Stat Cards -> 2x2 Grid */
+  .note-stats-strip {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .note-stat-item {
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .note-stat-val {
+    font-size: 18px !important;
+  }
+
+  .note-stat-lbl {
+    font-size: 11px !important;
+  }
+
+  /* ── Note Generator Card ── */
+  .note-generator-card {
+    padding: 14px 14px !important;
+    border-radius: 18px !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .note-generator-head {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .note-generator-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+  }
+
+  .note-generator-sub {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    margin: 0 !important;
+  }
+
+  .note-generator-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .note-gen-field {
+    width: 100% !important;
+  }
+
+  /* 4 Format Options -> Clean 2x2 Grid of Buttons */
+  .note-format-pills {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+  }
+
+  .note-format-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 10px !important;
+    border-radius: 12px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    background: var(--surface-2) !important;
+    border: 1px solid var(--border) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  [data-theme="light"] .note-format-btn.active {
+    background: #09090b !important;
+    color: #ffffff !important;
+    border-color: #09090b !important;
+    font-weight: 600 !important;
+  }
+
+  [data-theme="dark"] .note-format-btn.active {
+    background: #ffffff !important;
+    color: #09090b !important;
+    border-color: #ffffff !important;
+    font-weight: 600 !important;
+  }
+
+  .note-gen-field .scope-picker {
+    width: 100% !important;
+  }
+
+  .note-generator-foot {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding-top: 12px !important;
+  }
+
+  .note-generator-hint {
+    font-size: 11.5px !important;
+    line-height: 1.35 !important;
+  }
+
+  .note-generator-foot button,
+  .btn-generate-notes-pill {
+    width: 100% !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+
+  /* ── Notes Library Collapsible Box & Toolbar ── */
+  #notes-library-section .doc-collapsible-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  #notes-library-section .doc-collapsible-left {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  #notes-library-section .doc-collapsible-right {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin-top: 2px !important;
+  }
+
+  #notes-library-section .note-filter-pill-group {
+    width: 100% !important;
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding: 2px 0 !important;
+  }
+
+  #notes-library-section .note-filter-pill-group button {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+  }
+
+  #notes-library-section .note-search-pill-wrap {
+    flex: 1 1 120px !important;
+    min-width: 0 !important;
+    height: 38px !important;
+  }
+
+  #notes-library-section .doc-view-toggle {
+    flex-shrink: 0 !important;
+    height: 38px !important;
+  }
+
+  /* Note Cards Grid */
+  .note-cards-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  .note-card {
+    padding: 14px 16px !important;
+    border-radius: 16px !important;
+    gap: 10px !important;
+  }
+
+  .note-card-title {
+    font-size: 14.5px !important;
+    line-height: 1.35 !important;
+  }
+
+  .note-card-preview {
+    font-size: 12.5px !important;
+    line-height: 1.5 !important;
+  }
+
+  /* NoteReader layout */
+  .nr-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .nr-toc-sidebar {
+    display: none !important; /* Hide sidebar table of contents on mobile to preserve 100% canvas */
+  }
+
+  .nr-page-container {
+    padding-top: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  /* NoteReader Topbar Card & Actions */
+  .nr-topbar-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 14px 16px !important;
+    gap: 12px !important;
+    border-radius: 18px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .nr-topbar-left {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .nr-header-meta {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  .nr-main-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    line-height: 1.3 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    margin-top: 4px !important;
+  }
+
+  .nr-topbar-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    scrollbar-width: none !important;
+    padding-top: 2px !important;
+  }
+
+  .action-pill-btn {
+    height: 36px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    flex-shrink: 0 !important;
+    border-radius: 999px !important;
+  }
+
+  .nr-paper-canvas {
+    padding: 16px 14px !important;
+    border-radius: 18px !important;
+  }
+
+  /* Note Reader Body Text & Spacing */
+  .nc-p,
+  .nc-ul li,
+  .nc-ol li,
+  .nr-paper-canvas p,
+  .nr-paper-canvas li {
+    text-align: left !important;
+    word-spacing: normal !important;
+    font-size: 14.5px !important;
+    line-height: 1.65 !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. FLASHCARDS PAGE RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .flashcard-page-layout {
+    padding-top: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  /* Due Hero Banner */
+  .flashcard-due-hero {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .flashcard-due-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .flashcard-due-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+  }
+
+  .flashcard-due-sub {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    margin: 0 !important;
+  }
+
+  .flashcard-due-hero button {
+    width: 100% !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Count Selector Stepper & Preset Buttons */
+  .quiz-count-group {
+    height: 36px !important;
+    padding: 3px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    background: var(--surface-2) !important;
+    border-radius: 999px !important;
+  }
+
+  .quiz-count-btn {
+    min-height: 28px !important;
+    height: 28px !important;
+    min-width: 32px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+  }
+
+  .quiz-count-stepper {
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 6px 0 8px !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .quiz-count-input {
+    width: 26px !important;
+    height: 24px !important;
+    font-size: 12px !important;
+    padding: 0 !important;
+  }
+
+  .quiz-count-spinners {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+  }
+
+  .quiz-count-spinners .quiz-count-spin-btn {
+    min-height: 12px !important;
+    height: 12px !important;
+    width: 14px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+  }
+
+  .quiz-generator-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  .quiz-gen-field {
+    width: 100% !important;
+  }
+
+  .quiz-gen-field--scope .scope-picker {
+    width: 100% !important;
+  }
+
+  .quiz-generator-footer {
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+    align-items: stretch !important;
+  }
+
+  .quiz-generator-footer button {
+    width: 100% !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+  }
+
+  /* Flashcard Library & Document Collapsible Card */
+  .doc-collapsible-header,
+  #flashcard-library-section .doc-collapsible-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  .doc-collapsible-left,
+  #flashcard-library-section .doc-collapsible-left {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  .doc-collapsible-right,
+  #flashcard-library-section .doc-collapsible-right {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin-top: 2px !important;
+  }
+
+  .doc-collapsible-right .note-filter-pill-group,
+  #flashcard-library-section .note-filter-pill-group {
+    width: 100% !important;
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding: 2px 0 !important;
+  }
+
+  .doc-collapsible-right .note-filter-pill-group button,
+  #flashcard-library-section .note-filter-pill-group button {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+  }
+
+  .doc-collapsible-right .note-search-pill-wrap,
+  #flashcard-library-section .note-search-pill-wrap {
+    flex: 1 1 120px !important;
+    min-width: 0 !important;
+    height: 38px !important;
+  }
+
+  .doc-collapsible-right .doc-view-toggle,
+  #flashcard-library-section .doc-view-toggle {
+    flex-shrink: 0 !important;
+    height: 38px !important;
+  }
+
+  .doc-collapsible-right .note-read-pill-btn,
+  #flashcard-library-section .note-read-pill-btn {
+    width: 100% !important;
+    height: 38px !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+  }
+
+  .flashcard-lib-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Flashcards Active Study Session */
+  .flashcard-study-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-topbar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 12px !important;
+    border-radius: 14px !important;
+    gap: 6px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-top-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-exit-btn {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-exit-btn span {
+    display: none !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-exit-btn::after {
+    content: 'Back' !important;
+    font-size: 12px !important;
+    margin-left: 2px !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-divider {
+    display: none !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-quiz-title {
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-top-center {
+    display: flex !important;
+    align-items: center !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-top-right {
+    flex-shrink: 0 !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-top-right .quiz-pill-badge {
+    font-size: 10.5px !important;
+    padding: 2px 6px !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+  }
+
+  .flashcard-3d-scene {
+    min-height: 280px !important;
+    border-radius: 20px !important;
+  }
+
+  .flashcard-grade-bar {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .flashcard-grade-btn {
+    min-height: 46px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    gap: 8px !important;
+    margin-top: 8px !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-footer .note-read-pill-btn {
+    flex: 1 1 0 !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+  }
+
+  .flashcard-study-wrapper .quiz-stage-progress-summary,
+  .quiz-kbd-floating-bar {
+    display: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. QUIZ PAGE RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .quiz-page-layout {
+    padding-top: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  /* Page Header with Hamburger Button Clearance */
+  .quiz-head {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding-left: 36px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .quiz-head-text {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+
+  .quiz-head-title {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.03em !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
+    word-break: normal !important;
+  }
+
+  .quiz-head-sub {
+    font-size: 12.5px !important;
+    line-height: 1.4 !important;
+    margin: 4px 0 0 !important;
+  }
+
+  .quiz-head button {
+    align-self: flex-start !important;
+    height: 36px !important;
+    padding: 0 16px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+  }
+
+  /* 4 Stat Cards -> 2x2 Grid */
+  .quiz-stats-strip {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .quiz-stat-card {
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .quiz-stat-value {
+    font-size: 18px !important;
+  }
+
+  .quiz-stat-label {
+    font-size: 11px !important;
+  }
+
+  .quiz-generator-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .quiz-difficulty-pills {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    background: var(--surface-2) !important;
+    padding: 3px !important;
+    border-radius: 999px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .quiz-diff-btn {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    height: 32px !important;
+    padding: 0 8px !important;
+    font-size: 12px !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+  }
+
+  .quiz-opt-card {
+    min-height: 50px !important;
+    padding: 12px 14px !important;
+    font-size: 14px !important;
+    border-radius: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .quiz-actions-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .quiz-actions-row button {
+    width: 100% !important;
+    min-height: 48px !important;
+  }
+
+  /* ── Quiz Review Header & Retake Button ── */
+  .quiz-review-head-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 14px 16px !important;
+    gap: 14px !important;
+    border-radius: 18px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .quiz-review-head-left {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .quiz-review-head-left > div:last-child {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  .quiz-review-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    line-height: 1.35 !important;
+    word-break: break-word !important;
+    margin: 0 !important;
+  }
+
+  .quiz-review-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-top: 6px !important;
+    font-size: 12px !important;
+  }
+
+  .quiz-diff-tag {
+    display: inline-flex !important;
+    align-items: center !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+  }
+
+  .quiz-review-head-card .btn,
+  .quiz-review-head-card .btn-sm {
+    width: 100% !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+
+  /* ── Active Taking Stage Top Bar ── */
+  .quiz-stage-topbar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 12px !important;
+    border-radius: 14px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .quiz-stage-top-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .quiz-stage-exit-btn {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    flex-shrink: 0 !important;
+    border-radius: 999px !important;
+  }
+
+  .quiz-stage-quiz-title {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+
+  .quiz-stage-topbar .quiz-diff-tag {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 6px !important;
+    border-radius: 6px !important;
+    flex-shrink: 0 !important;
+    text-transform: uppercase !important;
+  }
+
+  .quiz-stage-top-center {
+    display: none !important;
+  }
+
+  .quiz-stage-top-right {
+    flex-shrink: 0 !important;
+  }
+
+  .quiz-stage-stepper-bar {
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding: 4px 0 6px !important;
+  }
+
+  .quiz-dot-step {
+    min-width: 32px !important;
+    height: 32px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .quiz-table-wrap {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   8. EVAL DASHBOARD RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .eval-page-layout {
+    padding-top: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  /* Page Header with Hamburger Button Clearance */
+  .eval-head {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding-left: 36px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .eval-head-text {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+
+  .eval-head-title {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.03em !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
+    word-break: normal !important;
+  }
+
+  .eval-head-sub {
+    font-size: 12.5px !important;
+    line-height: 1.4 !important;
+    margin: 4px 0 0 !important;
+  }
+
+  .eval-head > div:last-child {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .eval-viewing-pill {
+    flex: 1 1 120px !important;
+    height: 38px !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+  }
+
+  .eval-run-btn {
+    flex: 1 1 140px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Evaluation Run History List Items */
+  .eval-page-layout .note-lib-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+
+  .eval-page-layout .note-lib-row-left {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .eval-page-layout .note-lib-row-info {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  .eval-page-layout .note-lib-row-title {
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    white-space: normal !important;
+  }
+
+  .eval-page-layout .note-lib-row-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px 8px !important;
+    font-size: 11px !important;
+    margin-top: 4px !important;
+  }
+
+  .eval-page-layout .eval-inspect-pill {
+    width: 100% !important;
+    height: 36px !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* Eval Benchmark Table & Probes */
+  .eval-table-wrap {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 16px !important;
+  }
+
+  .eval-table-custom {
+    min-width: 580px !important;
+    width: 100% !important;
+  }
+
+  .eval-probe-q {
+    text-align: left !important;
+    word-break: normal !important;
+    white-space: normal !important;
+    line-height: 1.5 !important;
+    font-size: 13px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. ANALYTICS RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .analytics-page-layout {
+    padding-top: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  /* Page Header with Hamburger Button Clearance */
+  .analytics-head {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding-left: 36px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .analytics-head-text {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+  }
+
+  .analytics-head-title {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.03em !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
+    word-break: normal !important;
+  }
+
+  .analytics-head-sub {
+    font-size: 12.5px !important;
+    line-height: 1.4 !important;
+    margin: 4px 0 0 !important;
+  }
+
+  .analytics-head .dash-streak-pill {
+    align-self: flex-start !important;
+    height: 34px !important;
+    padding: 0 14px !important;
+    font-size: 12px !important;
+  }
+
+  /* Card Containers */
+  .analytics-card {
+    padding: 14px 14px !important;
+    border-radius: 18px !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .analytics-card-head {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .analytics-card-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    line-height: 1.3 !important;
+    margin: 0 !important;
+  }
+
+  .analytics-card-sub {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    margin: 2px 0 0 !important;
+  }
+
+  /* 6-Tile KPI Grid */
+  .analytics-kpi-grid-6 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .analytics-kpi-tile {
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    gap: 6px !important;
+  }
+
+  .analytics-kpi-num {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+  }
+
+  .analytics-kpi-lbl {
+    font-size: 11px !important;
+  }
+
+  .analytics-kpi-footer {
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+  }
+
+  .analytics-grid-2 {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 7-Day Sun..Sat Weekly Bar Chart (Evenly Fills 100% Width) */
+  .weekly-bars-container {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .weekly-bars-grid {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-end !important;
+    width: 100% !important;
+    height: 95px !important;
+    padding: 4px 0 !important;
+    box-sizing: border-box !important;
+    gap: 2px !important;
+  }
+
+  .weekly-bar-col {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 4px !important;
+    height: 100% !important;
+    justify-content: flex-end !important;
+  }
+
+  .weekly-bar-fill {
+    width: 100% !important;
+    max-width: 16px !important;
+    min-height: 4px !important;
+    border-radius: 4px !important;
+  }
+
+  .weekly-bar-lbl {
+    font-size: 9px !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  /* Week-over-Week Velocity Delta Cards */
+  .trend-comp-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .trend-comp-item {
+    padding: 8px 10px !important;
+    border-radius: 12px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    gap: 2px !important;
+  }
+
+  .trend-comp-lbl {
+    font-size: 10.5px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .trend-comp-vals {
+    display: flex !important;
+    align-items: baseline !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .trend-comp-num {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+  }
+
+  .trend-comp-delta {
+    font-size: 9.5px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Topic Mastery Diagnostic Cards */
+  .topic-diag-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .topic-diag-item {
+    padding: 12px 12px !important;
+    border-radius: 14px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .topic-diag-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .topic-diag-name {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+
+  .topic-diag-badge {
+    flex-shrink: 0 !important;
+    font-size: 10.5px !important;
+    padding: 2px 6px !important;
+    white-space: nowrap !important;
+    border-radius: 999px !important;
+  }
+
+  .topic-diag-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 11.5px !important;
+  }
+
+  /* Indexed Knowledge Base & Recent Quizzes Rows */
+  .analytics-card .note-lib-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 10px 12px !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border-radius: 14px !important;
+  }
+
+  .analytics-card .note-lib-row-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .analytics-card .note-lib-icon {
+    width: 32px !important;
+    height: 32px !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px !important;
+  }
+
+  .analytics-card .note-lib-row-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .analytics-card .note-lib-row-title {
+    display: block !important;
+    width: 100% !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--text-h) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+  }
+
+  .analytics-card .note-lib-row-meta {
+    display: block !important;
+    width: 100% !important;
+    font-size: 11px !important;
+    color: var(--text-faint) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+  }
+
+  .analytics-card .quiz-score {
+    width: 60px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .analytics-card .eval-status-pill {
+    flex-shrink: 0 !important;
+    font-size: 10.5px !important;
+    padding: 2px 8px !important;
+  }
+
+  .heatmap-stats-pills {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    margin-bottom: 8px !important;
+    width: 100% !important;
+  }
+
+  .heatmap-stat-chip {
+    font-size: 11px !important;
+    padding: 3px 8px !important;
+    border-radius: 999px !important;
+  }
+
+  .heatmap-scroll-container {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   10. AUTH PAGES RESPONSIVENESS (SIGNUP, LOGIN, FORGOT, RESET)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .notion-page {
+    min-height: 100svh !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    padding: 16px 16px 36px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Non-overlapping topbar for theme switcher on mobile */
+  .notion-auth-topbar {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 440px !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    margin-bottom: 8px !important;
+    z-index: 10 !important;
+  }
+
+  .notion-theme-segmented {
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 2px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    border-radius: 999px !important;
+    gap: 2px !important;
+  }
+
+  .notion-theme-btn {
+    width: 26px !important;
+    min-width: 26px !important;
+    max-width: 26px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    display: grid !important;
+    place-items: center !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+  }
+
+  .notion-content-wrap {
+    width: 100% !important;
+    max-width: 400px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .notion-brand-header {
+    margin-bottom: 12px !important;
+    gap: 8px !important;
+  }
+
+  .notion-brand-icon {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .notion-brand-name {
+    font-size: 19px !important;
+  }
+
+  .notion-main-title {
+    font-size: 22px !important;
+    line-height: 1.25 !important;
+    margin: 0 0 4px !important;
+    width: 100% !important;
+    word-break: normal !important;
+  }
+
+  .notion-sub-title {
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    margin: 0 0 20px !important;
+    width: 100% !important;
+  }
+
+  .notion-form {
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .notion-field .input {
+    height: 42px !important;
+    font-size: 14px !important;
+  }
+
+  .notion-btn-primary {
+    height: 42px !important;
+    min-height: 42px !important;
+    border-radius: 999px !important;
+    font-size: 13.5px !important;
+    margin-top: 4px !important;
+  }
+
+  .notion-divider {
+    margin: 20px 0 16px !important;
+  }
+
+  .notion-tiles-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 18px !important;
+    width: 100% !important;
+  }
+
+  .notion-tile {
+    padding: 10px 4px 8px !important;
+    min-height: 64px !important;
+    border-radius: 12px !important;
+    gap: 6px !important;
+  }
+
+  .notion-tile-text {
+    font-size: 11.5px !important;
+  }
+
+  .notion-legal-text,
+  .notion-auth-footer,
+  .notion-content-wrap > p:last-child {
+    font-size: 11px !important;
+    line-height: 1.45 !important;
+    margin-top: 14px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   11. PROFILE PAGE RESPONSIVENESS
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .profile-layout,
+  .profile-page-container {
+    padding-top: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Profile Hero Card */
+  .profile-hero,
+  .profile-hero-card {
+    padding: 16px 14px !important;
+    border-radius: 18px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .profile-hero-content {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .profile-hero-avatar-wrap {
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .profile-hero-avatar,
+  .profile-hero-avatar-img,
+  .profile-hero-avatar-overlay {
+    width: 68px !important;
+    height: 68px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+  }
+
+  .profile-hero-avatar-initial {
+    font-size: 24px !important;
+    border-radius: 50% !important;
+  }
+
+  .profile-hero-details {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+  }
+
+  .profile-hero-title-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .profile-hero-name {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+    word-break: break-word !important;
+  }
+
+  .profile-hero-email-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .profile-hero-email {
+    font-size: 12.5px !important;
+    word-break: break-all !important;
+  }
+
+  .profile-hero-actions {
+    width: 100% !important;
+    margin-top: 4px !important;
+  }
+
+  .profile-logout-btn,
+  .profile-hero-logout {
+    width: 100% !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    font-size: 12.5px !important;
+  }
+
+  /* 2-Column Grid -> 1-Column Stack */
+  .profile-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+
+  .profile-card {
+    padding: 16px 14px !important;
+    border-radius: 18px !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .profile-card-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+  }
+
+  .profile-card-desc {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+  }
+
+  .profile-card-footer {
+    padding-top: 12px !important;
+    margin-top: 4px !important;
+  }
+
+  .profile-card-footer button {
+    width: 100% !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Daily Study Goal Card */
+  .profile-goal-display-card {
+    padding: 12px 14px !important;
+    border-radius: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  .profile-preset-chips {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .profile-preset-chip {
+    padding: 4px 10px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+    flex: 1 1 0 !important;
+    min-width: 44px !important;
+    text-align: center !important;
+  }
+
+  /* Theme Cards Grid */
+  .profile-theme-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .profile-theme-card {
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Passkeys & Privacy Export Items */
+  .profile-privacy-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .profile-privacy-action button {
+    width: 100% !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    justify-content: center !important;
+    border-radius: 10px !important;
+  }
+
+  .profile-passkey-item {
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+  }
+}
+
+

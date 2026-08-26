@@ -71,8 +71,11 @@ export function Sidebar({ collapsed, onToggle }: Props) {
     analyticsApi
       .dashboard()
       .then((d) => {
+        if (!d) return;
+        const recentDocs = Array.isArray(d.recent_documents) ? d.recent_documents : [];
+        const recentQuizzes = Array.isArray(d.recent_quizzes) ? d.recent_quizzes : [];
         const items: ActivityItem[] = [
-          ...d.recent_documents.map((doc) => ({
+          ...recentDocs.map((doc) => ({
             id: `doc:${doc.id}`,
             kind: "document" as const,
             title: doc.name,
@@ -80,7 +83,7 @@ export function Sidebar({ collapsed, onToggle }: Props) {
             at: doc.created_at,
             to: "/documents",
           })),
-          ...d.recent_quizzes.map((q) => ({
+          ...recentQuizzes.map((q) => ({
             id: `quiz:${q.id}`,
             kind: "quiz" as const,
             title: q.title,

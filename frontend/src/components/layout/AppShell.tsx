@@ -21,7 +21,9 @@ export function AppShell() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(LS_KEY, collapsed ? "1" : "0");
+      if (typeof window !== "undefined" && window.innerWidth > 768) {
+        localStorage.setItem(LS_KEY, collapsed ? "1" : "0");
+      }
     } catch {
       /* ignore */
     }
@@ -38,9 +40,12 @@ export function AppShell() {
     };
   }, []);
 
-  // Scroll content area to top on every navigation
+  // Scroll content area to top and auto-close sidebar on mobile navigation
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, behavior: "instant" });
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      setCollapsed(true);
+    }
   }, [pathname]);
 
   return (
@@ -50,7 +55,14 @@ export function AppShell() {
       </a>
       <div className={`app-shell${collapsed ? " sidebar-is-collapsed" : ""}`}>
         {!collapsed && (
-          <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(true)} />
+          <>
+            <div
+              className="sidebar-mobile-backdrop"
+              onClick={() => setCollapsed(true)}
+              aria-hidden="true"
+            />
+            <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(true)} />
+          </>
         )}
         <main className="app-content" id="main" ref={contentRef}>
           {collapsed && (
@@ -60,7 +72,7 @@ export function AppShell() {
               title="Open sidebar (Ctrl+\)"
               aria-label="Open sidebar"
             >
-              <Icon name="menu" size={18} />
+              <Icon name="menu" size={20} />
             </button>
           )}
           <div className="route-view" key={pathname}>

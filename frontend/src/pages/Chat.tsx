@@ -334,7 +334,12 @@ export default function Chat() {
     }
   }, [searchParams]);
   const [activeSource, setActiveSource] = useState<SourceResponse | null>(null);
-  const [conversationsOpen, setConversationsOpen] = useState(true);
+  const [conversationsOpen, setConversationsOpen] = useState(() => {
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      return false;
+    }
+    return true;
+  });
   const [webMode, setWebMode] = useState(false);
   const [insightMode, setInsightMode] = useState(true);
 
@@ -821,6 +826,9 @@ export default function Chat() {
 
   async function openConversation(id: string) {
     if (id.startsWith("temp-")) return;
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      setConversationsOpen(false);
+    }
     shouldFollowLatestRef.current = true;
     setActiveId(id);
     if (unreadIds.has(id)) {
@@ -852,6 +860,9 @@ export default function Chat() {
 
   function startNew() {
     if (busy) return;
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      setConversationsOpen(false);
+    }
     shouldFollowLatestRef.current = true;
     setActiveId(null);
     setMessages([]);
@@ -1325,16 +1336,14 @@ export default function Chat() {
 
   return (
     <>
-      <Tip
-        id={TIP.chatScope}
-        title="Scope your answers"
-        icon="chat"
-      >
-        Pick which documents a chat uses with the scope picker — answer
-        from your whole library or just one file.
-      </Tip>
-
       <div className={`chat-layout${conversationsOpen ? "" : " conversations-collapsed"}`}>
+        {conversationsOpen && (
+          <div
+            className="chat-mobile-conv-backdrop"
+            onClick={() => setConversationsOpen(false)}
+            aria-hidden="true"
+          />
+        )}
 
         {/* ── Left Sidebar: New Chat + Search + Collapse -> Chats and Tasks ── */}
         <aside className="conv-panel">
@@ -1712,6 +1721,15 @@ export default function Chat() {
               </>
             )}
           </header>
+
+          <Tip
+            id={TIP.chatScope}
+            title="Scope your answers"
+            icon="chat"
+          >
+            Pick which documents a chat uses with the scope picker — answer
+            from your whole library or just one file.
+          </Tip>
 
           {messages.length === 0 ? (
             <div className="chat-notion-empty-wrap">

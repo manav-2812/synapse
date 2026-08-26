@@ -56,16 +56,20 @@ export function DocumentScopePicker({
   useEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+    const menuWidth = Math.min(320, typeof window !== "undefined" ? window.innerWidth - 24 : 320);
+    const left = typeof window !== "undefined"
+      ? Math.max(12, Math.min(rect.left, window.innerWidth - menuWidth - 12))
+      : rect.left;
     if (popupDirection === "up") {
       setPanelPos({
         bottom: window.innerHeight - rect.top + 6,
-        left: rect.left,
+        left,
         width: rect.width,
       });
     } else {
       setPanelPos({
         top: rect.bottom + 6,
-        left: rect.left,
+        left,
         width: rect.width,
       });
     }
@@ -128,7 +132,7 @@ export function DocumentScopePicker({
   }
 
   const completed = docs.filter(
-    (d) => d.processing_status === "completed" && d.file_type !== "image",
+    (d) => (d.processing_status === "completed" || (d as any).status === "completed") && d.file_type !== "image",
   );
   const selectedDocs = docs.filter((d) => value.includes(d.id));
 

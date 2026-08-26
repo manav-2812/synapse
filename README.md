@@ -106,8 +106,9 @@ The system is built around two non-negotiable design goals:
 - **53-Week Study Heatmap & Telemetry** — visual activity streak tracking, token and compute cost metering, and cache-hit monitoring.
 - **Retrieval Eval Benchmark Dashboard (`/eval`)** — live evaluation harness scoring precision@k, recall@k, MRR, and NDCG against the user's active document library.
 
-### Design & User Experience
+### Design & Mobile Experience
 - **Refined Modern Interface** — custom dark/light theme tokens, frosted glass elevation, stadium pill controls, and focused emerald status indicators.
+- **Dedicated Mobile Responsive Architecture (`mobile.css`)** — fully audited across 375px–768px viewports with tactile tap feedback, GPU-accelerated transforms, floating transparent hamburger navigation, safe-area insets, and bottom glassmorphic composers.
 - **Accessibility & SEO** — keyboard shortcuts, ARIA standards, `prefers-reduced-motion` compliance, and complete Open Graph meta tags.
 
 ---
