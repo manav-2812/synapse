@@ -12,9 +12,15 @@ export default defineConfig({
     },
   },
   build: {
+    chunkSizeWarningLimit: 800,
     modulePreload: {
       resolveDependencies(_filename: string, deps: string[]) {
-        return deps.filter((d) => !d.includes('pdf-vendor'))
+        return deps.filter(
+          (d) =>
+            !d.includes('jspdf-vendor') &&
+            !d.includes('html2canvas-vendor') &&
+            !d.includes('pdf-vendor')
+        )
       },
     },
     // Split the large, rarely-changing vendor (react / react-dom /
@@ -32,8 +38,11 @@ export default defineConfig({
             ) {
               return 'react-vendor'
             }
-            if (id.includes('jspdf') || id.includes('html2canvas')) {
-              return 'pdf-vendor'
+            if (id.includes('jspdf')) {
+              return 'jspdf-vendor'
+            }
+            if (id.includes('html2canvas')) {
+              return 'html2canvas-vendor'
             }
             if (id.includes('highlight.js')) {
               return 'hljs-vendor'
