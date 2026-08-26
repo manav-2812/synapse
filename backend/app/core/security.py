@@ -1,6 +1,7 @@
 """Security helpers: password hashing and JWT access/refresh tokens."""
 from datetime import datetime, timedelta, timezone
 from typing import Any
+import uuid
 
 import bcrypt
 from jose import JWTError, jwt
@@ -9,6 +10,9 @@ from app.core.config import settings
 
 ACCESS_TOKEN_TYPE = "access"
 REFRESH_TOKEN_TYPE = "refresh"
+RESET_TOKEN_TYPE = "reset"
+VERIFICATION_TOKEN_TYPE = "verify_email"
+
 
 
 def hash_password(password: str) -> str:
@@ -74,17 +78,64 @@ def create_refresh_token(user_id: str, token_id: str) -> str:
     )
 
 
+def create_reset_token(email: str, token_id: str | None = None) -> str:
+    """Short-lived, single-use token for password reset (15 minutes).
+
+    A jti (JWT ID) is embedded so the service layer can invalidate it on
+    first use — preventing replay within the 15-minute expiry window.
+    """
+    jti = token_id or uuid.uuid4().hex
+    return _create_token(
+        subject=email,
+        token_type=RESET_TOKEN_TYPE,
+        expires_delta=timedelta(minutes=15),
+        extra_claims={"jti": jti},
+    )
+
+
+def create_verification_token(email: str, token_id: str | None = None, expire_hours: int = 24) -> str:
+    """Token for email verification upon signup (24 hours)."""
+    claims = {"jti": token_id} if token_id else None
+    return _create_token(
+        subject=email,
+        token_type=VERIFICATION_TOKEN_TYPE,
+        expires_delta=timedelta(hours=expire_hours),
+        extra_claims=claims,
+    )
+
+
 def decode_token(token: str) -> dict[str, Any]:
     """Decode and validate a JWT. Raises JWTError on failure."""
     return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
 
 
+def validate_password_bytes(password: str) -> None:
+    """Raise ValueError if the password exceeds bcrypt's 72-byte limit.
+
+    bcrypt silently truncates input at 72 bytes, meaning two passwords that
+    share the same 72-byte prefix are considered identical.  We surface a
+    clear error rather than accepting a password that only partially matches
+    what the user typed.
+    """
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError(
+            "Password must be 72 characters or fewer (bcrypt limit). "
+            "Please choose a shorter password."
+        )
+
+
 __all__ = [
     "hash_password",
     "verify_password",
+    "validate_password_bytes",
     "create_access_token",
     "create_refresh_token",
+    "create_reset_token",
+    "create_verification_token",
     "decode_token",
     "ACCESS_TOKEN_TYPE",
     "REFRESH_TOKEN_TYPE",
+    "RESET_TOKEN_TYPE",
+    "VERIFICATION_TOKEN_TYPE",
 ]
+

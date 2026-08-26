@@ -9,7 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from app.core.logger import get_logger
 
@@ -27,7 +27,11 @@ DEFAULT_KNOWN_TERMS = [
 
 _TERMS_FILE = Path(__file__).resolve().parent.parent / "core" / "known_terms.json"
 _CACHED_TERMS: list[str] = []
+_CACHED_PREPARED_TERMS: list[Tuple[str, str, int]] = []
 _LAST_MTIME: float = 0.0
+
+_WORD_RE = re.compile(r"[a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?")
+_NON_ALPHANUM_RE = re.compile(r"[^a-zA-Z0-9]")
 
 COMMON_STOPWORDS = {
     "a", "an", "the", "in", "on", "at", "to", "for", "of", "with", "by", "from",
@@ -52,9 +56,14 @@ class QueryCorrectionResult:
     corrections: list[CorrectionItem] = field(default_factory=list)
 
 
+def _clean_str(text: str) -> str:
+    """Strip all non-alphanumeric characters and lowercase."""
+    return _NON_ALPHANUM_RE.sub("", text).lower()
+
+
 def load_known_terms() -> list[str]:
     """Load known proper noun terms with automatic mtime-based reload."""
-    global _CACHED_TERMS, _LAST_MTIME
+    global _CACHED_TERMS, _CACHED_PREPARED_TERMS, _LAST_MTIME
     try:
         if _TERMS_FILE.exists():
             mtime = os.path.getmtime(_TERMS_FILE)
@@ -63,6 +72,9 @@ def load_known_terms() -> list[str]:
                     data = json.load(f)
                     if isinstance(data, list):
                         _CACHED_TERMS = [str(t).strip() for t in data if str(t).strip()]
+                        _CACHED_PREPARED_TERMS = [
+                            (t, _clean_str(t), len(_clean_str(t))) for t in _CACHED_TERMS
+                        ]
                         _LAST_MTIME = mtime
                         log.debug("known_terms_loaded", count=len(_CACHED_TERMS))
                 return _CACHED_TERMS
@@ -71,12 +83,10 @@ def load_known_terms() -> list[str]:
 
     if not _CACHED_TERMS:
         _CACHED_TERMS = list(DEFAULT_KNOWN_TERMS)
+        _CACHED_PREPARED_TERMS = [
+            (t, _clean_str(t), len(_clean_str(t))) for t in _CACHED_TERMS
+        ]
     return _CACHED_TERMS
-
-
-def _clean_str(text: str) -> str:
-    """Strip all non-alphanumeric characters and lowercase."""
-    return re.sub(r"[^a-zA-Z0-9]", "", text).lower()
 
 
 def _levenshtein(s1: str, s2: str) -> int:
@@ -101,39 +111,41 @@ def _levenshtein(s1: str, s2: str) -> int:
     return v0[len(s2)]
 
 
-def _is_similar(candidate_raw: str, term: str) -> tuple[bool, float]:
-    """Determine if a candidate window is a near-miss of a known term."""
-    clean_cand = _clean_str(candidate_raw)
-    clean_term = _clean_str(term)
-
+def _is_similar_prepared(
+    candidate_raw: str,
+    clean_cand: str,
+    len_clean_cand: int,
+    term: str,
+    clean_term: str,
+    len_clean_term: int,
+) -> tuple[bool, float]:
+    """Determine if candidate window is a near-miss using pre-cleaned strings."""
     if not clean_cand or not clean_term:
         return False, 0.0
 
-    # If it's a single common stopword, never correct it to a term
+    # Stopword rejection
     if clean_cand in COMMON_STOPWORDS and clean_cand != clean_term:
         return False, 0.0
 
-    # Exact cleaned match (e.g. 'grab bite' -> 'grabbite' == 'grabbite', 'fast api' -> 'fastapi')
+    # Exact cleaned match (e.g. 'grab bite' -> 'grabbite' == 'grabbite')
     if clean_cand == clean_term:
-        # If the candidate was already the exact canonical term, no correction needed
         if candidate_raw.strip() == term:
             return False, 1.0
         return True, 1.0
 
-    # Length difference guard: reject windows with extra leading/trailing words
-    len_diff = abs(len(clean_cand) - len(clean_term))
-    max_len_diff = 1 if len(clean_term) <= 7 else 2
+    # Length guard
+    len_diff = abs(len_clean_cand - len_clean_term)
+    max_len_diff = 1 if len_clean_term <= 7 else 2
     if len_diff > max_len_diff:
         return False, 0.0
 
-    # Calculate edit distance & ratio
+    # Edit distance guard
     dist = _levenshtein(clean_cand, clean_term)
-    max_edits = 1 if len(clean_term) <= 6 else 2
+    max_edits = 1 if len_clean_term <= 6 else 2
     if dist > max_edits:
         return False, 0.0
 
     ratio = SequenceMatcher(None, clean_cand, clean_term).ratio()
-    # High similarity threshold (>= 0.82)
     if ratio >= 0.82:
         return True, ratio
 
@@ -158,19 +170,23 @@ def correct_query(query: str, known_terms: Optional[list[str]] = None) -> QueryC
     if not query or not query.strip():
         return QueryCorrectionResult(original_query=query, corrected_query=query)
 
-    terms = known_terms if known_terms is not None else load_known_terms()
-    if not terms:
+    if known_terms is not None:
+        prepared_terms = [(t, _clean_str(t), len(_clean_str(t))) for t in known_terms]
+    else:
+        load_known_terms()
+        prepared_terms = _CACHED_PREPARED_TERMS
+
+    if not prepared_terms:
         return QueryCorrectionResult(original_query=query, corrected_query=query)
 
-    # Tokenize query preserving exact word boundaries and whitespace
-    # Matches words with punctuation boundaries: [('What', 0, 4), ('is', 5, 7), ...]
-    word_matches = list(re.finditer(r"[a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?", query))
+    # Tokenize query preserving word boundaries
+    word_matches = list(_WORD_RE.finditer(query))
     if not word_matches:
         return QueryCorrectionResult(original_query=query, corrected_query=query)
 
     candidates = []
 
-    # Slide multi-word windows: 1-grams up to 3-grams
+    # Slide windows: 1-grams up to 3-grams
     for window_size in (1, 2, 3):
         for i in range(len(word_matches) - window_size + 1):
             first_match = word_matches[i]
@@ -178,9 +194,13 @@ def correct_query(query: str, known_terms: Optional[list[str]] = None) -> QueryC
             start_pos = first_match.start()
             end_pos = last_match.end()
             raw_window = query[start_pos:end_pos]
+            clean_cand = _clean_str(raw_window)
+            len_clean_cand = len(clean_cand)
 
-            for term in terms:
-                is_match, score = _is_similar(raw_window, term)
+            for term, clean_term, len_clean_term in prepared_terms:
+                is_match, score = _is_similar_prepared(
+                    raw_window, clean_cand, len_clean_cand, term, clean_term, len_clean_term
+                )
                 if is_match and raw_window.strip() != term:
                     span_indices = frozenset(range(i, i + window_size))
                     candidates.append({
@@ -196,9 +216,7 @@ def correct_query(query: str, known_terms: Optional[list[str]] = None) -> QueryC
     if not candidates:
         return QueryCorrectionResult(original_query=query, corrected_query=query)
 
-    # Sort candidates by:
-    # 1. score descending (exact clean matches 1.0 first)
-    # 2. window_size (prefer tighter match when score is identical)
+    # Sort candidates by score descending, then tighter window
     candidates.sort(key=lambda c: (c["score"], -c["window_size"]), reverse=True)
 
     replacements: list[tuple[int, int, str, str]] = []
@@ -217,17 +235,15 @@ def correct_query(query: str, known_terms: Optional[list[str]] = None) -> QueryC
     if not replacements:
         return QueryCorrectionResult(original_query=query, corrected_query=query)
 
-    # Sort replacements in reverse order of start position so replacements do not shift offsets
+    # Sort replacements in reverse order so offsets do not shift
     replacements.sort(key=lambda r: r[0], reverse=True)
     corrected_chars = list(query)
     corrections: list[CorrectionItem] = []
 
-    # Apply replacements from right to left so leftward indices stay stable
     for start_pos, end_pos, orig, corr in replacements:
         corrected_chars[start_pos:end_pos] = list(corr)
         corrections.append(CorrectionItem(original=orig, corrected=corr))
 
-    # Keep corrections reported in natural left-to-right reading order
     corrections.reverse()
     corrected_query = "".join(corrected_chars)
 

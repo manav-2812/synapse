@@ -21,6 +21,7 @@ alembic==1.14.0
 # --- Auth & security ---
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
+google-auth==2.48.0            # Google ID token audience validation (OAuth One-Tap)
 webauthn==3.0.0
 
 # --- Rate limiting ---

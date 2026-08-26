@@ -6,7 +6,6 @@ import { ApiError } from "../api/client";
 import { useToast } from "../hooks/useToast";
 import { Sparkline } from "../components/ui/Sparkline";
 import { EmptyState } from "../components/ui/EmptyState";
-import { QuizScoreBar } from "../components/ui/QuizScoreBar";
 import { StudyHeatmap } from "../components/ui/StudyHeatmap";
 import { Icon } from "../components/ui/Icon";
 import { formatDate } from "../lib/format";
@@ -418,7 +417,7 @@ export default function Analytics() {
           {/* Detailed Diagnostic Topic Items */}
           {data && data.topic_performance.length > 0 ? (
             <div className="topic-diag-grid">
-              {data.topic_performance.map((t) => {
+              {data.topic_performance.slice(0, 3).map((t) => {
                 const pct = Math.round(t.score * 100);
                 const tierClass = pct >= 70 ? "high" : pct >= 50 ? "mid" : "low";
                 const tierLabel = pct >= 70 ? "Mastered" : pct >= 50 ? "Developing" : "Needs Review";
@@ -432,7 +431,7 @@ export default function Analytics() {
                       </span>
                     </div>
 
-                    <div className="topic-prof-bar-wrap" style={{ width: "100%", height: 6 }}>
+                    <div className="topic-prof-bar-wrap" style={{ width: "100%", height: 4 }}>
                       <div
                         className="topic-prof-bar"
                         style={{
@@ -443,7 +442,7 @@ export default function Analytics() {
                     </div>
 
                     <div className="topic-diag-meta">
-                      <span>{t.quizzes} quiz assessment{t.quizzes === 1 ? "" : "s"} taken</span>
+                      <span>{t.quizzes} quiz{t.quizzes === 1 ? "" : "zes"}</span>
                       <span>·</span>
                       <button
                         type="button"
@@ -453,15 +452,15 @@ export default function Analytics() {
                           color: "var(--accent)",
                           cursor: "pointer",
                           padding: 0,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: 600,
                           display: "inline-flex",
                           alignItems: "center",
-                          gap: 3,
+                          gap: 2,
                         }}
                         onClick={() => navigate("/quiz")}
                       >
-                        Practice Topic <Icon name="chevronRight" size={11} />
+                        Practice <Icon name="chevronRight" size={10} />
                       </button>
                     </div>
                   </div>
@@ -496,7 +495,7 @@ export default function Analytics() {
 
                 return (
                   <div key={day.date} className="weekly-bar-col">
-                    <span style={{ fontSize: 10, color: "var(--text-faint)", fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ fontSize: 9.5, color: "var(--text-faint)", fontVariantNumeric: "tabular-nums" }}>
                       {day.minutes > 0 ? `${day.minutes}m` : ""}
                     </span>
                     <div
@@ -515,7 +514,7 @@ export default function Analytics() {
 
           {/* Week-over-Week Comparative Deltas */}
           <div>
-            <span className="note-gen-label" style={{ display: "block", marginBottom: 8 }}>
+            <span className="note-gen-label" style={{ display: "block", marginBottom: 6, fontSize: 11 }}>
               Week-Over-Week Velocity Delta
             </span>
             <div className="trend-comp-grid">
@@ -565,11 +564,8 @@ export default function Analytics() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ── 5. Assessment Log & Knowledge Base Index (2-Column Grid) ── */}
-      <div className="analytics-grid-2">
-        {/* Recent Quizzes */}
+        {/* Card 3: Recent Quiz Assessments */}
         <div className="analytics-card">
           <div className="analytics-card-head">
             <div>
@@ -585,29 +581,72 @@ export default function Analytics() {
             </button>
           </div>
 
-          {data && data.recent_quizzes.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {data.recent_quizzes.slice(0, 5).map((q) => (
-                <div
-                  key={q.id}
-                  className="note-lib-row"
-                  style={{ padding: "10px 14px", borderRadius: 14, border: "1px solid var(--border)" }}
-                  onClick={() => navigate("/quiz")}
-                >
-                  <div className="note-lib-row-left">
-                    <div className="note-lib-icon" style={{ width: 32, height: 32, borderRadius: 8 }}>
-                      <Icon name="quiz" size={15} />
+          {loading ? (
+            <div className="analytics-list-container">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="analytics-list-row" style={{ pointerEvents: "none" }}>
+                  <div className="analytics-list-row-left">
+                    <div className="analytics-list-icon skeleton" style={{ width: 30, height: 30, borderRadius: 8 }} />
+                    <div className="analytics-list-row-info" style={{ gap: 4 }}>
+                      <div className="skeleton" style={{ width: "65%", height: 12, borderRadius: 4 }} />
+                      <div className="skeleton" style={{ width: "35%", height: 9, borderRadius: 4 }} />
                     </div>
-                    <div className="note-lib-row-info">
-                      <span className="note-lib-row-title" style={{ fontSize: 13.5, fontWeight: 500 }}>{q.title}</span>
-                      <span className="note-lib-row-meta" style={{ fontSize: 11.5 }}>
-                        <span style={{ textTransform: "capitalize" }}>{q.difficulty}</span> · {formatDate(q.created_at.toString())}
+                  </div>
+                  <div className="skeleton" style={{ width: 60, height: 20, borderRadius: 999 }} />
+                </div>
+              ))}
+            </div>
+          ) : data && data.recent_quizzes.length > 0 ? (
+            <div className="analytics-list-container">
+              {data.recent_quizzes.slice(0, 4).map((q) => {
+                const pct = q.score != null ? Math.round(q.score * 100) : null;
+                const tierClass = pct == null ? "neutral" : pct >= 70 ? "high" : pct >= 50 ? "mid" : "low";
+                const barColor = pct == null ? "var(--text-faint)" : pct >= 70 ? "#10b981" : pct >= 50 ? "#6366f1" : "#ef4444";
+
+                return (
+                  <div
+                    key={q.id}
+                    className="analytics-list-row"
+                    onClick={() => navigate("/quiz")}
+                    title={`View Quiz: ${q.title}`}
+                  >
+                    <div className="analytics-list-row-left">
+                      <div className="analytics-list-icon">
+                        <Icon name="quiz" size={14} />
+                      </div>
+                      <div className="analytics-list-row-info">
+                        <span className="analytics-list-row-title" title={q.title}>
+                          {q.title}
+                        </span>
+                        <span className="analytics-list-row-meta">
+                          <span style={{ textTransform: "capitalize", fontWeight: 500 }}>{q.difficulty}</span>
+                          <span>·</span>
+                          <span>{formatDate(q.created_at.toString())}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="analytics-list-row-right">
+                      {pct != null ? (
+                        <div className={`analytics-score-badge ${tierClass}`}>
+                          <div className="analytics-score-bar-mini">
+                            <div
+                              className="analytics-score-bar-fill"
+                              style={{ width: `${Math.max(8, pct)}%`, background: barColor }}
+                            />
+                          </div>
+                          <span>{pct}%</span>
+                        </div>
+                      ) : (
+                        <span className="analytics-status-pill processing">Pending</span>
+                      )}
+                      <span style={{ color: "var(--text-faint)", display: "inline-flex" }}>
+                        <Icon name="chevronRight" size={12} />
                       </span>
                     </div>
                   </div>
-                  <QuizScoreBar score={q.score} />
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <EmptyState icon="quiz" title="No quizzes completed yet." />
@@ -630,27 +669,55 @@ export default function Analytics() {
             </button>
           </div>
 
-          {data && data.recent_documents.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {data.recent_documents.slice(0, 5).map((d) => (
+          {loading ? (
+            <div className="analytics-list-container">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="analytics-list-row" style={{ pointerEvents: "none" }}>
+                  <div className="analytics-list-row-left">
+                    <div className="analytics-list-icon skeleton" style={{ width: 30, height: 30, borderRadius: 8 }} />
+                    <div className="analytics-list-row-info" style={{ gap: 4 }}>
+                      <div className="skeleton" style={{ width: "60%", height: 12, borderRadius: 4 }} />
+                      <div className="skeleton" style={{ width: "40%", height: 9, borderRadius: 4 }} />
+                    </div>
+                  </div>
+                  <div className="skeleton" style={{ width: 50, height: 20, borderRadius: 999 }} />
+                </div>
+              ))}
+            </div>
+          ) : data && data.recent_documents.length > 0 ? (
+            <div className="analytics-list-container">
+              {data.recent_documents.slice(0, 4).map((d) => (
                 <div
                   key={d.id}
-                  className="note-lib-row"
-                  style={{ padding: "10px 14px", borderRadius: 14, border: "1px solid var(--border)" }}
+                  className="analytics-list-row"
                   onClick={() => navigate(`/documents?doc=${d.id}`)}
+                  title={`Open Document: ${d.name}`}
                 >
-                  <div className="note-lib-row-left">
-                    <div className="note-lib-icon" style={{ width: 32, height: 32, borderRadius: 8 }}>
-                      <Icon name="doc" size={15} />
+                  <div className="analytics-list-row-left">
+                    <div className="analytics-list-icon">
+                      <Icon name="doc" size={16} />
                     </div>
-                    <div className="note-lib-row-info">
-                      <span className="note-lib-row-title" style={{ fontSize: 13.5, fontWeight: 500 }}>{d.name}</span>
-                      <span className="note-lib-row-meta" style={{ fontSize: 11.5 }}>
-                        {d.chunk_count > 0 ? `${d.chunk_count} Chunks` : "Indexed"} · {formatDate(d.created_at.toString())}
+                    <div className="analytics-list-row-info">
+                      <span className="analytics-list-row-title" title={d.name}>
+                        {d.name}
+                      </span>
+                      <span className="analytics-list-row-meta">
+                        <span>{d.chunk_count > 0 ? `${d.chunk_count} Chunks` : "Indexed"}</span>
+                        <span>·</span>
+                        <span>{formatDate(d.created_at.toString())}</span>
                       </span>
                     </div>
                   </div>
-                  <span className="eval-status-pill pass">Ready</span>
+
+                  <div className="analytics-list-row-right">
+                    <span className="analytics-status-pill">
+                      <span className="analytics-status-dot" />
+                      Ready
+                    </span>
+                    <span style={{ color: "var(--text-faint)", display: "inline-flex" }}>
+                      <Icon name="chevronRight" size={13} />
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

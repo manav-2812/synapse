@@ -15,13 +15,14 @@ persisted to ``eval_runs`` so the dashboard can plot quality trends over time.
 """
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.embeddings.embedding_client import embed_query
 from app.ai.rag import retrieve
 from app.api.deps import get_current_user, get_db
+from app.core.limiter import limiter
 from app.core.logger import get_logger
 from app.eval.eval_dataset import build_dynamic_dataset
 from app.eval.metrics import aggregate, mrr, ndcg_at_k, precision_at_k, recall_at_k
@@ -37,7 +38,9 @@ K = 5  # retrieved results counted for @k metrics
 
 
 @router.post("/run", response_model=RunEvalResponse, status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
 async def run_eval(
+    request: Request,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):

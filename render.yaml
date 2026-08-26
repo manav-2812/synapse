@@ -18,23 +18,22 @@ services:
       - key: APP_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: synapse-db
-          property: connectionString
+        sync: false          # Set to your Supabase postgresql+asyncpg:// connection string in the Render dashboard
       - key: CHROMA_PERSIST_PATH
         value: /app/chroma_db
       - key: STORAGE_PATH
         value: /app/storage
-      # Peristent disks (Render wipes the local FS on each deploy).
-      # NOTE: disks require a paid instance plan.
+      # Persistent disks (Render wipes the local FS on each deploy).
       - key: JWT_SECRET_KEY
         sync: false          # set once in the dashboard, never committed
       - key: GROQ_API_KEY
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: FRONTEND_BASE_URL
+        value: https://synapse.vercel.app
       - key: ALLOWED_ORIGINS
-        value: https://synapse.vercel.app,http://localhost:5173,http://localhost:8000,http://127.0.0.1:8000   # first origin = your real Vercel domain
+        value: https://synapse.vercel.app,http://localhost:5173,http://localhost:8000,http://127.0.0.1:8000
       - key: CHROMA_TELEMETRY_OPTOUT
         value: "true"
     disks:
@@ -44,9 +43,3 @@ services:
       - name: storage
         mountPath: /app/storage
         sizeGB: 10
-
-databases:
-  - name: synapse-db
-    databaseName: synapse
-    plan: free
-    postgresMajorVersion: "16"

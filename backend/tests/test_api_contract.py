@@ -106,3 +106,169 @@ async def test_document_status_response_shape(client, registered_user):
         assert body["chunk_count"] > 0
     finally:
         os.unlink(path)
+
+
+async def test_rate_limit_chat_endpoint(client, registered_user):
+    """Exceeding 20 requests/min on /chat/message must return HTTP 429."""
+    from app.core.limiter import limiter
+    limiter.enabled = True
+    try:
+        headers = registered_user["headers"]
+        payload = {"message": "Hello test", "conversation_id": None}
+        
+        statuses = []
+        # 20 allowed + 1 to exceed rate limit
+        for _ in range(22):
+            r = await client.post("/api/v1/chat/message", json=payload, headers=headers)
+            statuses.append(r.status_code)
+
+        assert 429 in statuses, f"Expected 429 status code in responses, got: {statuses}"
+    finally:
+        limiter.enabled = False
+
+
+async def test_health_check_returns_db_status(client):
+    """GET /health must return 200 with database: connected."""
+    r = await client.get("/health")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["database"] == "connected"
+
+
+async def test_forgot_password_non_enumeration(client):
+    """POST /auth/forgot-password always returns 200 regardless of email existence."""
+    # Non-existent email — should still return 200 (no enumeration)
+    r = await client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": "does_not_exist_12345@synapse-study.com"},
+    )
+    assert r.status_code == 200
+    assert "reset link" in r.json()["message"].lower()
+
+
+async def test_reset_password_with_valid_token(client, registered_user, session):
+    """Full password reset flow: forgot → reset → login with new password."""
+    email = registered_user["email"]
+    new_password = "new_secure_password_999"
+
+    # Request password reset
+    r_forgot = await client.post("/api/v1/auth/forgot-password", json={"email": email})
+    assert r_forgot.status_code == 200
+
+    # Retrieve user from DB to get the reset_token_jti
+    from app.models.user import User
+    from sqlalchemy import select
+    from app.core.security import create_reset_token
+
+    res = await session.execute(select(User).where(User.email == email))
+    user = res.scalar_one()
+    token = create_reset_token(email, token_id=user.reset_token_jti)
+
+    # Reset the password
+    r = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": token, "new_password": new_password},
+    )
+    assert r.status_code == 200
+    assert r.json()["message"] == "Password updated successfully."
+
+    # Single-use: attempting to use the same reset token again fails
+    r_reuse = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": token, "new_password": "another_new_password_888"},
+    )
+    assert r_reuse.status_code == 401
+
+    # Login with the new password should succeed
+    r2 = await client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": new_password},
+    )
+    assert r2.status_code == 200
+    assert "access_token" in r2.json()
+
+
+async def test_magic_bytes_rejects_mismatched_file(client, registered_user):
+    """Upload a .pdf whose content is actually a PNG header → 422."""
+    headers = registered_user["headers"]
+    # PNG magic bytes disguised as a .pdf
+    fake_pdf_content = b"\x89\x50\x4E\x47\x0D\x0A\x1A\x0A" + b"not a pdf" * 10
+
+    r = await client.post(
+        "/api/v1/documents/upload",
+        files={"file": ("fake.pdf", fake_pdf_content, "application/pdf")},
+        headers=headers,
+    )
+    assert r.status_code == 422, f"Expected 422, got {r.status_code}: {r.text}"
+
+
+async def test_signup_rejects_placeholder_domains(client):
+    """Sign up with a dummy/placeholder domain (e.g. example.com) must be rejected with 422."""
+    r = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": "fake_user@example.com", "password": "password123", "full_name": "Fake User"},
+    )
+    assert r.status_code == 422, f"Expected 422 for example.com, got {r.status_code}: {r.text}"
+
+
+async def test_signup_rejects_disposable_domain(client):
+    """Sign up with a disposable email domain (e.g. mailinator.com) must be rejected with 422."""
+    r = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": "temp_user@mailinator.com", "password": "password123", "full_name": "Temp User"},
+    )
+    assert r.status_code == 422, f"Expected 422 for mailinator.com, got {r.status_code}: {r.text}"
+
+
+async def test_signup_requires_email_verification_before_login(client):
+    """Signup flow requires verification token before login is permitted."""
+    import uuid
+    from app.core.security import create_verification_token
+
+    email = f"verify_flow_{uuid.uuid4().hex[:8]}@synapse-study.com"
+    password = "secure_password_123"
+
+    # 1. Signup
+    r_signup = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": email, "password": password, "full_name": "Verify Flow"},
+    )
+    assert r_signup.status_code == 201, r_signup.text
+    signup_data = r_signup.json()
+    assert signup_data["is_verified"] is False
+    assert "check your email" in signup_data["message"].lower()
+
+    # 2. Login before verification is blocked with 403
+    r_unver_login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password},
+    )
+    assert r_unver_login.status_code == 403, r_unver_login.text
+    assert "verify" in r_unver_login.json()["error"]["message"].lower()
+
+    # 3. Resend verification
+    r_resend = await client.post(
+        "/api/v1/auth/resend-verification",
+        json={"email": email},
+    )
+    assert r_resend.status_code == 200
+
+    # 4. Verify email with token
+    token = create_verification_token(email)
+    r_verify = await client.post(
+        "/api/v1/auth/verify-email",
+        json={"token": token},
+    )
+    assert r_verify.status_code == 200, r_verify.text
+    assert "access_token" in r_verify.json()
+
+    # 5. Login after verification succeeds
+    r_login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password},
+    )
+    assert r_login.status_code == 200
+    assert "access_token" in r_login.json()
+
+

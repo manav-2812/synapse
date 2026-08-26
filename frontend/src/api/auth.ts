@@ -2,19 +2,32 @@ import { request, setTokens, getRefresh, clearTokens, getToken, BASE } from "./c
 import type {
   LoginRequest,
   SignupRequest,
+  SignupResponse,
   TokenResponse,
   UserMeResponse,
   UserUpdateRequest,
 } from "../types/api";
 
 export const authApi = {
-  async signup(payload: SignupRequest): Promise<TokenResponse> {
-    const data = await request<TokenResponse>("/auth/signup", {
+  async signup(payload: SignupRequest): Promise<SignupResponse> {
+    return request<SignupResponse>("/auth/signup", {
       method: "POST",
       body: payload,
     });
+  },
+  async verifyEmail(token: string): Promise<TokenResponse> {
+    const data = await request<TokenResponse>("/auth/verify-email", {
+      method: "POST",
+      body: { token },
+    });
     setTokens(data.access_token, data.refresh_token);
     return data;
+  },
+  async resendVerification(email: string): Promise<{ message: string; dev_verify_link?: string }> {
+    return request<{ message: string; dev_verify_link?: string }>("/auth/resend-verification", {
+      method: "POST",
+      body: { email },
+    });
   },
   async login(payload: LoginRequest): Promise<TokenResponse> {
     const data = await request<TokenResponse>("/auth/login", {
@@ -66,6 +79,18 @@ export const authApi = {
       throw new Error(msg);
     }
     return (await res.json()) as UserMeResponse;
+  },
+  async forgotPassword(email: string): Promise<{ message: string; dev_reset_link?: string }> {
+    return request<{ message: string; dev_reset_link?: string }>("/auth/forgot-password", {
+      method: "POST",
+      body: { email },
+    });
+  },
+  async resetPassword(token: string, new_password: string): Promise<{ message: string }> {
+    return request<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: { token, new_password },
+    });
   },
   async logout(): Promise<void> {
     const refresh = getRefresh();

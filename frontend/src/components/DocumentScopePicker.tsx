@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState, useMemo, type ChangeEvent } from "react";
 import { documentsApi } from "../api/documents";
 import { ApiError } from "../api/client";
 import { useToast } from "../hooks/useToast";
@@ -11,7 +10,7 @@ interface Props {
   onChange: (ids: string[]) => void;
   /** When true, show an "upload a document" action inside the picker. */
   allowUpload?: boolean;
-  /** Which direction the dropdown opens. Default "down". Use "up" when the picker is at the bottom of the screen (e.g. chat composer). */
+  /** Preferred direction the dropdown opens. Auto-reverses if colliding with screen boundaries. */
   popupDirection?: "up" | "down";
   /** Button size. "sm" = compact pill (chat bar). "md" = taller, matches form inputs (default). */
   size?: "sm" | "md";
@@ -19,11 +18,13 @@ interface Props {
   minimal?: boolean;
 }
 
-interface PanelPos {
-  top?: number;
-  bottom?: number;
-  left: number;
-  width: number;
+function getFileType(filename: string): "pdf" | "docx" | "md" | "txt" | "default" {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".pdf")) return "pdf";
+  if (lower.endsWith(".docx") || lower.endsWith(".doc")) return "docx";
+  if (lower.endsWith(".md")) return "md";
+  if (lower.endsWith(".txt")) return "txt";
+  return "default";
 }
 
 export function DocumentScopePicker({
@@ -38,10 +39,13 @@ export function DocumentScopePicker({
   const [docs, setDocs] = useState<DocumentResponse[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [panelPos, setPanelPos] = useState<PanelPos | null>(null);
+  const [search, setSearch] = useState("");
+  const [actualDirection, setActualDirection] = useState<"up" | "down">(popupDirection);
+  const [menuMaxHeight, setMenuMaxHeight] = useState<number | undefined>(undefined);
+
   const fileRef = useRef<HTMLInputElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     documentsApi
@@ -52,40 +56,44 @@ export function DocumentScopePicker({
       });
   }, []);
 
-  // Recalculate panel position whenever it opens
+  // Compute collision-aware direction & available viewport height when opening
   useEffect(() => {
-    if (!open || !triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const menuWidth = Math.min(320, typeof window !== "undefined" ? window.innerWidth - 24 : 320);
-    const left = typeof window !== "undefined"
-      ? Math.max(12, Math.min(rect.left, window.innerWidth - menuWidth - 12))
-      : rect.left;
-    if (popupDirection === "up") {
-      setPanelPos({
-        bottom: window.innerHeight - rect.top + 6,
-        left,
-        width: rect.width,
-      });
+    if (open && pickerRef.current) {
+      const rect = pickerRef.current.getBoundingClientRect();
+      const spaceAbove = rect.top;
+      const spaceBelow = window.innerHeight - rect.bottom;
+
+      if (popupDirection === "up") {
+        if (spaceAbove < 280 && spaceBelow > spaceAbove) {
+          setActualDirection("down");
+          setMenuMaxHeight(Math.max(160, Math.min(380, spaceBelow - 16)));
+        } else {
+          setActualDirection("up");
+          setMenuMaxHeight(Math.max(160, Math.min(380, spaceAbove - 16)));
+        }
+      } else {
+        if (spaceBelow < 280 && spaceAbove > spaceBelow) {
+          setActualDirection("up");
+          setMenuMaxHeight(Math.max(160, Math.min(380, spaceAbove - 16)));
+        } else {
+          setActualDirection("down");
+          setMenuMaxHeight(Math.max(160, Math.min(380, spaceBelow - 16)));
+        }
+      }
+
+      setTimeout(() => searchInputRef.current?.focus(), 50);
     } else {
-      setPanelPos({
-        top: rect.bottom + 6,
-        left,
-        width: rect.width,
-      });
+      setSearch("");
     }
   }, [open, popupDirection]);
 
-  // Close on click / tap outside
+  // Close on click outside
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent | TouchEvent) {
-      const target = e.target as Node;
-      if (
-        triggerRef.current?.contains(target) ||
-        panelRef.current?.contains(target)
-      )
-        return;
-      setOpen(false);
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     document.addEventListener("touchstart", handleClick);
@@ -136,6 +144,12 @@ export function DocumentScopePicker({
   );
   const selectedDocs = docs.filter((d) => value.includes(d.id));
 
+  const filteredDocs = useMemo(() => {
+    if (!search.trim()) return completed;
+    const q = search.toLowerCase();
+    return completed.filter((d) => d.original_filename.toLowerCase().includes(q));
+  }, [completed, search]);
+
   const displayText =
     minimal
       ? value.length === 0
@@ -147,76 +161,155 @@ export function DocumentScopePicker({
         ? "All Documents"
         : "+ Add Document";
 
-  const panel = open && panelPos
-    ? createPortal(
+  return (
+    <div ref={pickerRef} className="scope-picker">
+      <button
+        type="button"
+        className={`scope-trigger scope-trigger--${size} ${minimal ? "scope-trigger--minimal" : ""}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        title={minimal && value.length === 1 ? selectedDocs[0]?.original_filename : undefined}
+      >
+        {!minimal && <Icon name="doc" size={12} />}
+        <span className="scope-trigger-text">{displayText}</span>
+        <Icon name="chevronDown" size={13} className={`scope-chev ${open ? "open" : ""}`} />
+      </button>
+
+      {open && (
         <div
-          ref={panelRef}
-          className="scope-dropdown-menu"
+          className={`scope-dropdown-menu ${actualDirection === "up" ? "scope-dropdown-menu--up" : "scope-dropdown-menu--down"} ${minimal ? "scope-dropdown-menu--minimal" : ""}`}
+          style={menuMaxHeight ? { maxHeight: `${menuMaxHeight}px` } : undefined}
           role="listbox"
           aria-multiselectable="true"
-          style={{
-            position: "fixed",
-            top: panelPos.top !== undefined ? `${panelPos.top}px` : "auto",
-            bottom: panelPos.bottom !== undefined ? `${panelPos.bottom}px` : "auto",
-            left: `${panelPos.left}px`,
-            right: "auto",
-            minWidth: Math.max(panelPos.width, 240),
-            maxWidth: 320,
-            zIndex: 99999,
-          }}
         >
-          {/* All Documents option */}
-          <button
-            type="button"
-            className={`cm-item ${value.length === 0 ? "active" : ""}`}
-            onClick={() => {
-              onChange([]);
-              setOpen(false);
-            }}
-          >
-            <div className="cm-item-text">
-              <span className="cm-item-title">All Documents</span>
-              <span className="cm-item-desc">Entire library ({completed.length} items)</span>
+          {/* Quick Search Header if there are 3+ documents */}
+          {completed.length >= 3 && (
+            <div className="scope-dropdown-search">
+              <Icon name="search" size={13} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                className="scope-dropdown-search-input"
+                placeholder={`Search ${completed.length} documents...`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="scope-search-clear"
+                  onClick={() => setSearch("")}
+                  title="Clear search"
+                >
+                  <Icon name="close" size={11} />
+                </button>
+              )}
             </div>
-            {value.length === 0 && <Icon name="check" size={12} />}
-          </button>
+          )}
 
-          {/* Document list */}
-          {completed.map((d) => {
-            const checked = value.includes(d.id);
-            return (
+          {/* Active selection banner if specific documents are selected */}
+          {value.length > 0 && !search.trim() && (
+            <div className="scope-selection-bar">
+              <span>{value.length} selected</span>
               <button
-                key={d.id}
                 type="button"
-                className={`cm-item ${checked ? "active" : ""}`}
-                onClick={() => toggle(d.id)}
+                className="scope-reset-btn"
+                onClick={() => onChange([])}
               >
-                <div className="cm-item-text">
-                  <span className="cm-item-title">{d.original_filename}</span>
-                  <span className="cm-item-desc">
-                    {d.chunk_count ? `${d.chunk_count} passages` : "Ready for search"}
-                  </span>
-                </div>
-                {checked && <Icon name="check" size={12} />}
+                Reset to All
               </button>
-            );
-          })}
+            </div>
+          )}
+
+          <div className="scope-dropdown-list">
+            {/* All Documents Option (only show if no active search) */}
+            {!search.trim() && (
+              <button
+                type="button"
+                className={`cm-item ${value.length === 0 ? "active" : ""}`}
+                onClick={() => {
+                  onChange([]);
+                  setOpen(false);
+                }}
+              >
+                <div className="cm-item-left">
+                  <div className="cm-item-icon all">
+                    <Icon name="layers" size={13} />
+                  </div>
+                  <div className="cm-item-text">
+                    <span className="cm-item-title">All Documents</span>
+                    <span className="cm-item-desc">Entire library ({completed.length} items)</span>
+                  </div>
+                </div>
+                {value.length === 0 && (
+                  <div className="cm-check-badge">
+                    <Icon name="check" size={11} />
+                  </div>
+                )}
+              </button>
+            )}
+
+            {/* Filtered Document List */}
+            {filteredDocs.length > 0 ? (
+              filteredDocs.map((d) => {
+                const checked = value.includes(d.id);
+                const fileType = getFileType(d.original_filename);
+
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    className={`cm-item ${checked ? "active" : ""}`}
+                    onClick={() => toggle(d.id)}
+                    title={d.original_filename}
+                  >
+                    <div className="cm-item-left">
+                      <div className={`cm-item-icon ${fileType}`}>
+                        <Icon name="doc" size={13} />
+                      </div>
+                      <div className="cm-item-text">
+                        <span className="cm-item-title">{d.original_filename}</span>
+                        <span className="cm-item-desc">
+                          {d.chunk_count ? `${d.chunk_count} passages` : "Ready for search"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={`cm-checkbox ${checked ? "checked" : ""}`}>
+                      {checked && <Icon name="check" size={10} />}
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="scope-empty-match">
+                <span>No documents match &ldquo;{search}&rdquo;</span>
+              </div>
+            )}
+          </div>
 
           {allowUpload && (
             <>
               <div className="cm-divider" />
               <button
                 type="button"
-                className="cm-item"
+                className="cm-item cm-item--upload"
                 disabled={busy}
                 onClick={() => fileRef.current?.click()}
               >
-                <div className="cm-item-text">
-                  <span className="cm-item-title">
-                    {busy ? "Uploading document…" : "+ Upload a new document"}
-                  </span>
+                <div className="cm-item-left">
+                  <div className="cm-item-icon upload">
+                    <Icon name="upload" size={13} />
+                  </div>
+                  <div className="cm-item-text">
+                    <span className="cm-item-title">
+                      {busy ? "Uploading document…" : "Upload a new document"}
+                    </span>
+                  </div>
                 </div>
-                <Icon name="upload" size={12} />
               </button>
             </>
           )}
@@ -228,30 +321,8 @@ export function DocumentScopePicker({
             style={{ display: "none" }}
             onChange={onUpload}
           />
-        </div>,
-        document.body,
-      )
-    : null;
-
-  return (
-    <div className="scope-picker">
-      <button
-        ref={triggerRef}
-        type="button"
-        className={`scope-trigger scope-trigger--${size} ${minimal ? "scope-trigger--minimal" : ""}`}
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        title={minimal && value.length === 1 ? selectedDocs[0]?.original_filename : undefined}
-      >
-        {!minimal && (value.length === 0 ? <Icon name="doc" size={12} /> : null)}
-        <span className="scope-trigger-text">
-          {displayText}
-        </span>
-        <Icon name="chevronDown" size={13} className={`scope-chev ${open ? "open" : ""}`} />
-      </button>
-
-      {panel}
+        </div>
+      )}
 
       {!minimal && value.length > 0 && (
         <div className="scope-chips">

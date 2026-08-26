@@ -34,6 +34,8 @@ from app.services.web_search_service import (
 
 log = get_logger("chat")
 
+_background_tasks: set[asyncio.Task] = set()
+
 
 async def _generate_title_background(
     conversation_id: uuid.UUID, user_message: str, answer_text: str
@@ -394,10 +396,12 @@ class ChatService:
         # Title generation runs as a fire-and-forget background task so the
         # HTTP stream closes immediately after done. The updated title will
         # appear next time the frontend calls loadConversations().
-        if first_message:
-            asyncio.create_task(
+        if first_message and settings.app_env.lower() not in ("testing", "test"):
+            task = asyncio.create_task(
                 _generate_title_background(conv.id, payload.message, answer_text)
             )
+            _background_tasks.add(task)
+            task.add_done_callback(_background_tasks.discard)
 
     async def list_conversations(self, user_id: uuid.UUID) -> list[Conversation]:
         return await self.repo.list_by_user(user_id)

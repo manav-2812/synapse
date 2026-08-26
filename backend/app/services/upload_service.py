@@ -14,9 +14,37 @@ log = get_logger("upload")
 # file_type stored on the document matches what loaders/__init__.py dispatches on.
 _IMAGE_EXTENSIONS = {"png", "jpg", "jpeg"}
 
+# Magic-byte signatures for content-based file validation.
+# Keys are normalized extensions; values are byte prefixes.
+_MAGIC_SIGNATURES: dict[str, list[bytes]] = {
+    "pdf":  [b"\x25\x50\x44\x46"],          # %PDF
+    "docx": [b"\x50\x4B\x03\x04"],          # PK (ZIP archive)
+    "png":  [b"\x89\x50\x4E\x47"],          # .PNG
+    "jpg":  [b"\xFF\xD8\xFF"],
+    "jpeg": [b"\xFF\xD8\xFF"],
+}
+
 
 def _ext(filename: str) -> str:
     return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+
+async def _validate_magic_bytes(file: UploadFile, claimed_ext: str) -> None:
+    """Reject files whose first bytes contradict their claimed extension.
+
+    Text files (txt) have no magic bytes and are accepted by default.
+    """
+    sigs = _MAGIC_SIGNATURES.get(claimed_ext)
+    if sigs is None:
+        return  # no signature to check (e.g. txt)
+
+    header = await file.read(8)
+    await file.seek(0)
+
+    if not any(header.startswith(sig) for sig in sigs):
+        raise ValidationError(
+            f"File content does not match its '.{claimed_ext}' extension."
+        )
 
 
 def validate_upload(file: UploadFile) -> str:

@@ -2469,7 +2469,8 @@
   }
 
   /* Indexed Knowledge Base & Recent Quizzes Rows */
-  .analytics-card .note-lib-row {
+  .analytics-card .note-lib-row,
+  .analytics-card .analytics-list-row {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
@@ -2480,7 +2481,8 @@
     border-radius: 14px !important;
   }
 
-  .analytics-card .note-lib-row-left {
+  .analytics-card .note-lib-row-left,
+  .analytics-card .analytics-list-row-left {
     display: flex !important;
     align-items: center !important;
     gap: 10px !important;
@@ -2489,14 +2491,16 @@
     overflow: hidden !important;
   }
 
-  .analytics-card .note-lib-icon {
+  .analytics-card .note-lib-icon,
+  .analytics-card .analytics-list-icon {
     width: 32px !important;
     height: 32px !important;
     flex-shrink: 0 !important;
     border-radius: 8px !important;
   }
 
-  .analytics-card .note-lib-row-info {
+  .analytics-card .note-lib-row-info,
+  .analytics-card .analytics-list-row-info {
     display: flex !important;
     flex-direction: column !important;
     gap: 2px !important;
@@ -2505,7 +2509,8 @@
     overflow: hidden !important;
   }
 
-  .analytics-card .note-lib-row-title {
+  .analytics-card .note-lib-row-title,
+  .analytics-card .analytics-list-row-title {
     display: block !important;
     width: 100% !important;
     font-size: 13px !important;
@@ -2517,7 +2522,8 @@
     margin: 0 !important;
   }
 
-  .analytics-card .note-lib-row-meta {
+  .analytics-card .note-lib-row-meta,
+  .analytics-card .analytics-list-row-meta {
     display: block !important;
     width: 100% !important;
     font-size: 11px !important;
@@ -2528,12 +2534,17 @@
     margin: 0 !important;
   }
 
+  .analytics-card .analytics-score-bar-mini {
+    width: 38px !important;
+  }
+
   .analytics-card .quiz-score {
     width: 60px !important;
     flex-shrink: 0 !important;
   }
 
-  .analytics-card .eval-status-pill {
+  .analytics-card .eval-status-pill,
+  .analytics-card .analytics-status-pill {
     flex-shrink: 0 !important;
     font-size: 10.5px !important;
     padding: 2px 8px !important;

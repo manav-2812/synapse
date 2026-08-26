@@ -312,15 +312,21 @@ export default function Dashboard() {
 
   const flashcardsPct = flashcardsList.length > 0
     ? Math.min(100, Math.max(0, Math.round(((flashcardsList.length - dueCardsCount) / flashcardsList.length) * 100)))
-    : 100;
+    : 0;
 
   const quizScore = s?.average_quiz_score ? Math.round(s.average_quiz_score * 100) : 0;
 
   const overallGoalPercent = useMemo(() => {
-    // Pure real-time arithmetic average of the 3 live metrics on the card
-    const avgScore = Math.round((studyTimePct + flashcardsPct + quizScore) / 3);
+    // For new accounts or users without cards/quizzes, goal progress tracks study time.
+    // When study resources exist, averages all active goal components.
+    const activeGoals: number[] = [studyTimePct];
+    if (flashcardsList.length > 0) activeGoals.push(flashcardsPct);
+    if (quizzesList.length > 0 || (s?.quizzes_taken_count && s.quizzes_taken_count > 0)) activeGoals.push(quizScore);
+
+    const sum = activeGoals.reduce((a, b) => a + b, 0);
+    const avgScore = Math.round(sum / activeGoals.length);
     return Math.min(100, Math.max(0, avgScore));
-  }, [studyTimePct, flashcardsPct, quizScore]);
+  }, [studyTimePct, flashcardsPct, quizScore, flashcardsList.length, quizzesList.length, s?.quizzes_taken_count]);
 
   // 7-day study activity (Sun - Sat) for Study Time chart
   const weeklyDays = useMemo(() => {
@@ -371,11 +377,12 @@ export default function Dashboard() {
   }, [notesList]);
 
   const uniqueSubjectsCount = useMemo(() => {
+    if (!notesList.length) return 0;
     const sSet = new Set<string>();
     notesList.forEach((n) => {
       if (n.note_type) sSet.add(n.note_type);
     });
-    return Math.max(sSet.size, foldersList.length || 1);
+    return Math.max(sSet.size, foldersList.length || 0);
   }, [notesList, foldersList]);
 
   return (
@@ -486,7 +493,7 @@ export default function Dashboard() {
                 </div>
                 <div className="bento-compact-num"><AnimatedNum value={flashcardsList.length} /></div>
                 <div className="bento-compact-lbl">Flashcards</div>
-                <div className="bento-compact-sub">{dueFlashcardsCount > 0 ? `${dueFlashcardsCount} Due Today` : "All Done"}</div>
+                <div className="bento-compact-sub">{flashcardsList.length === 0 ? "0 Created" : dueFlashcardsCount > 0 ? `${dueFlashcardsCount} Due Today` : "All Done"}</div>
               </div>
 
               {/* Documents */}
@@ -595,7 +602,13 @@ export default function Dashboard() {
                 <div className="bento-goal-metric-row">
                   <div className="bento-goal-metric-header">
                     <span>Flashcards</span>
-                    <span className="bento-goal-metric-left">{dueCardsCount > 0 ? `${dueCardsCount} due` : "All reviewed"}</span>
+                    <span className="bento-goal-metric-left">
+                      {flashcardsList.length === 0
+                        ? "0 created"
+                        : dueCardsCount > 0
+                        ? `${dueCardsCount} due`
+                        : "All reviewed"}
+                    </span>
                   </div>
                   <div className="bento-goal-bar-track">
                     <div

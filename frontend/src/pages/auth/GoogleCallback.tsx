@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { authApi } from "../../api/auth";
 import { setPersistence, getToken } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
-import { getGoogleRedirectUri, startGoogleOAuth } from "../../utils/oauth";
+import { getGoogleRedirectUri, startGoogleOAuth, verifyOAuthState } from "../../utils/oauth";
 import { Icon } from "../../components/ui/Icon";
 import { BrandLogo } from "../../components/ui/BrandLogo";
 import { Button } from "../../components/ui/Button";
@@ -17,6 +17,10 @@ export default function GoogleCallback() {
   const executedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent double execution in React StrictMode / re-renders
+    if (executedRef.current) return;
+    executedRef.current = true;
+
     const code = searchParams.get("code");
     const errorParam = searchParams.get("error");
 
@@ -34,9 +38,14 @@ export default function GoogleCallback() {
       return;
     }
 
-    // Prevent double execution in React StrictMode
-    if (executedRef.current) return;
-    executedRef.current = true;
+    // Verify CSRF state before exchanging authorization code
+    const returnedState = searchParams.get("state");
+    try {
+      verifyOAuthState(returnedState);
+    } catch (err: any) {
+      setError(err?.message || "Security check failed. Please try signing in again.");
+      return;
+    }
 
     async function handleExchange() {
       try {

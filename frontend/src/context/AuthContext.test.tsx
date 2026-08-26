@@ -8,6 +8,8 @@ vi.mock("../api/auth", () => ({
     me: vi.fn(),
     login: vi.fn(),
     signup: vi.fn(),
+    verifyEmail: vi.fn(),
+    resendVerification: vi.fn(),
     logout: vi.fn(),
     updateMe: vi.fn(),
     uploadAvatar: vi.fn(),

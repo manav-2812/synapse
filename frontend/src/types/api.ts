@@ -43,6 +43,18 @@ export interface SignupRequest {
   password: string;
   full_name: string;
 }
+export interface SignupResponse {
+  message: string;
+  email: string;
+  is_verified: boolean;
+  dev_verify_link?: string | null;
+}
+export interface VerifyEmailRequest {
+  token: string;
+}
+export interface ResendVerificationRequest {
+  email: string;
+}
 export interface LoginRequest {
   email: string;
   password: string;

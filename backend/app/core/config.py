@@ -2,7 +2,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -39,6 +39,16 @@ class Settings(BaseSettings):
     microsoft_client_secret: str = ""
     microsoft_redirect_uri: str = "http://localhost:5173/auth/callback/microsoft"
 
+    # WebAuthn / Passkey
+    # webauthn_rp_id: leave empty to auto-derive from app_base_url hostname.
+    # Must match the domain the frontend is served from (e.g. "synapse.study").
+    webauthn_rp_id: str = ""
+    webauthn_rp_name: str = "Synapse"
+
+    # Brute-force login protection
+    login_max_attempts: int = 10       # failures before lockout
+    login_lockout_minutes: int = 15    # lockout duration
+
     # LLM providers
     groq_api_key: str = ""
     gemini_api_key: str = ""
@@ -71,6 +81,16 @@ class Settings(BaseSettings):
     # (e.g. avatar image URLs). The SPA is served from a different origin in
     # dev, so a relative path would not resolve — we return the full URL.
     app_base_url: str = "http://127.0.0.1:8000"
+    frontend_base_url: str = "http://localhost:5173"
+
+    # Email / SMTP configuration (leave smtp_host empty to use dev logging stub)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_tls: bool = True
+    emails_from_email: str = "noreply@synapse.study"
+    emails_from_name: str = "Synapse"
 
     # Upload limits
     max_upload_size_mb: int = 50
@@ -159,6 +179,15 @@ class Settings(BaseSettings):
         # Resolve relative paths (e.g. ./chroma_db) to absolute so Chroma and the
         # file store are stable regardless of the process working directory.
         return str(Path(v).resolve())
+
+    @model_validator(mode="after")
+    def _validate_production_jwt_secret(self) -> "Settings":
+        if self.app_env.lower() == "production" and self.jwt_secret_key == "change_me_in_production":
+            raise RuntimeError(
+                "CRITICAL: Refusing to start in production with default jwt_secret_key='change_me_in_production'. "
+                "Please set a secure JWT_SECRET_KEY in environment variables."
+            )
+        return self
 
 
 @lru_cache

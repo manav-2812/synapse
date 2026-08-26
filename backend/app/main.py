@@ -4,6 +4,8 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.analytics_routes import router as analytics_router
@@ -28,6 +30,12 @@ log = get_logger("main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.app_env.lower() == "production" and settings.jwt_secret_key == "change_me_in_production":
+        raise RuntimeError(
+            "CRITICAL: Refusing to start in production with default jwt_secret_key='change_me_in_production'. "
+            "Please set a secure JWT_SECRET_KEY in environment variables."
+        )
+
     for p in (settings.chroma_persist_path, settings.storage_path, settings.avatars_path):
         Path(p).resolve().mkdir(parents=True, exist_ok=True)
     # Ensure database schema is present
@@ -47,12 +55,15 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_is_production = settings.app_env.lower() == "production"
+
 app = FastAPI(
     title="Synapse API",
     version="1.0.0",
     description="AI-powered study assistant — RAG chat, document pipeline, study tools.",
-    docs_url="/docs",
-    openapi_url="/api/openapi.json",
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/api/openapi.json",
     lifespan=lifespan,
 )
 
@@ -61,9 +72,43 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+
+class ContentSecurityPolicyMiddleware(BaseHTTPMiddleware):
+    """Adds a Content-Security-Policy header to every response.
+
+    The policy is intentionally strict: default-src 'self' blocks inline
+    scripts and external resources unless explicitly allowed.  This is the
+    primary defence against XSS.  Adjust 'connect-src' and 'img-src' as
+    you add external integrations.
+    """
+
+    CSP = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com "
+        "https://login.microsoftonline.com https://graph.microsoft.com; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = self.CSP
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(ContentSecurityPolicyMiddleware)
 
 # Rate limiting
 app.state.limiter = limiter
@@ -91,4 +136,19 @@ app.mount("/avatars", StaticFiles(directory=settings.avatars_path), name="avatar
 
 @app.get("/health", tags=["health"])
 async def health():
-    return {"status": "ok", "service": "synapse"}
+    """Lightweight liveness probe: verifies the database is reachable."""
+    import asyncio
+    from sqlalchemy import text
+    import app.core.database as _db
+
+    try:
+        async with _db.AsyncSessionLocal() as session:
+            await asyncio.wait_for(session.execute(text("SELECT 1")), timeout=2.0)
+        return {"status": "ok", "database": "connected"}
+    except Exception:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "database": "unreachable"},
+        )
+

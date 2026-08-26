@@ -5,10 +5,17 @@ import { RequireAuth } from "./components/RequireAuth";
 import { CommandPalette } from "./components/CommandPalette";
 import { ShortcutsHelp } from "./components/ShortcutsHelp";
 import { useShortcuts } from "./hooks/useShortcuts";
+import { prewarmServer } from "./api/client";
+import { ServerWarmupBanner } from "./components/ui/ServerWarmupBanner";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
+import VerifyEmail from "./pages/auth/VerifyEmail";
 import GoogleCallback from "./pages/auth/GoogleCallback";
 import MicrosoftCallback from "./pages/auth/MicrosoftCallback";
+import Legal from "./pages/Legal";
+import WarmupPreview from "./pages/WarmupPreview";
 
 // Route-level code splitting keeps the initial bundle small (Phase 4 / perf).
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -36,6 +43,9 @@ export default function App() {
   useShortcuts(() => setHelpOpen(true));
 
   useEffect(() => {
+    // Initiate background prewarm immediately on page load
+    prewarmServer();
+
     const onShortcuts = () => setHelpOpen(true);
     window.addEventListener("synapse:shortcuts", onShortcuts);
     return () => window.removeEventListener("synapse:shortcuts", onShortcuts);
@@ -43,12 +53,24 @@ export default function App() {
 
   return (
     <>
+      <ServerWarmupBanner />
       <Routes>
         {/* Public */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/reset" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/auth/callback/google" element={<GoogleCallback />} />
         <Route path="/auth/callback/microsoft" element={<MicrosoftCallback />} />
+        <Route path="/privacy" element={<Legal />} />
+        <Route path="/privacy-policy" element={<Legal />} />
+        <Route path="/terms" element={<Legal />} />
+        <Route path="/terms-of-service" element={<Legal />} />
+        <Route path="/preview-warmup" element={<WarmupPreview />} />
+        <Route path="/warmup" element={<WarmupPreview />} />
 
         {/* Protected (rendered inside the app shell via <Outlet/>) */}
         <Route

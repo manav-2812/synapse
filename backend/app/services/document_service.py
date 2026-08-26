@@ -15,7 +15,7 @@ from app.repositories.chunk_repository import ChunkRepository
 from app.repositories.document_repository import DocumentRepository
 from app.repositories.user_repository import UserRepository
 from app.services.processing_service import process_document
-from app.services.upload_service import save_upload, validate_upload
+from app.services.upload_service import _ext, _validate_magic_bytes, save_upload, validate_upload
 
 log = get_logger("document")
 
@@ -34,6 +34,7 @@ class DocumentService:
                 raise ValidationError("Invalid folder.")
 
         ext = validate_upload(file)
+        await _validate_magic_bytes(file, _ext(file.filename or ""))
         doc = Document(
             user_id=user_id,
             folder_id=folder_id,

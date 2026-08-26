@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -13,7 +14,7 @@ import {
   getToken,
   setUnauthorizedHandler,
 } from "../api/client";
-import type { UserMeResponse } from "../types/api";
+import type { SignupResponse, UserMeResponse } from "../types/api";
 
 interface AuthState {
   user: UserMeResponse | null;
@@ -24,7 +25,8 @@ interface AuthState {
     email: string,
     password: string,
     fullName: string,
-  ) => Promise<void>;
+  ) => Promise<SignupResponse>;
+  verifyEmail: (token: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -41,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(() => {
       setUser(null);
       const path = window.location.pathname;
-      if (!path.endsWith("/login") && !path.endsWith("/signup")) {
+      if (!path.endsWith("/login") && !path.endsWith("/signup") && !path.endsWith("/verify-email")) {
         localStorage.setItem("synapse_redirect", path);
         navigate("/login");
       }
@@ -68,43 +70,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [navigate]);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     await authApi.login({ email, password });
     setUser(await authApi.me());
-  };
+  }, []);
 
-  const loginWithPasskey = async () => {
+  const loginWithPasskey = useCallback(async () => {
     await authenticateWithPasskey();
     setUser(await authApi.me());
-  };
+  }, []);
 
-  const signup = async (
-    email: string,
-    password: string,
-    fullName: string,
-  ) => {
-    await authApi.signup({ email, password, full_name: fullName });
+  const signup = useCallback(
+    async (
+      email: string,
+      password: string,
+      fullName: string,
+    ): Promise<SignupResponse> => {
+      return await authApi.signup({ email, password, full_name: fullName });
+    },
+    []
+  );
+
+  const verifyEmail = useCallback(async (token: string) => {
+    await authApi.verifyEmail(token);
     setUser(await authApi.me());
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await authApi.logout();
     setUser(null);
     navigate("/login");
-  };
+  }, [navigate]);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       setUser(await authApi.me());
     } catch {
       clearTokens();
       setUser(null);
     }
-  };
+  }, []);
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, loginWithPasskey, signup, logout, refreshUser }}
+      value={{ user, loading, login, loginWithPasskey, signup, verifyEmail, logout, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

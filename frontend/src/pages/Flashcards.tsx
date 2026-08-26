@@ -495,7 +495,7 @@ export default function Flashcards() {
               </div>
             </div>
 
-            <div className="quiz-generator-grid" style={{ gridTemplateColumns: "auto 1fr" }}>
+            <div className="quiz-generator-grid" style={{ display: "flex", alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>
               {/* Count Stepper & Presets */}
               <div className="quiz-gen-field">
                 <span className="quiz-gen-label">Card Count</span>

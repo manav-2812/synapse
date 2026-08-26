@@ -25,17 +25,19 @@ router = APIRouter(prefix="/api/v1/auth/passkey", tags=["passkeys"])
 
 @router.post("/register/options", response_model=PasskeyOptionsResponse)
 async def get_registration_options(
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Generate options to register a new Passkey for the logged-in user."""
     service = PasskeyService(session)
-    challenge_id, options = await service.get_registration_options(current_user)
+    challenge_id, options = await service.get_registration_options(current_user, request=request)
     return PasskeyOptionsResponse(challenge_id=challenge_id, options=options)
 
 
 @router.post("/register/verify", response_model=PasskeyItemResponse, status_code=status.HTTP_201_CREATED)
 async def verify_registration(
+    request: Request,
     payload: PasskeyRegisterVerifyRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
@@ -47,6 +49,7 @@ async def verify_registration(
         challenge_id=payload.challenge_id,
         credential_payload=payload.credential,
         passkey_name=payload.name,
+        request=request,
     )
     await session.commit()
     return passkey
@@ -62,7 +65,7 @@ async def get_login_options(
 ):
     """Generate assertion challenge for logging in with a Passkey."""
     service = PasskeyService(session)
-    challenge_id, options = await service.get_authentication_options()
+    challenge_id, options = await service.get_authentication_options(request=request)
     return PasskeyOptionsResponse(challenge_id=challenge_id, options=options)
 
 
@@ -78,6 +81,7 @@ async def verify_login(
     _, access_token, refresh_token = await service.verify_authentication(
         challenge_id=payload.challenge_id,
         credential_payload=payload.credential,
+        request=request,
     )
     await session.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)

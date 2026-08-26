@@ -8,8 +8,8 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Icon } from "../../components/ui/Icon";
 import { BrandLogo } from "../../components/ui/BrandLogo";
-import { AuthLegalModal, type LegalType } from "../../components/auth/AuthLegalModal";
 import { useTheme } from "../../hooks/useTheme";
+import { authApi } from "../../api/auth";
 import "../../styles/auth.css";
 
 function getRedirect(): string {
@@ -32,11 +32,27 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [legalModal, setLegalModal] = useState<LegalType>(null);
+  const [isUnverified, setIsUnverified] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  async function handleResendVerification() {
+    if (!email.trim()) return;
+    setResending(true);
+    try {
+      await authApi.resendVerification(email.trim());
+      toast("success", "Verification sent", "Check your inbox for the confirmation link.");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Unable to send verification link.";
+      toast("error", "Resend failed", msg);
+    } finally {
+      setResending(false);
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setIsUnverified(false);
     setBusy(true);
     try {
       setPersistence(true);
@@ -45,6 +61,9 @@ export default function Login() {
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : "Unable to sign in. Please try again.";
+      if (msg.toLowerCase().includes("verify") || msg.toLowerCase().includes("confirmation")) {
+        setIsUnverified(true);
+      }
       setError(msg);
       toast("error", "Sign in failed", msg);
     } finally {
@@ -143,9 +162,31 @@ export default function Login() {
         <p className="notion-sub-title">Log in to your Synapse account</p>
 
         {error && (
-          <div className="notion-error-banner" role="alert">
-            <Icon name="close" size={13} />
-            <span>{error}</span>
+          <div className="notion-error-banner" role="alert" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="close" size={13} />
+              <span>{error}</span>
+            </div>
+            {isUnverified && (
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resending}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  color: "#ef4444",
+                  fontWeight: 600,
+                  fontSize: 12,
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  marginLeft: 19,
+                }}
+              >
+                {resending ? "Sending link..." : "Resend verification email"}
+              </button>
+            )}
           </div>
         )}
 
@@ -165,8 +206,16 @@ export default function Login() {
           </div>
 
           <div className="notion-field">
+            <div className="notion-field-header">
+              <label htmlFor="login-password" className="field-label">
+                Password
+              </label>
+              <Link to="/forgot-password" className="notion-forgot-link">
+                Forgot password?
+              </Link>
+            </div>
             <Input
-              label="Password"
+              id="login-password"
               name="password"
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
@@ -256,26 +305,25 @@ export default function Login() {
         {/* Terms */}
         <p className="notion-legal-text">
           By continuing, you acknowledge that you understand and agree to the{" "}
-          <button
-            type="button"
+          <Link
+            to="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
             className="notion-legal-link-btn"
-            onClick={() => setLegalModal("terms")}
           >
             Terms &amp; Conditions
-          </button>{" "}
+          </Link>{" "}
           and{" "}
-          <button
-            type="button"
+          <Link
+            to="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
             className="notion-legal-link-btn"
-            onClick={() => setLegalModal("privacy")}
           >
             Privacy Policy
-          </button>
+          </Link>
         </p>
       </div>
-
-      {/* Legal Modal */}
-      <AuthLegalModal type={legalModal} onClose={() => setLegalModal(null)} />
     </main>
   );
 }

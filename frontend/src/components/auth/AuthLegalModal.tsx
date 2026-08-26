@@ -141,7 +141,16 @@ export function AuthLegalModal({ type, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="notion-legal-modal-foot">
+        <div className="notion-legal-modal-foot" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <a
+            href={activeTab === "terms" ? "/terms" : "/privacy"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="notion-forgot-link"
+            style={{ fontSize: "12.5px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+          >
+            <span>Open full page ↗</span>
+          </a>
           <button type="button" className="notion-legal-done-btn" onClick={onClose}>
             I understand
           </button>

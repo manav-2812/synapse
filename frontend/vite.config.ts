@@ -7,6 +7,8 @@ export default defineConfig({
   // Don't let the file watcher choke on transient tooling temp dirs
   // (e.g. Lighthouse profiles in .lh-tmp can hold OS file locks).
   server: {
+    port: 5173,
+    host: true,
     watch: {
       ignored: ['**/.lh-tmp/**', '**/node_modules/**'],
     },

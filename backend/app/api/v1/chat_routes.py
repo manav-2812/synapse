@@ -1,11 +1,13 @@
 """Chat routes: streaming RAG answers + conversation management."""
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.database import AsyncSessionLocal
+from app.core.limiter import limiter
 from app.repositories.document_repository import DocumentRepository
 from app.schemas.chat_schema import (
     ChatRequest,
@@ -21,10 +23,10 @@ from app.services.chat_service import ChatService
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
 
-from app.core.database import AsyncSessionLocal
-
 @router.post("/message", status_code=status.HTTP_200_OK)
+@limiter.limit("20/minute")
 async def chat_message(
+    request: Request,
     payload: ChatRequest,
     current_user=Depends(get_current_user),
 ):

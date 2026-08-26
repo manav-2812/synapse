@@ -46,6 +46,8 @@ async def db_engine():
 
 @pytest.fixture
 async def client(db_engine):
+    from app.core.limiter import limiter
+    limiter.enabled = False
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
@@ -62,14 +64,22 @@ async def session(db_engine):
 @pytest.fixture
 async def registered_user(client, db_engine):
     """Sign up a fresh user, yield (headers, user_id, email, password), then clean up."""
-    email = f"test_{uuid.uuid4().hex[:10]}@example.com"
+    email = f"test_{uuid.uuid4().hex[:10]}@synapse-study.com"
     password = "password123"
     r = await client.post(
         "/api/v1/auth/signup",
         json={"email": email, "password": password, "full_name": "Test User"},
     )
     assert r.status_code == 201, r.text
-    access = r.json()["access_token"]
+
+    from app.core.security import create_verification_token
+    token = create_verification_token(email)
+    r_ver = await client.post(
+        "/api/v1/auth/verify-email",
+        json={"token": token},
+    )
+    assert r_ver.status_code == 200, r_ver.text
+    access = r_ver.json()["access_token"]
     me = await client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {access}"})
     user_id = me.json()["id"]
     headers = {"Authorization": f"Bearer {access}"}

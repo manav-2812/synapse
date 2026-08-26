@@ -9,6 +9,7 @@ interface Props {
  * Bold vector representation matching the user's reference with dual intersecting stadium loops and central nucleus ring.
  */
 export function BrandLogo({ size = 24, className }: Props) {
+  const pixelSize = typeof size === "number" ? `${size}px` : size;
   return (
     <svg
       className={`syn-brand-seal ${className || ""}`}
@@ -19,7 +20,14 @@ export function BrandLogo({ size = 24, className }: Props) {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
       focusable="false"
-      style={{ display: "block", flexShrink: 0 }}
+      style={{
+        display: "block",
+        flexShrink: 0,
+        width: pixelSize,
+        height: pixelSize,
+        maxWidth: pixelSize,
+        maxHeight: pixelSize,
+      }}
     >
       {/* Orbital Loop 1 (tilted -45°) */}
       <rect

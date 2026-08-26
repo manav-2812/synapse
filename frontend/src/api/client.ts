@@ -102,6 +102,129 @@ async function refreshTokens(): Promise<string> {
 
 export { refreshTokens };
 
+// ============================================================
+// Server Warm-up / Cold Start Tracking (Deployed / Render only)
+// ============================================================
+export interface ServerStatus {
+  isWakingUp: boolean;
+  justWokeUp: boolean;
+  activeRequests: number;
+  elapsedSeconds: number;
+}
+
+type StatusListener = (status: ServerStatus) => void;
+const listeners = new Set<StatusListener>();
+
+let activeCount = 0;
+let warmupTimer: number | null = null;
+let elapsedTimer: number | null = null;
+let isWakingUpState = false;
+let justWokeUpState = false;
+let elapsedSeconds = 0;
+let justWokeUpTimeout: number | null = null;
+
+/**
+ * Detect if the app is communicating with a local backend (localhost/127.0.0.1)
+ * or running in local development mode. Render cold start tracking should only run
+ * on deployed environments where Render's free tier spins down after 15 min of inactivity.
+ */
+function isLocalEnvironment(): boolean {
+  if (import.meta.env.DEV) return true;
+  try {
+    const url = new URL(BASE, typeof window !== "undefined" ? window.location.href : "http://localhost");
+    return (
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "::1" ||
+      url.hostname.endsWith(".local")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function notifyListeners() {
+  const current: ServerStatus = {
+    isWakingUp: isWakingUpState,
+    justWokeUp: justWokeUpState,
+    activeRequests: activeCount,
+    elapsedSeconds,
+  };
+  listeners.forEach((l) => l(current));
+}
+
+export function subscribeServerStatus(listener: StatusListener): () => void {
+  listeners.add(listener);
+  listener({
+    isWakingUp: isWakingUpState,
+    justWokeUp: justWokeUpState,
+    activeRequests: activeCount,
+    elapsedSeconds,
+  });
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function startWarmupTracking() {
+  if (isLocalEnvironment()) return;
+  activeCount++;
+  if (activeCount === 1) {
+    if (warmupTimer) clearTimeout(warmupTimer);
+    // Cold starts on Render take ~15–50s. Only trigger the warmup notice if a request takes > 5s on deployed servers.
+    warmupTimer = window.setTimeout(() => {
+      if (activeCount > 0) {
+        isWakingUpState = true;
+        elapsedSeconds = 5;
+        notifyListeners();
+        if (elapsedTimer) clearInterval(elapsedTimer);
+        elapsedTimer = window.setInterval(() => {
+          elapsedSeconds += 1;
+          notifyListeners();
+        }, 1000);
+      }
+    }, 5000);
+  }
+}
+
+function stopWarmupTracking() {
+  if (isLocalEnvironment()) return;
+  activeCount = Math.max(0, activeCount - 1);
+  if (activeCount === 0) {
+    if (warmupTimer) {
+      clearTimeout(warmupTimer);
+      warmupTimer = null;
+    }
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer);
+      elapsedTimer = null;
+    }
+    if (isWakingUpState) {
+      isWakingUpState = false;
+      justWokeUpState = true;
+      notifyListeners();
+      if (justWokeUpTimeout) clearTimeout(justWokeUpTimeout);
+      justWokeUpTimeout = window.setTimeout(() => {
+        justWokeUpState = false;
+        notifyListeners();
+      }, 3000);
+    }
+    elapsedSeconds = 0;
+  }
+}
+
+// Background prewarm ping (deployed only)
+let prewarmed = false;
+export function prewarmServer(): void {
+  if (prewarmed || isLocalEnvironment()) return;
+  prewarmed = true;
+  const healthUrl = BASE.replace("/api/v1", "") + "/health";
+  // Non-blocking fire-and-forget for remote cold start spinup
+  fetch(healthUrl, { method: "GET" }).catch(() => {
+    /* ignore cold start errors */
+  });
+}
+
 interface RequestOptions {
   method?: string;
   body?: unknown;
@@ -142,33 +265,39 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     });
   }
 
-  let res = await doFetch(getToken());
+  startWarmupTracking();
+  try {
+    let res = await doFetch(getToken());
 
-  if (res.status === 401) {
-    try {
-      const newToken = await refreshTokens();
-      res = await doFetch(newToken);
-    } catch {
-      clearTokens();
-      unauthorizedHandler?.();
-      throw new ApiError("Session expired. Please sign in again.", 401);
+    if (res.status === 401) {
+      try {
+        const newToken = await refreshTokens();
+        res = await doFetch(newToken);
+      } catch {
+        clearTokens();
+        unauthorizedHandler?.();
+        throw new ApiError("Session expired. Please sign in again.", 401);
+      }
     }
-  }
 
-  if (!res.ok) {
-    let data: unknown = null;
-    let msg = `Request failed (${res.status})`;
-    try {
-      data = await res.json();
-      msg = extractMessage(data, msg);
-    } catch {
-      /* non-JSON error body */
+    if (!res.ok) {
+      let data: unknown = null;
+      let msg = `Request failed (${res.status})`;
+      try {
+        data = await res.json();
+        msg = extractMessage(data, msg);
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new ApiError(msg, res.status, data);
     }
-    throw new ApiError(msg, res.status, data);
-  }
 
-  if (res.status === 204) return undefined as T;
-  const ct = res.headers.get("content-type") || "";
-  if (ct.includes("application/json")) return (await res.json()) as T;
-  return (await res.text()) as unknown as T;
+    if (res.status === 204) return undefined as T;
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) return (await res.json()) as T;
+    return (await res.text()) as unknown as T;
+  } finally {
+    stopWarmupTracking();
+  }
 }
+

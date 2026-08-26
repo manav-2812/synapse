@@ -21,7 +21,7 @@ test("a protected route redirects to /login when logged out", async ({ page }) =
 
 test("bad credentials show an error and stay on /login", async ({ page }) => {
   await page.goto("/login");
-  await page.fill('input[name="email"]', "nobody@example.com");
+  await page.fill('input[name="email"]', "nobody@synapse-study.com");
   await page.fill('input[name="password"]', "wrongpassword");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toBeVisible();

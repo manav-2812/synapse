@@ -6,8 +6,8 @@
 
 <p align="center">
   <b>An AI study assistant built on retrieval-augmented generation.</b><br />
-  Upload course notes and PDFs, then chat with answers that are grounded in and
-  cited to your own documents — and generate quizzes, notes, and
+  Upload course notes, textbooks, and PDFs, then chat with answers that are strictly grounded in and
+  cited to your own documents — and generate adaptive quizzes, structured notes, and
   spaced-repetition flashcards from the same material.
 </p>
 
@@ -23,11 +23,11 @@
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.115.5-009688.svg" alt="FastAPI 0.115.5" /></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16-336791.svg" alt="PostgreSQL 16" /></a>
   <a href="https://www.trychroma.com/"><img src="https://img.shields.io/badge/ChromaDB-0.6.3-ff6b6b.svg" alt="ChromaDB 0.6.3" /></a>
-  <a href="#-quality--performance"><img src="https://img.shields.io/badge/Lighthouse-desktop%20100%20%7C%20mobile%2095%E2%80%9399-brightgreen.svg" alt="Lighthouse scores" /></a>
-  <a href="#-testing"><img src="https://img.shields.io/badge/tests-46%20backend%20%2B%2049%20unit%20%2B%2010%20e2e-brightgreen.svg" alt="Test count" /></a>
+  <a href="#quality--performance"><img src="https://img.shields.io/badge/Lighthouse-desktop%20100%20%7C%20mobile%2095%E2%80%9399-brightgreen.svg" alt="Lighthouse scores" /></a>
+  <a href="#testing"><img src="https://img.shields.io/badge/tests-59%20backend%20%2B%2049%20unit%20%2B%2010%20e2e-brightgreen.svg" alt="Test count" /></a>
   <a href="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml"><img src="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://img.shields.io/github/last-commit/manav-2812/Synapse"><img src="https://img.shields.io/github/last-commit/manav-2812/Synapse.svg" alt="Last Commit" /></a>
-  <a href="#-getting-started"><img src="https://img.shields.io/badge/status-production%20ready-blue.svg" alt="Status" /></a>
+  <a href="#getting-started"><img src="https://img.shields.io/badge/status-production%20ready-blue.svg" alt="Status" /></a>
 </p>
 
 <p align="center">
@@ -35,15 +35,15 @@
   <a href="#features">Features</a> ·
   <a href="#screenshots">Screenshots</a> ·
   <a href="#architecture">Architecture</a> ·
+  <a href="#tech-stack">Tech Stack</a> ·
+  <a href="#project-structure">Project Structure</a> ·
   <a href="#database-schema">Database</a> ·
-  <a href="#api-reference">API</a> ·
+  <a href="#api-reference">API Reference</a> ·
   <a href="#getting-started">Getting Started</a> ·
   <a href="#testing">Testing</a> ·
-  <a href="#quality--performance">Quality</a> ·
+  <a href="#quality--performance">Quality & Performance</a> ·
   <a href="#security">Security</a> ·
   <a href="#design-decisions">Design Decisions</a> ·
-  <a href="#known-limitations">Known Limitations</a> ·
-  <a href="#roadmap">Roadmap</a> ·
   <a href="#contributing">Contributing</a> ·
   <a href="#license">License</a>
 </p>
@@ -52,58 +52,51 @@
 
 ## Overview
 
-Synapse is a **retrieval-augmented generation (RAG) study assistant**. A user uploads
-course material — PDF, DOCX, TXT, or scanned PNG/JPG — and Synapse answers
-questions, generates exam-style answers, adaptive quizzes, structured notes, and
-flip flashcards. Every answer is **cited** to the exact passage in the source
-document, so the student can verify it rather than trust a black box.
+Synapse is a **retrieval-augmented generation (RAG) study assistant**. A student uploads
+course material — PDF, DOCX, TXT, or scanned PNG/JPG documents — and Synapse answers
+questions, generates exam-style answers, creates adaptive quizzes, synthesizes structured notes, and
+schedules spaced-repetition flashcards. Every answer is **strictly cited** to the exact passage and page
+in the source document, empowering the student to independently verify facts.
 
 The system is built around two non-negotiable design goals:
 
-1. **It works end-to-end with real AI answers grounded in real uploaded
-   documents** — not a mocked demo. The retrieval layer is *measured*, not
-   assumed: a built-in evaluation harness scores precision, recall, MRR, and NDCG
-   against dynamic datasets generated from the user's actual document corpus.
-2. **It is engineered to a production standard** — a typed API with uniform error
-   handling, a layered backend with enforced data-ownership boundaries, a
-   sleek modern frontend with light/dark design tokens, and a clean Lighthouse
-   profile across every route.
+1. **It works end-to-end with real AI answers grounded in real uploaded documents** — not a mocked demo. The retrieval layer is *measured*, not assumed: a built-in evaluation harness scores precision, recall, MRR, and NDCG against dynamic datasets generated from the user's actual document corpus.
+2. **It is engineered to a production standard** — a typed API with uniform error handling, a layered backend with enforced data-ownership boundaries, biometric Passkeys (FIDO2 / WebAuthn Level 3), single-use refresh token rotation, a sleek modern frontend with light/dark design tokens, and a clean Lighthouse profile across every route.
 
 > Synapse is a **three-tier application**:
-> - **Presentation tier** — a React 19 SPA (deployed to Vercel) that communicates
->   with the backend exclusively over `fetch`.
-> - **Application tier** — an async FastAPI service that owns all business logic,
->   embeddings, and LLM calls. It is **API-only** — it never serves the SPA.
-> - **Data tier** — PostgreSQL 16 (relational store) and ChromaDB (vector store),
->   both accessed only through the application tier.
+> - **Presentation tier** — a React 19 SPA (deployed to Vercel) that communicates with the backend exclusively over `fetch`.
+> - **Application tier** — an async FastAPI service that owns all business logic, embeddings, and LLM calls. It is **API-only** — it never serves the SPA.
+> - **Data tier** — PostgreSQL 16 (relational store) and ChromaDB (vector store), both accessed only through the application tier.
 
 ---
 
 ## Features
 
 ### Authentication & Biometric Security
-- **Biometric Passkeys (WebAuthn / FIDO2)** — passwordless hardware-bound login via Touch ID, Face ID, Windows Hello, and YubiKeys.
-- **OAuth 2.0 Social Logins** — one-click sign-in with Google and Microsoft accounts.
+- **Biometric Passkeys (WebAuthn / FIDO2 Level 3)** — passwordless hardware-bound login via Touch ID, Face ID, Windows Hello, and YubiKeys.
+- **OAuth 2.0 Social Sign-In** — one-click authentication with Google and Microsoft accounts.
+- **Email Verification & Password Recovery** — 6-digit OTP verification codes and time-bound password reset tokens dispatched via SMTP.
 - **Secure Token Lifecycle** — JWT authentication with single-use rotating refresh tokens (`jti` tracking), bcrypt password hashing, and CSRF-protected OAuth state.
 
 ### Ingestion & Hybrid Retrieval
 - **Multi-format Ingestion** — PDF, DOCX, TXT, and scanned PNG/JPG with OCR support (Tesseract with vision-LLM fallback).
-- **Background Ingestion Pipeline** — parse → clean → token-aware chunking → embed → index, with live status polling and cancelable uploads.
+- **Background Ingestion Pipeline** — parse → clean → token-aware chunking (~240 tokens) → embed → index, with live status polling and cancelable uploads.
 - **Hybrid Retrieval (Dense Vector + BM25)** — ChromaDB semantic vector search blended with sparse BM25 keyword matching via Reciprocal Rank Fusion (RRF). Configurable weights swept by the evaluation harness.
-- **Misspelling-Tolerant Query Correction** — fuzzy token matching (`rapidfuzz`) autocorrects course jargon and technical typos before vector search.
+- **Misspelling-Tolerant Query Correction** — pre-compiled fuzzy token matching (`rapidfuzz`) autocorrects course jargon and technical typos before vector search.
 - **Live Web Search Grounding (Tavily)** — automatic live web fallback when uploaded documents lack sufficient context to answer a query.
+- **Universal Document Scope Picker** — filter conversations, notes, quizzes, and flashcard generation to specific documents with live search, file-type icons, and collision-aware viewport positioning.
 
 ### Conversational Study & Notes
 - **Streaming Chat with Grounded Citations** — token-by-token streaming via Server-Sent Events (SSE) with interactive source citations.
-- **Interactive Note Reader (`/notes/:id`)** — structured summaries, exam answers, and formula sheets readable in a dedicated distraction-free reader layout.
-- **Global Search (`/search`) & Command Palette (`⌘K`)** — instant cross-document search and omnibar navigation with keyboard shortcuts.
-- **Voice Synthesis & Speech Input** — integrated speech-to-text input with animated audio visualizer.
+- **Interactive Note Reader (`/notes/:id`)** — structured summaries, exam answers, and formula sheets readable in a dedicated distraction-free reader layout with Markdown rendering.
+- **Global Search (`/search`) & Command Palette (`⌘K` / `Ctrl+K`)** — instant cross-document search and omnibar navigation with keyboard shortcuts.
+- **Voice Synthesis & Speech Input** — integrated speech-to-text input with animated interactive audio visualizers.
 
 ### Study Tools, Memory Decay & Telemetry
-- **Spaced-Repetition Flashcards (SM-2)** — adaptive memory scheduling with due-for-review filtering.
+- **Spaced-Repetition Flashcards (SuperMemo SM-2)** — adaptive memory scheduling with due-for-review filtering and 3D card flips.
 - **Ebbinghaus Memory Decay Radar** — real-time mathematical retention calculation ($R(t) = e^{-t/S}$) visualizing topic stability over time.
 - **Interactive Quizzes** — MCQ and short-answer generation with automatic scoring, answer reveal, and explanations.
-- **53-Week Study Heatmap & Telemetry** — visual activity streak tracking, token and compute cost metering, and cache-hit monitoring.
+- **Executive Analytics & 53-Week Study Heatmap** — 2x2 executive analytics dashboard, visual activity streak tracking, token and compute cost metering, and cache-hit monitoring.
 - **Retrieval Eval Benchmark Dashboard (`/eval`)** — live evaluation harness scoring precision@k, recall@k, MRR, and NDCG against the user's active document library.
 
 ### Design & Mobile Experience
@@ -349,7 +342,7 @@ flowchart LR
 ## Tech Stack
 
 | Layer | Technology | Purpose |
-|-------|------------|---------|
+|---|---|---|
 | **Frontend** | React 19 · TypeScript · Vite 8 · React Router 7 | Responsive, accessible SPA with client-side routing |
 | **Styling** | Vanilla CSS Design Tokens | HSL-curated palette, frosted glassmorphism, responsive bento grid |
 | **Backend** | Python 3.11 · FastAPI 0.115.5 (async) · Pydantic v2 | High-concurrency async REST API & SSE streaming |
@@ -376,22 +369,28 @@ Synapse/
 │   │   ├── core/                     # config, database, security, logger, exceptions, limiter
 │   │   ├── api/v1/                   # route endpoints:
 │   │   │   ├── analytics_routes.py   #   dashboard, usage metrics, 53-week heatmap
-│   │   │   ├── auth_routes.py        #   signup, login, refresh, logout, OAuth (Google/MS)
-│   │   │   ├── chat_routes.py        #   SSE stream, conversation history, query correction
+│   │   │   ├── auth_routes.py        #   signup, login, verify email OTP, refresh, logout, OAuth (Google/MS)
+│   │   │   ├── chat_routes.py        #   SSE stream, conversation history, message edit/delete
 │   │   │   ├── document_routes.py    #   upload, list, status poll, update, delete
-│   │   │   ├── folder_routes.py      #   folder CRUD & hierarchical organization
+│   │   │   ├── eval_routes.py        #   retrieval eval runner & benchmark runs
+│   │   │   ├── folder_routes.py      #   hierarchical folder CRUD & organization
 │   │   │   ├── passkey_routes.py     #   WebAuthn passkey registration & authentication
 │   │   │   ├── study_routes.py       #   notes, adaptive quiz, SM-2 flashcard review
-│   │   │   └── user_routes.py        #   profile reading, preferences, avatar upload
+│   │   │   └── user_routes.py        #   profile reading, preferences, avatar upload, GDPR data export
 │   │   ├── services/                 # business logic & domain orchestrators:
 │   │   │   ├── analytics_service.py  #   dashboard aggregates, token cost accounting
-│   │   │   ├── auth_service.py       #   JWT token lifecycle, OAuth token exchange
+│   │   │   ├── auth_service.py       #   JWT token lifecycle, OAuth token exchange, passkey auth
 │   │   │   ├── chat_service.py       #   SSE prompt orchestration, web-search fallback
 │   │   │   ├── document_service.py   #   document metadata, lifecycle management
+│   │   │   ├── email_service.py      #   verification codes & password reset emails via SMTP
+│   │   │   ├── folder_service.py     #   folder tree & document containment
 │   │   │   ├── passkey_service.py    #   FIDO2 challenge generation & credential verification
 │   │   │   ├── processing_service.py #   async background parsing, chunking, embedding
+│   │   │   ├── query_correction.py   #   pre-compiled fuzzy proper noun normalization
 │   │   │   ├── study_service.py      #   SM-2 scheduling, quiz scoring, note generation
-│   │   │   └── upload_service.py     #   file validation, size guards, UUID disk persistence
+│   │   │   ├── upload_service.py     #   file validation, size guards, UUID disk persistence
+│   │   │   ├── user_service.py       #   profile editing, avatar processing, data export
+│   │   │   └── web_search_service.py #   Tavily live internet search client
 │   │   ├── repositories/             # SQLAlchemy DB access (strict user_id filtering)
 │   │   ├── ai/                       # AI & machine learning subsystems:
 │   │   │   ├── embeddings/           #   Sentence-Transformers embedding client
@@ -402,17 +401,20 @@ Synapse/
 │   │   │   ├── rag/                  #   hybrid retriever (dense vector + BM25 RRF), prompt builder
 │   │   │   ├── search/               #   Tavily web search integration
 │   │   │   └── study/                #   structured JSON generators (quiz, flashcards, notes)
-│   │   ├── models/                   # SQLAlchemy models (17 tables including passkeys)
+│   │   ├── models/                   # SQLAlchemy models (18 application tables)
 │   │   ├── schemas/                  # Pydantic request/response validation schemas
 │   │   ├── eval/                     # dynamic dataset builder, metrics (MRR, NDCG, Precision@k)
 │   │   └── main.py                   # FastAPI application factory, CORS, error middleware
 │   ├── alembic/                      # database migrations (10 revisions applied in sequence)
-│   ├── tests/                        # pytest test suite (46 passed):
-│   │   ├── test_api_contract.py      #   FastAPI endpoint contracts & status codes
+│   ├── tests/                        # pytest test suite (59 passed in ~26s):
 │   │   ├── test_answer_grounding.py  #   RAG citation provenance & grounding verification
-│   │   ├── test_query_correction.py  #   rapidfuzz query correction & latency tests
-│   │   ├── test_retrieval_metrics.py #   MRR, NDCG, precision/recall benchmark verification
-│   │   └── test_quiz_scoring.py      #   SM-2 algorithm & quiz scoring validation
+│   │   ├── test_api_contract.py      #   FastAPI endpoint contracts & status codes
+│   │   ├── test_auth.py              #   authentication, tokens, and passkey flows
+│   │   ├── test_document_pipeline.py #   ingestion, parsing, and chunking pipeline
+│   │   ├── test_query_correction.py  #   rapidfuzz query correction & latency benchmarking
+│   │   ├── test_quiz_scoring.py      #   SM-2 algorithm & quiz scoring validation
+│   │   ├── test_retrieval.py         #   vector & BM25 hybrid search correctness
+│   │   └── test_retrieval_metrics.py #   MRR, NDCG, precision/recall benchmark verification
 │   ├── requirements.txt              # pinned backend Python dependencies
 │   └── Dockerfile                    # Python 3.11-slim production container
 │
@@ -427,26 +429,31 @@ Synapse/
 │   │   │   ├── layout/               #   Sidebar, Header, NotificationPanel, MobileDrawer
 │   │   │   ├── ui/                   #   Button, Input, Modal, Skeleton, StatusBadge, EmptyState
 │   │   │   ├── CitationChip.tsx      #   grounded document passage popup
-│   │   │   ├── WebCitationChip.tsx   #   live web source link pill
 │   │   │   ├── CommandPalette.tsx    #   keyboard-driven ⌘K omnibar
-│   │   │   └── VoiceWaveform.tsx     #   interactive audio visualizer
+│   │   │   ├── DocumentScopePicker.tsx#  smart collision-aware document scope picker
+│   │   │   ├── ExportDataModal.tsx   #   GDPR JSON data export modal
+│   │   │   ├── MessageActionToolbar.tsx# message retry, copy, voice synthesis actions
+│   │   │   ├── VoiceWaveform.tsx     #   interactive audio visualizer
+│   │   │   └── WebCitationChip.tsx   #   live web source link pill
 │   │   ├── context/                  # AuthContext, TipsContext
 │   │   ├── hooks/                    # useTheme, useToast, useDocumentPolling, useDebounce
 │   │   ├── pages/                    # application route views:
-│   │   │   ├── Analytics.tsx         #   telemetry, token cost accounting, cache hit rate
+│   │   │   ├── Analytics.tsx         #   2x2 executive metrics, token costs, cache rates
 │   │   │   ├── Chat.tsx              #   SSE streaming conversation with citations & web mode
 │   │   │   ├── Dashboard.tsx         #   bento metrics, memory decay radar, upcoming reviews
 │   │   │   ├── Documents.tsx         #   drag-drop upload, folder organization, status capsules
 │   │   │   ├── EvalDashboard.tsx     #   retrieval quality metrics, dataset generator, trend chart
 │   │   │   ├── Flashcards.tsx        #   3D flip flashcard review with SM-2 quality ratings
+│   │   │   ├── Legal.tsx             #   Terms of Service & Privacy Policy
 │   │   │   ├── NoteReader.tsx        #   distraction-free study note viewer & Markdown renderer
 │   │   │   ├── Notes.tsx             #   note generation & document scope filter
 │   │   │   ├── Profile.tsx           #   account preferences, passkey management, avatar upload
 │   │   │   ├── Quiz.tsx              #   interactive timed quiz, MCQ selector, instant feedback
 │   │   │   ├── Search.tsx            #   global multi-category workspace search
-│   │   │   └── auth/                 #   Login, Signup, Google/Microsoft OAuth callbacks
+│   │   │   ├── WarmupPreview.tsx     #   cold-start server wake-up banner
+│   │   │   └── auth/                 #   Login, Signup, VerifyEmail, Forgot/ResetPassword, OAuth
 │   │   ├── utils/                    # decay.ts (Ebbinghaus), timeBlock.ts, oauth.ts
-│   │   ├── styles/                   # app.css (components), auth.css, index.css (tokens)
+│   │   ├── styles/                   # app.css (components), auth.css, mobile.css, index.css (tokens)
 │   │   └── types/                    # api.ts (TypeScript interfaces mirroring Pydantic)
 │   ├── e2e/                          # Playwright end-to-end test suite (10 passed)
 │   ├── public/                       # favicon.svg, robots.txt, sitemap.xml, llms.txt
@@ -463,7 +470,7 @@ Synapse/
 
 ## Database Schema
 
-Synapse uses **17 application tables** across auth, content, conversation, study,
+Synapse uses **18 PostgreSQL tables** (17 application tables plus `alembic_version`) across auth, content, conversation, study,
 analytics, passkeys, and evaluation. Cascading deletes flow from `users` down; `folders`
 self-reference for nested organization. `document_chunks` links each row to a
 Chroma vector via `chroma_vector_id`.
@@ -472,6 +479,7 @@ Chroma vector via `chroma_vector_id`.
 erDiagram
   users ||--o| user_profiles : "has"
   users ||--o{ user_passkeys : "registers"
+  users ||--o{ passkey_challenges : "creates"
   users ||--o| analytics : "has"
   users ||--o{ folders : "owns"
   users ||--o{ documents : "owns"
@@ -497,6 +505,9 @@ erDiagram
     string password_hash
     string profile_image_url
     bool is_active
+    bool is_verified
+    string verification_code
+    timestamptz verification_code_expires_at
     string last_refresh_jti "single-use refresh JTI"
     int daily_study_goal_minutes
   }
@@ -507,6 +518,13 @@ erDiagram
     string credential_id UK
     text public_key
     int sign_count
+  }
+  passkey_challenges {
+    uuid id PK
+    uuid user_id FK
+    string challenge UK
+    string purpose
+    timestamptz expires_at
   }
   user_profiles {
     uuid id PK
@@ -657,9 +675,14 @@ The API is versioned under `/api/v1`. **Interactive docs:** Swagger UI at
 > `{"error": {"message": str, "code": str}}`.
 
 ### Auth & Passkeys — `/api/v1/auth`
+
 | Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/auth/signup` | Register email + password account |
+|---|---|---|
+| POST | `/auth/signup` | Register email + password account & dispatch verification OTP |
+| POST | `/auth/verify-email` | Verify 6-digit email OTP |
+| POST | `/auth/resend-code` | Re-dispatch email verification code |
+| POST | `/auth/forgot-password` | Request password reset email |
+| POST | `/auth/reset-password` | Complete password reset with token |
 | POST | `/auth/login` | Email + password login |
 | POST | `/auth/refresh` | Exchange refresh token for a new pair (rotates `jti`) |
 | POST | `/auth/logout` | Invalidate current refresh token |
@@ -673,15 +696,19 @@ The API is versioned under `/api/v1`. **Interactive docs:** Swagger UI at
 | DELETE | `/auth/passkey/{id}` | Delete a registered passkey |
 
 ### Users — `/api/v1/users`
+
 | Method | Path | Purpose |
-|--------|------|---------|
+|---|---|---|
 | GET | `/users/me` | Current user profile & study goals |
 | PATCH | `/users/me` | Update name / study goal / preferences |
 | POST | `/users/me/avatar` | Upload profile image (PNG, JPEG, WebP) |
+| GET | `/users/me/export` | Download full GDPR JSON workspace data archive |
+| DELETE | `/users/me` | Permanently delete account and all associated data |
 
 ### Documents & Folders — `/api/v1/documents`
+
 | Method | Path | Purpose |
-|--------|------|---------|
+|---|---|---|
 | POST | `/documents/upload` | Upload document + start background ingestion |
 | GET | `/documents` | List user's documents (filter by `folder_id`) |
 | GET | `/documents/{id}` | Single document detail |
@@ -693,8 +720,9 @@ The API is versioned under `/api/v1`. **Interactive docs:** Swagger UI at
 | DELETE | `/documents/folders/{id}` | Delete folder |
 
 ### Chat — `/api/v1/chat`
+
 | Method | Path | Purpose |
-|--------|------|---------|
+|---|---|---|
 | POST | `/chat/message` | **SSE stream** — grounded, cited answer (supports web & doc mode) |
 | GET | `/chat/conversations` | List conversation threads |
 | GET | `/chat/conversations/{id}` | Conversation detail with messages & source citations |
@@ -704,8 +732,9 @@ The API is versioned under `/api/v1`. **Interactive docs:** Swagger UI at
 | DELETE | `/chat/conversations/{id}/messages/{id}` | Delete a message in thread |
 
 ### Study Tools — `/api/v1/study`
+
 | Method | Path | Purpose |
-|--------|------|---------|
+|---|---|---|
 | POST | `/study/notes` | Generate structured study notes / formula sheets |
 | GET | `/study/notes` · `/study/notes/{id}` | List / detail generated note |
 | PATCH / DELETE | `/study/notes/{id}` | Update / delete study note |
@@ -719,15 +748,17 @@ The API is versioned under `/api/v1`. **Interactive docs:** Swagger UI at
 | PATCH / DELETE | `/study/flashcards/{id}` | Update / delete flashcard |
 
 ### Analytics & Heatmap — `/api/v1/analytics`
+
 | Method | Path | Purpose |
-|--------|------|---------|
+|---|---|---|
 | GET | `/analytics/dashboard` | Metric summary tiles, study streaks, weak/strong topics |
 | GET | `/analytics/usage` | Token, compute cost, and cache-hit trends (query `days`) |
 | GET | `/analytics/heatmap` | 371-day study activity history for streak heatmap |
 
 ### Eval Harness — `/api/v1/eval`
+
 | Method | Path | Purpose |
-|--------|------|---------|
+|---|---|---|
 | POST | `/eval/run` | Run retrieval eval (Precision@k, Recall@k, MRR, NDCG) |
 | GET | `/eval/runs` | Historical evaluation runs for dashboard trend chart |
 
@@ -738,7 +769,7 @@ The API is versioned under `/api/v1`. **Interactive docs:** Swagger UI at
 ### Prerequisites
 
 | Tool | Version | Notes |
-|------|---------|-------|
+|---|---|---|
 | Python | **3.11** | Pinned in `backend/.python-version`. |
 | Node.js | **20+** | Required for Vite frontend. |
 | PostgreSQL | **16** | Relational store (local or Docker container). |
@@ -747,7 +778,7 @@ The API is versioned under `/api/v1`. **Interactive docs:** Swagger UI at
 
 ---
 
-### ⚡ Quick Start: All-in-One Runner
+### Quick Start: All-in-One Development Runner
 
 Run both the FastAPI backend and Vite frontend concurrently with unified color logs:
 
@@ -757,15 +788,16 @@ python run_dev.py
 
 ---
 
-### 💻 Manual Service Execution
+### Manual Service Execution
 
 #### 1. Backend (FastAPI)
 
 ```powershell
 cd backend
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1   # macOS / Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env           # fill GROQ_API_KEY / GEMINI_API_KEY / JWT_SECRET_KEY
+cp .env.example .env           # fill DATABASE_URL, GROQ_API_KEY, GEMINI_API_KEY, JWT_SECRET_KEY
 alembic upgrade head           # apply database migrations
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
@@ -779,11 +811,11 @@ cp .env.example .env           # set VITE_API_BASE_URL if needed (defaults to ht
 npm run dev                    # → http://localhost:5173
 ```
 
-> 📖 For full command copy-paste blocks and test scripts, see the [**Development & Execution Runbook (`docs/commands.md`)**](docs/commands.md).
+> For full command copy-paste blocks and test scripts, see the [**Development & Execution Runbook (`docs/commands.md`)**](docs/commands.md).
 
 ---
 
-### 3. Docker (Full Stack, Local)
+### Docker (Full Stack, Local)
 
 ```bash
 docker compose up --build
@@ -812,13 +844,16 @@ and pull request targeting `main`. It covers:
 
 ```bash
 # Backend — pytest (real Postgres + real Chroma + real embeddings)
-cd backend && pytest                 # 46 passed, 0 failures, 0 warnings
+cd backend && .venv\Scripts\python -m pytest   # 59 passed in ~26s
 
 # Frontend — Vitest unit/component (api client, hooks, UI primitives)
-cd frontend && npm test              # 49 passed across 14 test files
+cd frontend && npm test                        # 49 passed across 14 test files
 
 # Frontend — Playwright e2e (signup → upload → chat citation → flashcard → quiz → analytics)
-cd frontend && npm run test:e2e      # 10 passed (against the real stack + live LLM)
+cd frontend && npm run test:e2e                # 10 passed (against the real stack + live LLM)
+
+# Frontend — Lint & Production Build Verification
+cd frontend && npm run lint && npm run build   # 0 warnings/errors, builds in <1.1s
 ```
 
 ---
@@ -829,10 +864,10 @@ Audited on **real Chrome (Lighthouse 13)** against a compressing static server
 that mirrors Vercel (gzip/brotli + immutable hashed assets).
 
 | Route | Desktop Perf | Mobile Perf | A11y | BP | SEO |
-|-------|:---:|:---:|:---:|:---:|:---:|
-| / (redirect → /login) · /login · /signup | 100 | 99 | 100 | 100 | 100 |
-| /dashboard · /documents · /quiz · /flashcards · /notes · /analytics · /eval · /profile | 100 | 99 | 100 | 100 | 100 |
-| /chat | 100 | **95** | 100 | 100 | 100 |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `/login` · `/signup` · `/auth/*` | **100** | **99** | **100** | **100** | **100** |
+| `/dashboard` · `/documents` · `/quiz` · `/flashcards` · `/notes` · `/analytics` · `/eval` · `/profile` | **100** | **99** | **100** | **100** | **100** |
+| `/chat` (Streaming SSE) | **100** | **95** | **100** | **100** | **100** |
 
 - **Console errors / warnings:** 0 on every route (logged-in + logged-out).
 - **`axe-core` violations:** 0 on every route.
@@ -864,7 +899,7 @@ For vulnerability reporting instructions and security disclosures, see [`SECURIT
 ## Design Decisions
 
 | Decision | Why | Trade-off accepted |
-|----------|-----|-------------------|
+|---|---|---|
 | Hand-rolled RAG vs LangChain | Full control over retrieval quality and performance tuning | Increased implementation complexity |
 | ChromaDB vs a managed vector DB | Full control over privacy, cost, and per-user collection isolation | Not distributed/multi-region |
 | Hybrid retrieval (semantic + BM25) vs semantic-only | Superior handling of keyword & jargon queries | Double index maintenance overhead |
@@ -895,4 +930,3 @@ Released under the [MIT License](LICENSE).
 - Email: [manavbaghhel@gmail.com](mailto:manavbaghhel@gmail.com)
 - GitHub: [@manav-2812](https://github.com/manav-2812)
 - Repository: [github.com/manav-2812/Synapse](https://github.com/manav-2812/Synapse)
-
