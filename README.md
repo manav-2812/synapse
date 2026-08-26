@@ -405,7 +405,7 @@ Synapse/
 │   │   ├── schemas/                  # Pydantic request/response validation schemas
 │   │   ├── eval/                     # dynamic dataset builder, metrics (MRR, NDCG, Precision@k)
 │   │   └── main.py                   # FastAPI application factory, CORS, error middleware
-│   ├── alembic/                      # database migrations (10 revisions applied in sequence)
+│   ├── alembic/                      # database migrations (12 revisions applied in sequence)
 │   ├── tests/                        # pytest test suite (59 passed in ~26s):
 │   │   ├── test_answer_grounding.py  #   RAG citation provenance & grounding verification
 │   │   ├── test_api_contract.py      #   FastAPI endpoint contracts & status codes
@@ -657,7 +657,7 @@ erDiagram
   }
 ```
 
-Migrations live in `backend/alembic/` (10 revisions, applied in order from an
+Migrations live in `backend/alembic/` (12 revisions, applied in order from an
 empty database). `backend/app/models/` is the source of truth for every column,
 foreign key, and index. Alembic creates **18 tables total** (17 application tables
 plus `alembic_version`).
