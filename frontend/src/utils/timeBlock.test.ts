@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getTimeBlockConfig, extractFirstName } from "./timeBlock";
-import { buildContextAwareSuggestions } from "../pages/Chat";
+import { getTimeBlockConfig, extractFirstName, buildContextAwareSuggestions } from "./timeBlock";
 import type { DocumentResponse, DashboardResponse, FlashcardResponse } from "../types/api";
 
 describe("timeBlock utility", () => {

@@ -199,7 +199,7 @@ export default function Documents() {
   const [inspectDoc, setInspectDoc] = useState<DocumentResponse | null>(null);
   const [moveDoc, setMoveDoc] = useState<DocumentResponse | null>(null);
   const [moveSelectedOpen, setMoveSelectedOpen] = useState(false);
-  const [targetFolderId, setTargetFolderId] = useState<string | null>(null);
+  const [targetFolderId] = useState<string | null>(null);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -1158,7 +1158,6 @@ export default function Documents() {
                   <tbody>
                     {filteredDocs.map((d) => {
                       const cat = getFileCategory(d.original_filename, d.file_type);
-                      const badge = getFileBadgeColor(cat);
                       const isSelected = selected.has(d.id);
                       const folder = folders.find((f) => f.id === d.folder_id);
 

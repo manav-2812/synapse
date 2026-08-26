@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { studyApi } from "../api/study";
 import { ApiError } from "../api/client";
@@ -9,8 +9,6 @@ import { Icon } from "../components/ui/Icon";
 import { Modal } from "../components/ui/Modal";
 import { GenLoading } from "../components/ui/GenLoading";
 import { EmptyState } from "../components/ui/EmptyState";
-import { Tip } from "../components/Tip";
-import { TIP } from "../components/tips";
 import { DocumentScopePicker } from "../components/DocumentScopePicker";
 import { formatDate } from "../lib/format";
 import type {
@@ -84,9 +82,21 @@ export default function Quiz() {
   const [diffFilter, setDiffFilter] = useState<string>("all");
   const [isQuizzesCollapsed, setIsQuizzesCollapsed] = useState(false);
 
+  const loadQuizzes = useCallback(async () => {
+    try {
+      setQuizzes(await studyApi.listQuizzes());
+    } catch (err) {
+      toast(
+        "error",
+        "Couldn't load quizzes",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
+    }
+  }, [toast]);
+
   useEffect(() => {
     void loadQuizzes();
-  }, []);
+  }, [loadQuizzes]);
 
   // Keyboard shortcut listener for Quiz taking
   useEffect(() => {
@@ -128,18 +138,6 @@ export default function Quiz() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [mode, quiz, currentIdx, answers, takingView]);
-
-  async function loadQuizzes() {
-    try {
-      setQuizzes(await studyApi.listQuizzes());
-    } catch (err) {
-      toast(
-        "error",
-        "Couldn't load quizzes",
-        err instanceof ApiError ? err.message : "Please try again.",
-      );
-    }
-  }
 
   async function generate() {
     setBusy(true);
@@ -265,7 +263,7 @@ export default function Quiz() {
     } catch {
       return {};
     }
-  }, [quizzes, mode]);
+  }, []);
 
   const stats = useMemo(() => {
     const totalQuizzes = quizzes.length;

@@ -17,13 +17,7 @@ interface Props {
 export type DecayItem = EvaluatedDecay;
 
 export function DashboardMemoryRadar({
-  dueCardsCount,
-  totalCards,
-  avgQuizScore,
   flashcardsList = [],
-  notesList = [],
-  docsList = [],
-  onReinforce,
 }: Props) {
   const navigate = useNavigate();
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { studyApi } from "../api/study";
 import { ApiError } from "../api/client";
@@ -71,10 +71,36 @@ export default function Flashcards() {
   const [deleteCardTarget, setDeleteCardTarget] = useState<FlashcardResponse | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
+  const load = useCallback(async () => {
+    try {
+      setCards(await studyApi.listFlashcards());
+    } catch (err) {
+      toast(
+        "error",
+        "Couldn't load flashcards",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  const loadDue = useCallback(async () => {
+    try {
+      setDue(await studyApi.dueFlashcards());
+    } catch (err) {
+      toast(
+        "error",
+        "Couldn't load due cards",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
+    }
+  }, [toast]);
+
   useEffect(() => {
     void load();
     void loadDue();
-  }, []);
+  }, [load, loadDue]);
 
   // Auto-launch focused study session when card_id or study=1 is present in URL
   useEffect(() => {
@@ -118,6 +144,31 @@ export default function Flashcards() {
       }
     }
   }, [cards, params]);
+
+  const gradeCard = useCallback(async (id: string, quality: number) => {
+    setReviewing(id);
+    try {
+      const updated = await studyApi.reviewFlashcard(id, quality);
+      setDue((prev) => prev.filter((c) => c.id !== id));
+      setCards((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      setReviewedSessionCount((c) => c + 1);
+
+      if (currentIdx < studyDeck.length - 1) {
+        setCurrentIdx((c) => c + 1);
+        setIsFlipped(false);
+      } else {
+        setMode("completed");
+      }
+    } catch (err) {
+      toast(
+        "error",
+        "Couldn't save review",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
+    } finally {
+      setReviewing(null);
+    }
+  }, [currentIdx, studyDeck.length, toast]);
 
   // Keyboard shortcut listener for Study Mode
   useEffect(() => {
@@ -173,33 +224,7 @@ export default function Flashcards() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mode, studyDeck, currentIdx, isFlipped]);
-
-  async function load() {
-    try {
-      setCards(await studyApi.listFlashcards());
-    } catch (err) {
-      toast(
-        "error",
-        "Couldn't load flashcards",
-        err instanceof ApiError ? err.message : "Please try again.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadDue() {
-    try {
-      setDue(await studyApi.dueFlashcards());
-    } catch (err) {
-      toast(
-        "error",
-        "Couldn't load due cards",
-        err instanceof ApiError ? err.message : "Please try again.",
-      );
-    }
-  }
+  }, [mode, studyDeck, currentIdx, isFlipped, gradeCard]);
 
   async function generate() {
     setBusy(true);
@@ -273,31 +298,6 @@ export default function Flashcards() {
       );
     } finally {
       setEditBusy(false);
-    }
-  }
-
-  async function gradeCard(id: string, quality: number) {
-    setReviewing(id);
-    try {
-      const updated = await studyApi.reviewFlashcard(id, quality);
-      setDue((prev) => prev.filter((c) => c.id !== id));
-      setCards((prev) => prev.map((c) => (c.id === id ? updated : c)));
-      setReviewedSessionCount((c) => c + 1);
-
-      if (currentIdx < studyDeck.length - 1) {
-        setCurrentIdx((c) => c + 1);
-        setIsFlipped(false);
-      } else {
-        setMode("completed");
-      }
-    } catch (err) {
-      toast(
-        "error",
-        "Couldn't save review",
-        err instanceof ApiError ? err.message : "Please try again.",
-      );
-    } finally {
-      setReviewing(null);
     }
   }
 

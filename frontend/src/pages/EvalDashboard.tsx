@@ -55,8 +55,8 @@ export default function EvalDashboard() {
         if (!cancelled) {
           if (h.status === "fulfilled") {
             setHistory(h.value);
-            if (h.value.length > 0 && !selectedRunId) {
-              setSelectedRunId(h.value[0].id);
+            if (h.value.length > 0) {
+              setSelectedRunId((cur) => cur || h.value[0].id);
             }
           }
           if (docs.status === "fulfilled") {
@@ -86,17 +86,6 @@ export default function EvalDashboard() {
       name = name.replace(/_/g, " ");
     }
     return name;
-  }
-
-  function formatProbeExcerpt(text: string): string {
-    if (!text) return "";
-    let clean = text.trim();
-    clean = clean.replace(/^[a-z0-9]{1,4}[,\s]+/, "");
-    clean = clean.replace(/^[^A-Za-z0-9"']+\s*/, "");
-    if (clean.length > 0 && /^[a-z]/.test(clean)) {
-      clean = clean.charAt(0).toUpperCase() + clean.slice(1);
-    }
-    return clean;
   }
 
   function resolveDocName(docId: string, item?: EvalRunItem): string {

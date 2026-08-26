@@ -8,7 +8,7 @@ export interface LanguageOption {
   flag: string;
 }
 
-export const LANGUAGES: LanguageOption[] = [
+const LANGUAGES: LanguageOption[] = [
   { code: "en-US", name: "English (US)", nativeName: "English (US)", flag: "🇺🇸" },
   { code: "en-GB", name: "English (UK)", nativeName: "English (UK)", flag: "🇬🇧" },
   { code: "es", name: "Spanish", nativeName: "Español", flag: "🇪🇸" },

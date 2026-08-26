@@ -172,7 +172,7 @@ export default function NoteReader() {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, navigate, toast]);
 
   const { html, toc, wordCount } = useMemo(() => {
     if (!note) return { html: "", toc: [] as TocItem[], wordCount: 0 };

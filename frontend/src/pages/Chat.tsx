@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -16,7 +17,6 @@ import { analyticsApi } from "../api/analytics";
 import { studyApi } from "../api/study";
 import { ApiError } from "../api/client";
 import { useToast } from "../hooks/useToast";
-import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
 import { Icon } from "../components/ui/Icon";
@@ -29,11 +29,14 @@ import { MarkdownContent } from "../components/ui/MarkdownContent";
 import { CitationChip } from "../components/CitationChip";
 import { MessageActionToolbar } from "../components/MessageActionToolbar";
 import { WebCitationChip } from "../components/WebCitationChip";
-import { getTimeBlockConfig, extractFirstName } from "../utils/timeBlock";
+import {
+  getTimeBlockConfig,
+  extractFirstName,
+  buildContextAwareSuggestions,
+} from "../utils/timeBlock";
 import type {
   ConversationListItem,
   SourceResponse,
-  UserMeResponse,
   DocumentResponse,
   DashboardResponse,
   FlashcardResponse,
@@ -48,231 +51,9 @@ interface ChatMessage {
   correction?: QueryCorrectionPayload;
 }
 
-export interface SuggestionItem {
-  icon: string;
-  cmd: string;
-  title: string;
-  desc: string;
-  prompt: string;
-}
-
-function cleanDocTitle(filename?: string | null): string {
-  if (!filename) return "study material";
-  return (
-    filename
-      .replace(/^[\d_-]+/, "")
-      .replace(/\.(pdf|docx?|txt|png|jpe?g|md)$/i, "")
-      .replace(/[_-]+/g, " ")
-      .trim() || filename
-  );
-}
-
-export function buildContextAwareSuggestions(
-  documents: DocumentResponse[] = [],
-  dashboard?: DashboardResponse | null,
-  dueCards: FlashcardResponse[] = [],
-): SuggestionItem[] {
-  // If no documents and no due cards, return sensible default suggestions
-  if (documents.length === 0 && dueCards.length === 0) {
-    return [
-      {
-        icon: "doc",
-        cmd: "/summarize",
-        title: "Executive Summary",
-        desc: "Key concepts, arguments & core takeaways",
-        prompt: "Provide a clear summary of the core concepts, main arguments, and key takeaways from my uploaded study documents.",
-      },
-      {
-        icon: "help",
-        cmd: "/quiz",
-        title: "Active Recall Quiz",
-        desc: "Test retention with 5 tailored questions",
-        prompt: "Generate a 5-question active recall quiz based on the key concepts in my study materials, including answers and explanations.",
-      },
-      {
-        icon: "lightbulb",
-        cmd: "/explain",
-        title: "Explain with Analogies",
-        desc: "Break down complex topics simply",
-        prompt: "Explain the most complex and foundational concepts in my documents using simple language and memorable analogies.",
-      },
-      {
-        icon: "layers",
-        cmd: "/compare",
-        title: "Compare & Contrast",
-        desc: "Connect themes and contrast related ideas",
-        prompt: "Analyze the relationships, similarities, and contrasts between the major themes covered in these documents.",
-      },
-    ];
-  }
-
-  // Sort documents by created descending
-  const sortedDocs = [...documents].sort((a, b) => {
-    const timeA = new Date(a.created_at).getTime();
-    const timeB = new Date(b.created_at).getTime();
-    return timeB - timeA;
-  });
-
-  const doc1 = sortedDocs[0];
-  const doc2 = sortedDocs[1];
-  const doc1Title = cleanDocTitle(doc1?.original_filename);
-  const doc2Title = cleanDocTitle(doc2?.original_filename);
-
-  const weakTopics = dashboard?.topic_performance?.filter((t) => t.score < 75) || [];
-  const topWeakTopic = weakTopics[0]?.topic;
-
-  const suggestions: SuggestionItem[] = [];
-
-  // Card 1: Executive Summary (/summarize)
-  if (doc1) {
-    suggestions.push({
-      icon: "doc",
-      cmd: "/summarize",
-      title: "Executive Summary",
-      desc: `Core concepts & takeaways from "${doc1Title}"`,
-      prompt: `Provide a structured executive summary of "${doc1.original_filename}", outlining core concepts, key mechanisms, and main takeaways.`,
-    });
-  } else {
-    suggestions.push({
-      icon: "doc",
-      cmd: "/summarize",
-      title: "Executive Summary",
-      desc: "Key concepts, arguments & core takeaways",
-      prompt: "Provide a clear summary of the core concepts, main arguments, and key takeaways from my uploaded study documents.",
-    });
-  }
-
-  // Card 2: Compare & Contrast (/compare)
-  if (doc1 && doc2) {
-    suggestions.push({
-      icon: "layers",
-      cmd: "/compare",
-      title: "Compare & Contrast",
-      desc: `Compare "${doc1Title}" vs "${doc2Title}"`,
-      prompt: `Analyze the similarities, differences, and thematic connections between "${doc1.original_filename}" and "${doc2.original_filename}".`,
-    });
-  } else if (doc1) {
-    suggestions.push({
-      icon: "layers",
-      cmd: "/compare",
-      title: "Thematic Synthesis",
-      desc: `Cross-examine core models in "${doc1Title}"`,
-      prompt: `Analyze and contrast the different approaches, principles, and paradigms discussed in "${doc1.original_filename}".`,
-    });
-  } else {
-    suggestions.push({
-      icon: "layers",
-      cmd: "/compare",
-      title: "Compare & Contrast",
-      desc: "Connect themes and contrast related ideas",
-      prompt: "Analyze the relationships, similarities, and contrasts between the major themes covered in these documents.",
-    });
-  }
-
-  // Card 3: Active Recall Quiz (/quiz)
-  if (dueCards.length > 0) {
-    const targetCard = dueCards[0];
-    const cardTopic = targetCard.front?.slice(0, 32) || doc1Title;
-    suggestions.push({
-      icon: "help",
-      cmd: "/quiz",
-      title: "Active Recall Drill",
-      desc: `Strengthen ${dueCards.length} due items (${cardTopic}…)`,
-      prompt: `Generate a focused 5-question active recall drill based on my due flashcards, especially around ${cardTopic}, with detailed feedback for each answer.`,
-    });
-  } else if (topWeakTopic) {
-    suggestions.push({
-      icon: "help",
-      cmd: "/quiz",
-      title: "Active Recall Quiz",
-      desc: `Target knowledge gaps in ${topWeakTopic}`,
-      prompt: `Generate a 5-question diagnostic quiz focused on ${topWeakTopic} to test and solidify my understanding.`,
-    });
-  } else if (doc1) {
-    suggestions.push({
-      icon: "help",
-      cmd: "/quiz",
-      title: "Active Recall Quiz",
-      desc: `Test retention on "${doc1Title}" with 5 questions`,
-      prompt: `Generate a 5-question active recall quiz testing mastery of "${doc1.original_filename}", including answer explanations.`,
-    });
-  } else {
-    suggestions.push({
-      icon: "help",
-      cmd: "/quiz",
-      title: "Active Recall Quiz",
-      desc: "Test retention with 5 tailored questions",
-      prompt: "Generate a 5-question active recall quiz based on the key concepts in my study materials, including answers and explanations.",
-    });
-  }
-
-  // Card 4: Explain with Analogies (/explain)
-  if (topWeakTopic) {
-    suggestions.push({
-      icon: "lightbulb",
-      cmd: "/explain",
-      title: "Explain with Analogies",
-      desc: `Simplify tricky concepts in ${topWeakTopic}`,
-      prompt: `Explain the most confusing and foundational concepts in ${topWeakTopic} using memorable real-world analogies and intuitive step-by-step breakdown.`,
-    });
-  } else if (doc1) {
-    suggestions.push({
-      icon: "lightbulb",
-      cmd: "/explain",
-      title: "Explain with Analogies",
-      desc: `Deconstruct complex ideas in "${doc1Title}"`,
-      prompt: `Explain the foundational theories and complex mechanisms in "${doc1.original_filename}" using simple language and vivid analogies.`,
-    });
-  } else {
-    suggestions.push({
-      icon: "lightbulb",
-      cmd: "/explain",
-      title: "Explain with Analogies",
-      desc: "Break down complex topics simply",
-      prompt: "Explain the most complex and foundational concepts in my documents using simple language and memorable analogies.",
-    });
-  }
-
-  return suggestions;
-}
-
-function groupConversations(list: ConversationListItem[]) {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const yesterdayStart = todayStart - 86400000;
-  const sevenDaysStart = todayStart - 7 * 86400000;
-
-  const today: ConversationListItem[] = [];
-  const yesterday: ConversationListItem[] = [];
-  const previous7Days: ConversationListItem[] = [];
-  const earlier: ConversationListItem[] = [];
-
-  for (const item of list) {
-    const rawDate = item.updated_at || item.created_at;
-    const t = new Date(rawDate).getTime();
-    if (t >= todayStart) {
-      today.push(item);
-    } else if (t >= yesterdayStart) {
-      yesterday.push(item);
-    } else if (t >= sevenDaysStart) {
-      previous7Days.push(item);
-    } else {
-      earlier.push(item);
-    }
-  }
-
-  const groups: { label: string; items: ConversationListItem[] }[] = [];
-  if (today.length > 0) groups.push({ label: "Today", items: today });
-  if (yesterday.length > 0) groups.push({ label: "Yesterday", items: yesterday });
-  if (previous7Days.length > 0) groups.push({ label: "Previous 7 Days", items: previous7Days });
-  if (earlier.length > 0) groups.push({ label: "Earlier", items: earlier });
-  return groups;
-}
-
 export default function Chat() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -350,7 +131,6 @@ export default function Chat() {
   const [deleteConv, setDeleteConv] = useState<ConversationListItem | null>(null);
   const [convSearch, setConvSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [showFilter, setShowFilter] = useState(false);
   const [selectedModel, setSelectedModel] = useState("Synapse Hybrid RAG");
   const [showModelMenu, setShowModelMenu] = useState(false);
 
@@ -570,7 +350,7 @@ export default function Chat() {
   const voiceBaseInputRef = useRef<string>("");
 
   /** Confirm current voice input, stop listening and focus textarea */
-  const handleVoiceConfirm = () => {
+  const handleVoiceConfirm = useCallback(() => {
     confirmListening();
     setTimeout(() => {
       const ta = textareaRef.current;
@@ -579,10 +359,10 @@ export default function Chat() {
         ta.selectionStart = ta.selectionEnd = ta.value.length;
       }
     }, 50);
-  };
+  }, [confirmListening]);
 
   /** Cancel voice input, revert back to previous text and focus textarea */
-  const handleVoiceCancel = () => {
+  const handleVoiceCancel = useCallback(() => {
     cancelListening();
     setInput(voiceBaseInputRef.current);
     setTimeout(() => {
@@ -592,7 +372,7 @@ export default function Chat() {
         ta.selectionStart = ta.selectionEnd = ta.value.length;
       }
     }, 50);
-  };
+  }, [cancelListening]);
 
   /** Toggle mic on/off; feeds transcripts directly into the input state */
   const handleVoiceToggle = () => {
@@ -624,7 +404,7 @@ export default function Chat() {
     }
     window.addEventListener("keydown", handleVoiceKey);
     return () => window.removeEventListener("keydown", handleVoiceKey);
-  }, [isListening]);
+  }, [isListening, handleVoiceCancel, handleVoiceConfirm]);
   // ─────────────────────────────────────────────────────────────────────────
 
   // Close context menu on outside click or keyboard shortcut
@@ -678,9 +458,58 @@ export default function Chat() {
     };
   }, [showModelMenu]);
 
+  const loadConversations = useCallback(async () => {
+    try {
+      const list = await chatApi.listConversations();
+      setConversations(list);
+    } catch (err) {
+      toast(
+        "error",
+        "Couldn't load conversations",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
+    } finally {
+      setLoadingConv(false);
+    }
+  }, [toast]);
+
+  const openConversation = useCallback(async (id: string) => {
+    if (id.startsWith("temp-")) return;
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      setConversationsOpen(false);
+    }
+    shouldFollowLatestRef.current = true;
+    setActiveId(id);
+    if (unreadIds.has(id)) {
+      setUnreadIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        localStorage.setItem("synapse_unread_conversations", JSON.stringify(Array.from(next)));
+        return next;
+      });
+    }
+    try {
+      const detail = await chatApi.getConversation(id);
+      setMessages(
+        detail.messages.map((m) => ({
+          id: m.id,
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content,
+          sources: m.sources,
+        })),
+      );
+    } catch (err) {
+      toast(
+        "error",
+        "Couldn't open chat",
+        err instanceof ApiError ? err.message : "Please try again.",
+      );
+    }
+  }, [toast, unreadIds]);
+
   useEffect(() => {
     void loadConversations();
-  }, []);
+  }, [loadConversations]);
 
   useEffect(() => {
     const convParam = searchParams.get("conv");
@@ -702,7 +531,7 @@ export default function Chat() {
         textareaRef.current?.focus();
       }, 100);
     }
-  }, [searchParams]);
+  }, [searchParams, openConversation]);
 
   // Keep the latest exchange in view while someone is actively chatting, but
   // never pull readers away from earlier messages they have scrolled up to.
@@ -808,55 +637,6 @@ export default function Chat() {
       </div>
     );
   };
-
-  async function loadConversations() {
-    try {
-      const list = await chatApi.listConversations();
-      setConversations(list);
-    } catch (err) {
-      toast(
-        "error",
-        "Couldn't load conversations",
-        err instanceof ApiError ? err.message : "Please try again.",
-      );
-    } finally {
-      setLoadingConv(false);
-    }
-  }
-
-  async function openConversation(id: string) {
-    if (id.startsWith("temp-")) return;
-    if (typeof window !== "undefined" && window.innerWidth <= 768) {
-      setConversationsOpen(false);
-    }
-    shouldFollowLatestRef.current = true;
-    setActiveId(id);
-    if (unreadIds.has(id)) {
-      setUnreadIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        localStorage.setItem("synapse_unread_conversations", JSON.stringify(Array.from(next)));
-        return next;
-      });
-    }
-    try {
-      const detail = await chatApi.getConversation(id);
-      setMessages(
-        detail.messages.map((m) => ({
-          id: m.id,
-          role: m.role === "assistant" ? "assistant" : "user",
-          content: m.content,
-          sources: m.sources,
-        })),
-      );
-    } catch (err) {
-      toast(
-        "error",
-        "Couldn't open chat",
-        err instanceof ApiError ? err.message : "Please try again.",
-      );
-    }
-  }
 
   function startNew() {
     if (busy) return;
@@ -1107,11 +887,6 @@ export default function Chat() {
     }
   }
 
-  function sendChip(text: string) {
-    setInput(text);
-    setTimeout(() => void send(text), 0);
-  }
-
   const renderComposerContent = () => (
     <>
       {isListening ? (
@@ -1329,10 +1104,6 @@ export default function Chat() {
       )}
     </>
   );
-
-  const activeTitle = activeId
-    ? conversations.find((c) => c.id === activeId)?.title
-    : null;
 
   return (
     <>

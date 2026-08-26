@@ -453,8 +453,6 @@ export function DashboardNeuralGraph({
 
           {/* Nodes */}
           {filteredNodes.map((node, i) => {
-            const isHovered = hoveredNodeId === node.id;
-            const isLocked = lockedNodeId === node.id;
             const isLastActive = activeLinkNodeId === node.id;
             const isConnected =
               activeLinkNodeId !== null &&

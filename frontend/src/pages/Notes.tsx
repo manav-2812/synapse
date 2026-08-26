@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { studyApi } from "../api/study";
 import { ApiError } from "../api/client";
@@ -60,11 +60,7 @@ export default function Notes() {
   const [deleteNoteTarget, setDeleteNoteTarget] = useState<NoteResponse | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
-  useEffect(() => {
-    void load();
-  }, []);
-
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setNotes(await studyApi.listNotes());
     } catch (err) {
@@ -72,7 +68,11 @@ export default function Notes() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function create() {
     setBusy(true);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { authApi } from "../../api/auth";
-import { setPersistence, getRedirect, getToken } from "../../api/client";
+import { setPersistence, getToken } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import { getGoogleRedirectUri, startGoogleOAuth } from "../../utils/oauth";
 import { Icon } from "../../components/ui/Icon";

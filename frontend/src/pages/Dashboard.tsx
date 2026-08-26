@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyticsApi } from "../api/analytics";
 import { studyApi } from "../api/study";
@@ -217,12 +217,9 @@ export default function Dashboard() {
   const [quizzesList, setQuizzesList] = useState<QuizResponse[]>([]);
 
   // UI & interactive control states
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [_loading, setLoading] = useState(true);
+  const [_refreshing, setRefreshing] = useState(false);
   const [heatmapLoading, setHeatmapLoading] = useState(true);
-  const [folderMenuOpen, setFolderMenuOpen] = useState(false);
-
-  const folderMenuRef = useRef<HTMLDivElement>(null);
 
   // Fetch all live workspace data concurrently
   const loadDashboardData = useCallback(async (isSilent = false) => {
@@ -284,24 +281,12 @@ export default function Dashboard() {
     };
   }, [loadDashboardData]);
 
-  // Click outside listener for dropdowns
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (folderMenuRef.current && !folderMenuRef.current.contains(e.target as Node)) {
-        setFolderMenuOpen(false);
-      }
-    }
-    window.addEventListener("mousedown", handleClickOutside);
-    return () => window.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const s = data?.summary;
   const firstName = extractFirstName(user) || "there";
 
   const now = new Date();
   const hour = now.getHours();
   const timeBlock = getTimeBlockConfig(hour, firstName);
-  const part = timeBlock.part;
   const dateLabel = now.toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -310,34 +295,11 @@ export default function Dashboard() {
 
   const streak = s?.study_streak ?? 0;
 
-  // Real Counts
-  const realFolderCount = foldersList.length > 0 ? foldersList.length : (data?.recent_documents.length ? Math.min(12, data.recent_documents.length) : 1);
-  const realNotesCount = notesList.length > 0 ? notesList.length : (s?.documents_uploaded_count ? s.documents_uploaded_count * 2 : 0);
-  const realFlashcardsCount = flashcardsList.length > 0 ? flashcardsList.length : (s?.quizzes_taken_count ? s.quizzes_taken_count * 8 : 0);
   const dueFlashcardsCount = useMemo(() => {
     return flashcardsList.filter((f) => f.is_due).length;
   }, [flashcardsList]);
 
   const attemptedQuizzesCount = s?.quizzes_taken_count ?? 0;
-
-  // Real Subject / Category Extractor
-  const availableSubjects = useMemo(() => {
-    const subjects = new Set<string>();
-    foldersList.forEach((f) => subjects.add(f.name));
-    docsList.forEach((d) => {
-      const ext = d.original_filename.split(".").pop() || "";
-      if (d.original_filename.toLowerCase().includes("bio")) subjects.add("Biology");
-      if (d.original_filename.toLowerCase().includes("math")) subjects.add("Mathematics");
-      if (d.original_filename.toLowerCase().includes("cs") || ext === "py" || ext === "js") subjects.add("Computer Science");
-      if (d.original_filename.toLowerCase().includes("phys")) subjects.add("Physics");
-    });
-    if (subjects.size === 0) {
-      subjects.add("Biology");
-      subjects.add("Mathematics");
-      subjects.add("Computer Science");
-    }
-    return Array.from(subjects);
-  }, [foldersList, docsList]);
 
   // Real Goal Progress metrics calculations (100% computed from real DB data)
   const dueCardsCount = useMemo(() => {

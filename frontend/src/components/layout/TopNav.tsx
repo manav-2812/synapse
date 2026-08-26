@@ -32,10 +32,6 @@ export function TopNav({ title }: Props) {
     return () => { cancelled = true; };
   }, []);
 
-  function openCommandPalette() {
-    window.dispatchEvent(new CustomEvent("synapse:command-palette"));
-  }
-
   function closeAll() {
     setMenuOpen(false);
     setWorkspaceOpen(false);

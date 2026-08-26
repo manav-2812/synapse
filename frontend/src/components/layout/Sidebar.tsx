@@ -196,10 +196,6 @@ export function Sidebar({ collapsed, onToggle }: Props) {
     return () => window.removeEventListener("keydown", handler);
   }, [onToggle]);
 
-  function openCommandPalette() {
-    window.dispatchEvent(new CustomEvent("synapse:command-palette"));
-  }
-
   const initial = (user?.full_name || user?.email || "?").slice(0, 1).toUpperCase();
   const avatarSrc = user?.profile_image_url || null;
   const userSpaceTitle = user?.full_name

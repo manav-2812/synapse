@@ -40,7 +40,6 @@ import {
   HardDrive,
   Headphones,
   HelpCircle,
-  Home,
   Image as ImageIcon,
   Info,
   Keyboard,
@@ -69,10 +68,8 @@ import {
   NotebookPen,
   PanelLeft,
   PanelLeftClose,
-  PanelLeftOpen,
   Pause,
   Pencil,
-  Pin,
   Play,
   Plus,
   Printer,
@@ -103,7 +100,6 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
 // Custom diagonal pushpin icon matching reference design
 const CustomPin: React.FC<{ size?: number; className?: string }> = ({

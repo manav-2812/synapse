@@ -50,7 +50,7 @@ const MONTH_LABELS = [
 ];
 const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""];
 
-export function StudyHeatmap({ data, streak, loading }: Props) {
+export function StudyHeatmap({ data, streak: _streak, loading }: Props) {
   const [tooltip, setTooltip] = useState<{
     date: string;
     duration: string;

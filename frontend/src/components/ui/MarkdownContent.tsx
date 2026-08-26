@@ -192,7 +192,7 @@ function renderWithCitationPills(
 
 function sanitizeListChildren(children: ReactNode): ReactNode {
   const cleanStr = (str: string) =>
-    str.replace(/^[•⁃◦▪\s]+/, "").replace(/^(\d+[\.\)]|\([0-9a-zA-Z]+\))\s+/, "");
+    str.replace(/^[•⁃◦▪\s]+/, "").replace(/^(\d+[.)]|\([0-9a-zA-Z]+\))\s+/, "");
 
   if (typeof children === "string") {
     return cleanStr(children);
