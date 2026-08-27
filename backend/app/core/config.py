@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     openrouter_api_key: str = ""
     # Gemini model name — override via GEMINI_MODEL env var if the default changes.
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-2.5-flash"
 
     # CORS — restricted to known frontend origins (dev servers, vite preview
     # ports used by local `npm run preview` and the Playwright/Lighthouse audit
@@ -103,7 +103,7 @@ class Settings(BaseSettings):
     # LLM. This has API cost — keep OFF unless you have a provider key and
     # accept the spend. Gemini is preferred; Groq is used if no Gemini key.
     ocr_vision_fallback_enabled: bool = False
-    ocr_vision_model: str = "gemini-2.0-flash"
+    ocr_vision_model: str = "gemini-2.5-flash"
     ocr_vision_model_groq: str = "llama-3.2-11b-vision-preview"
     ocr_timeout_seconds: int = 60
 

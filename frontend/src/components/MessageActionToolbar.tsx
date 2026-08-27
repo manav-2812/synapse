@@ -214,16 +214,7 @@ export function MessageActionToolbar({
         </div>
       )}
 
-      {role === "user" && onEdit && (
-        <button
-          className="icon-btn action-btn"
-          title="Edit prompt"
-          aria-label="Edit prompt"
-          onClick={onEdit}
-        >
-          <Icon name="edit" size={13} />
-        </button>
-      )}
+
 
       <button
         className="icon-btn action-btn"

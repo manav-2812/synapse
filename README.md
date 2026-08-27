@@ -260,7 +260,7 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     Req["LLM request"] --> Groq["Groq<br/>openai/gpt-oss-120b"]
-    Groq -->|429 / 4xx / timeout| Gemini["Gemini<br/>gemini-2.0-flash"]
+    Groq -->|429 / 4xx / timeout| Gemini["Gemini<br/>gemini-2.5-flash"]
     Gemini -->|429 / 4xx / timeout| OpenRouter["OpenRouter<br/>openrouter/free"]
     OpenRouter -->|429 / 4xx / timeout| Nemotron["OpenRouter<br/>nemotron-3-ultra-550b:free"]
     Nemotron -->|429 / 4xx / timeout| Fail["503: all providers exhausted"]
@@ -349,7 +349,7 @@ flowchart LR
 | **Database** | PostgreSQL 16 + SQLAlchemy 2.0 (asyncpg) + Alembic | Relational data store with ownership boundaries & migrations |
 | **Vector Store** | ChromaDB 0.6.3 | Local persistent vector database (isolated per-user collections) |
 | **Embeddings** | Sentence-Transformers `all-MiniLM-L6-v2` | Fast, offline CPU-based 384-dimensional dense embeddings |
-| **LLM Tier** | Groq `gpt-oss-120b` → Gemini `2.0-flash` → OpenRouter | High-speed primary inference with resilient fallback chains |
+| **LLM Tier** | Groq `gpt-oss-120b` → Gemini `2.5-flash` → OpenRouter | High-speed primary inference with resilient fallback chains |
 | **Keyword Search** | `rank_bm25` | Sparse keyword retrieval for hybrid search blending |
 | **Query Correction** | `rapidfuzz` | High-speed fuzzy string matching and typo correction |
 | **Web Grounding** | Tavily Search API | Live internet search fallback for ungrounded queries |

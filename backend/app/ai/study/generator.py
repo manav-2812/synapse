@@ -53,7 +53,7 @@ async def generate_title(user_message: str, assistant_message: str) -> str:
     )
     # Use the existing singleton clients — no new instantiation needed.
     try:
-        raw = await groq_client.complete_structured(system, user)
+        raw = await groq_client.complete(system, user)
         raw = strip_think_block(raw).strip()
         if raw:
             return raw[:120]
