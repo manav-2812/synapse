@@ -43,6 +43,8 @@ jobs:
       PYTHONUNBUFFERED: "1"
       # Cache the embedding model (all-MiniLM-L6-v2) across runs.
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     defaults:
       run:
@@ -142,6 +144,8 @@ jobs:
       PYTHONUNBUFFERED: "1"
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
       CI: "true"
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     steps:
       - name: Checkout
