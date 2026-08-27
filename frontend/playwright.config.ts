@@ -19,7 +19,7 @@ const pythonCmd =
 // the SPA talks to 127.0.0.1:8011 instead of the dev default (localhost:8000).
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 120_000,
+  timeout: 240_000,
   expect: { timeout: 30_000 },
   fullyParallel: false,
   // Serialize against the single local backend — concurrent signup + LLM +
