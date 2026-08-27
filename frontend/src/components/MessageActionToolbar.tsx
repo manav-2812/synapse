@@ -8,7 +8,6 @@ interface MessageActionToolbarProps {
   role: "user" | "assistant";
   content: string;
   scopeIds: string[];
-  onEdit?: () => void;
   onDelete: () => void;
   onRegenerate?: () => void;
 }
@@ -17,7 +16,6 @@ export function MessageActionToolbar({
   role,
   content,
   scopeIds,
-  onEdit,
   onDelete,
   onRegenerate,
 }: MessageActionToolbarProps) {

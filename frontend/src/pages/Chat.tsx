@@ -823,10 +823,6 @@ export default function Chat() {
     }
   }
 
-  function beginEditMsg(m: ChatMessage) {
-    setEditingMsg(m.id);
-    setMsgDraft(m.content);
-  }
 
   async function commitEditMsg(m: ChatMessage) {
     if (!m.id || !activeId) return;
@@ -1668,7 +1664,6 @@ export default function Chat() {
                             role={m.role}
                             content={m.content}
                             scopeIds={scopeIds}
-                            onEdit={m.role === "user" ? () => beginEditMsg(m) : undefined}
                             onDelete={() => void removeMsg(m)}
                             onRegenerate={m.role === "assistant" ? () => regenerateAssistantMessage(idx) : undefined}
                           />
