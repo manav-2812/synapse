@@ -22,6 +22,11 @@ _MAX_TOKENS = 2048
 # detail", multi-part questions — not applied to every query so normal chat
 # stays fast and stays under Groq's free-tier TPM ceiling.
 _MAX_TOKENS_LONG = 4096
+# Larger budget for structured JSON generation: reasoning tokens eat into the
+# fixed max_tokens window, so we reserve more headroom here.  This constant is
+# intentionally separate from _MAX_TOKENS so complete() / stream() are
+# unaffected.
+_STRUCTURED_MAX_TOKENS = 4096
 _TEMPERATURE = 0.3
 
 # Shorter timeout for streaming/primary use so the fallback chain kicks in fast
@@ -109,9 +114,20 @@ async def complete(system: str, user: str, max_tokens: int | None = None) -> str
 
 
 async def complete_structured(system: str, user: str, max_tokens: int | None = None) -> str:
-    """Completion for structured JSON generation (quiz / flashcards / notes)."""
+    """Completion for structured JSON generation (quiz / flashcards / notes).
+
+    Differences from complete():
+    - Uses _STRUCTURED_MAX_TOKENS (4096) as default to give the JSON payload
+      more headroom after the model's reasoning tokens are consumed.
+    - response_format=json_object: constrains Groq to emit syntactically valid
+      JSON, eliminating prose wrappers that trip the extract_json parser.
+    - extra_body reasoning_effort="low": reduces the reasoning-token overhead so
+      the majority of the token budget reaches the actual JSON output.
+      (reasoning_effort is not a first-class groq-sdk 0.12.0 param, so it is
+      forwarded via extra_body as the SDK docs prescribe for unsupported fields.)
+    """
     client = _get_complete_client()
-    tokens = max_tokens if max_tokens is not None else _MAX_TOKENS
+    tokens = max_tokens if max_tokens is not None else _STRUCTURED_MAX_TOKENS
     for model in (_STRUCTURED_MODEL, _MODEL):
         try:
             resp = await client.chat.completions.create(
@@ -119,6 +135,8 @@ async def complete_structured(system: str, user: str, max_tokens: int | None = N
                 messages=_messages(system, user),
                 temperature=_TEMPERATURE,
                 max_tokens=tokens,
+                response_format={"type": "json_object"},
+                extra_body={"reasoning_effort": "low"},
             )
             return strip_think_block(resp.choices[0].message.content or "")
         except Exception as e:
