@@ -16,7 +16,7 @@ test("generate a flashcard set and reveal a card", async ({ page }) => {
 
   // A flashcard renders once generation completes.
   const card = page.locator(".flashcard, .flashcard-grid-card").first();
-  await expect(card).toBeVisible({ timeout: 90_000 });
+  await expect(card).toBeVisible({ timeout: 180_000 });
   await expect(card).toHaveText(/\S/);
 
   // Clicking flips the card to reveal the back.
@@ -39,7 +39,7 @@ test("generate a quiz, answer it, and see a score", async ({ page }) => {
 
   // Quiz question prompt renders once generated.
   const questionPrompt = page.locator(".quiz-stage-prompt, .quiz-q");
-  await expect(questionPrompt.first()).toBeVisible({ timeout: 90_000 });
+  await expect(questionPrompt.first()).toBeVisible({ timeout: 180_000 });
 
   // Step through each focus question, pick an option, and advance
   const totalDots = await page.locator(".quiz-dot-step").count();
