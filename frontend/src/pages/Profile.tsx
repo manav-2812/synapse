@@ -17,7 +17,7 @@ const GOAL_PRESETS = [15, 30, 45, 60, 90, 120];
 const SLIDER_TICKS = [0, 30, 60, 90, 120, 180];
 
 export default function Profile() {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, refreshUser, logout, clearLocalSession } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const { toast } = useToast();
 
@@ -62,6 +62,7 @@ export default function Profile() {
     setDeleteAccountBusy(true);
     try {
       await authApi.deleteAccount();
+      clearLocalSession();
       toast("success", "Account deleted", "Your account and all associated data have been permanently erased.");
       navigate("/signup");
     } catch (err: any) {

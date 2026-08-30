@@ -29,6 +29,7 @@ interface AuthState {
   ) => Promise<SignupResponse>;
   verifyEmail: (token: string) => Promise<void>;
   logout: () => Promise<void>;
+  clearLocalSession: () => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -128,17 +129,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(await authApi.me());
   }, []);
 
+  const clearLocalSession = useCallback(() => {
+    clearTokens();
+    setUser(null);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
     } catch {
       // Handled gracefully: even if the server is unreachable or returns 500, local session must be terminated
     } finally {
-      clearTokens();
-      setUser(null);
+      clearLocalSession();
       navigate("/login");
     }
-  }, [navigate]);
+  }, [navigate, clearLocalSession]);
 
   const refreshUser = useCallback(async () => {
     try {
@@ -151,7 +156,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, loginWithPasskey, signup, verifyEmail, logout, refreshUser }}
+      value={{
+        user,
+        loading,
+        login,
+        loginWithPasskey,
+        signup,
+        verifyEmail,
+        logout,
+        clearLocalSession,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>
