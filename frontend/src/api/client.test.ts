@@ -75,6 +75,37 @@ describe("api client request()", () => {
     expect(getRefresh()).toBeNull();
   });
 
+  it("deduplicates concurrent 401 refreshes to a single /auth/refresh call", async () => {
+    const newAccess = "single.flight.access";
+    let refreshCalls = 0;
+
+    const fetchMock = vi.fn().mockImplementation(async (url: string, init?: { headers?: Record<string, string> }) => {
+      if (url.includes("/auth/refresh")) {
+        refreshCalls++;
+        await new Promise((r) => setTimeout(r, 10));
+        return jsonResponse({ access_token: newAccess, refresh_token: "new.refresh" }, 200);
+      }
+      if (init?.headers?.Authorization === `Bearer ${newAccess}`) {
+        return jsonResponse({ ok: true }, 200);
+      }
+      // initial calls with old token return 401
+      return jsonResponse({ detail: "expired" }, 401);
+    });
+
+    setTokens("old.access", "old.refresh");
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Trigger two requests concurrently
+    const [res1, res2] = await Promise.all([
+      request<{ ok: boolean }>("/parallel-1"),
+      request<{ ok: boolean }>("/parallel-2"),
+    ]);
+
+    expect(res1).toEqual({ ok: true });
+    expect(res2).toEqual({ ok: true });
+    expect(refreshCalls).toBe(1);
+  });
+
   it("reads the backend's {error:{message}} shape (not just detail)", async () => {
     const fetchMock = vi
       .fn()

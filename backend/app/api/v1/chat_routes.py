@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.core.database import AsyncSessionLocal
+from app.core.exceptions import parse_uuid
 from app.core.limiter import limiter
 from app.repositories.document_repository import DocumentRepository
 from app.schemas.chat_schema import (
@@ -59,7 +60,7 @@ async def get_conversation(
     session: AsyncSession = Depends(get_db),
 ):
     svc = ChatService(session)
-    conv = await svc.get_conversation(uuid.UUID(conversation_id), current_user.id)
+    conv = await svc.get_conversation(parse_uuid(conversation_id, "conversation_id"), current_user.id)
 
     # Resolve document names for citation chips.
     doc_names: dict[uuid.UUID, str] = {}
@@ -102,7 +103,7 @@ async def delete_conversation(
     session: AsyncSession = Depends(get_db),
 ):
     svc = ChatService(session)
-    await svc.delete_conversation(uuid.UUID(conversation_id), current_user.id)
+    await svc.delete_conversation(parse_uuid(conversation_id, "conversation_id"), current_user.id)
     return {"message": "Conversation deleted."}
 
 
@@ -114,7 +115,9 @@ async def rename_conversation(
     session: AsyncSession = Depends(get_db),
 ):
     svc = ChatService(session)
-    conv = await svc.rename_conversation(uuid.UUID(conversation_id), current_user.id, payload.title)
+    conv = await svc.rename_conversation(
+        parse_uuid(conversation_id, "conversation_id"), current_user.id, payload.title
+    )
     return ConversationDetail(
         id=str(conv.id),
         title=conv.title,
@@ -136,7 +139,9 @@ async def delete_message(
 ):
     svc = ChatService(session)
     await svc.delete_message(
-        uuid.UUID(conversation_id), uuid.UUID(message_id), current_user.id
+        parse_uuid(conversation_id, "conversation_id"),
+        parse_uuid(message_id, "message_id"),
+        current_user.id,
     )
     return {"message": "Message deleted."}
 
@@ -154,7 +159,10 @@ async def update_message(
 ):
     svc = ChatService(session)
     msg = await svc.update_message(
-        uuid.UUID(conversation_id), uuid.UUID(message_id), current_user.id, payload.content
+        parse_uuid(conversation_id, "conversation_id"),
+        parse_uuid(message_id, "message_id"),
+        current_user.id,
+        payload.content,
     )
     return MessageResponse(
         id=str(msg.id),

@@ -76,3 +76,26 @@ async def upload_avatar(
     user = await service.set_avatar(current_user.id, f"{settings.app_base_url}/avatars/{name}")
     await session.commit()
     return user
+
+
+@router.get("/me/export")
+async def export_me(
+    current_user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Download full GDPR / CCPA workspace JSON data archive."""
+    service = UserService(session)
+    return await service.export_data(current_user.id)
+
+
+@router.delete("/me", status_code=status.HTTP_200_OK)
+async def delete_me(
+    current_user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Permanently delete account, physical documents, vector collections, and all associated data."""
+    service = UserService(session)
+    await service.delete_account(current_user.id)
+    await session.commit()
+    return {"message": "Account and all associated data permanently deleted.", "deleted": True}
+

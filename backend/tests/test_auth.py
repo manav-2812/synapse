@@ -19,6 +19,17 @@ async def test_login_wrong_password(client, registered_user):
         json={"email": registered_user["email"], "password": "wrong-password"},
     )
     assert r.status_code == 401
+    assert r.json()["error"]["message"] == "Invalid email or password."
+
+
+async def test_login_nonexistent_user(client):
+    """Timing mitigation test: nonexistent user returns same 401 error."""
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "nonexistent_random_user@synapse-study.com", "password": "wrong-password"},
+    )
+    assert r.status_code == 401
+    assert r.json()["error"]["message"] == "Invalid email or password."
 
 
 async def test_duplicate_email_rejected(client, registered_user):

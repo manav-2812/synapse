@@ -12,6 +12,7 @@ import { authenticateWithPasskey } from "../api/passkey";
 import {
   clearTokens,
   getToken,
+  refreshTokens,
   setUnauthorizedHandler,
 } from "../api/client";
 import type { SignupResponse, UserMeResponse } from "../types/api";
@@ -70,6 +71,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [navigate]);
 
+  // Proactive background session refresh & tab visibility synchronization
+  useEffect(() => {
+    if (!user) return;
+
+    // Refresh every 15 minutes while the app is running
+    const interval = setInterval(async () => {
+      try {
+        await refreshTokens();
+      } catch {
+        // Handled silently; on-demand interceptor will handle when needed
+      }
+    }, 15 * 60 * 1000);
+
+    const handleVisibility = async () => {
+      if (document.visibilityState === "visible") {
+        try {
+          await refreshTokens();
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [user]);
+
   const login = useCallback(async (email: string, password: string) => {
     await authApi.login({ email, password });
     setUser(await authApi.me());
@@ -97,9 +129,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await authApi.logout();
-    setUser(null);
-    navigate("/login");
+    try {
+      await authApi.logout();
+    } catch {
+      // Handled gracefully: even if the server is unreachable or returns 500, local session must be terminated
+    } finally {
+      clearTokens();
+      setUser(null);
+      navigate("/login");
+    }
   }, [navigate]);
 
   const refreshUser = useCallback(async () => {

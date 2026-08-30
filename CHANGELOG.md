@@ -6,7 +6,7 @@ polish pass, and a final audit/hardening/deploy-readiness pass.
 
 ## [Unreleased] — Final audit, hardening & deploy-readiness
 
-- **Backend regression audit**: full `pytest` suite green (46 passed, 0
+- **Backend regression audit**: full `pytest` suite green (62 passed, 0
   failures, 0 warnings) on Python 3.11.9 against real Postgres + Chroma +
   `all-MiniLM-L6-v2` embeddings.
 - **Live feature verification**: manual end-to-end walkthrough confirms the

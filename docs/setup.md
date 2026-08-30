@@ -100,12 +100,12 @@ npm run lint       # oxlint
 ```bash
 # Backend (Python 3.11 venv)
 cd backend
-pytest            # 23 tests: auth, pipeline, retrieval, retrieval-metrics, quiz scoring, contract
+pytest            # 62 tests: auth, pipeline, retrieval, grounding, query correction, quiz scoring, contract
 pytest -q         # quiet
 
 # Frontend (Vitest unit/component + Playwright e2e)
 cd frontend
-npm test          # Vitest unit/component tests (api client, hooks, ui primitives)
+npm test          # 51 Vitest unit/component tests (api client, hooks, ui primitives)
 npm run test:e2e  # Playwright end-to-end against the real backend+frontend stack
 ```
 
@@ -153,7 +153,10 @@ Data (chroma + uploads + postgres) persists in mounted volumes under
 3. Set **secret** env vars in the dashboard (never commit them):
    - `JWT_SECRET_KEY` (≥32 random chars)
    - `GROQ_API_KEY`, `GEMINI_API_KEY`
+   - `OPENROUTER_API_KEY` (optional 3rd LLM fallback tier)
+   - `TAVILY_API_KEY` (optional web search fallback key)
    - `ALLOWED_ORIGINS` = your Vercel URL
+   - `APP_BASE_URL` = your Render API URL (e.g. `https://synapse-api.onrender.com`)
 4. First deploy runs migrations automatically, then serves on `$PORT`.
 
 ---
@@ -170,6 +173,9 @@ Data (chroma + uploads + postgres) persists in mounted volumes under
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | rotating refresh TTL |
 | `GROQ_API_KEY` | `gsk_...` | primary LLM |
 | `GEMINI_API_KEY` | `...` | fallback LLM |
+| `OPENROUTER_API_KEY` | `sk-or-...` | optional tertiary fallback LLM |
+| `TAVILY_API_KEY` | `tvly-...` | optional web-search fallback |
+| `APP_BASE_URL` | `https://synapse-api.onrender.com` | public backend URL for avatar assets |
 | `ALLOWED_ORIGINS` | `http://localhost:5173,https://app.vercel.app` | comma-separated |
 | `APP_ENV` | `development` \| `production` | `production` disables dev-only behavior |
 | `MAX_UPLOAD_SIZE_MB` | `50` | guardrail |

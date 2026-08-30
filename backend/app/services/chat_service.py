@@ -15,7 +15,7 @@ from app.ai.llm.groq_client import _MAX_TOKENS_LONG as _LONG_TOKEN_BUDGET
 from app.ai.study.generator import generate_title
 from app.core.config import settings
 from app.core.constants import MessageRole
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, ValidationError, parse_optional_uuid, parse_uuid
 from app.core.logger import get_logger
 from app.core.database import AsyncSessionLocal
 from app.models.conversation import AnswerSource, Conversation, Message
@@ -87,7 +87,7 @@ class ChatService:
         first_message = False
         if payload.conversation_id:
             conv = await self.repo.get_with_messages(
-                uuid.UUID(payload.conversation_id), user_id
+                parse_uuid(payload.conversation_id, "conversation_id"), user_id
             )
             if conv is None:
                 raise NotFoundError("Conversation not found.")

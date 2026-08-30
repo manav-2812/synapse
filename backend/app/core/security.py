@@ -15,6 +15,11 @@ VERIFICATION_TOKEN_TYPE = "verify_email"
 
 
 
+# Precomputed dummy bcrypt hash (cost 12) used for constant-time password verification
+# when an email is not found, eliminating user enumeration via timing side-channels.
+DUMMY_PASSWORD_HASH = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj43B689849."
+
+
 def hash_password(password: str) -> str:
     """Return a bcrypt hash of the plaintext password.
 
@@ -125,6 +130,7 @@ def validate_password_bytes(password: str) -> None:
 
 
 __all__ = [
+    "DUMMY_PASSWORD_HASH",
     "hash_password",
     "verify_password",
     "validate_password_bytes",

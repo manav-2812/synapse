@@ -107,4 +107,14 @@ export const authApi = {
       clearTokens();
     }
   },
+  async exportData(): Promise<Record<string, unknown>> {
+    return request<Record<string, unknown>>("/users/me/export");
+  },
+  async deleteAccount(): Promise<{ message: string; deleted: boolean }> {
+    const res = await request<{ message: string; deleted: boolean }>("/users/me", {
+      method: "DELETE",
+    });
+    clearTokens();
+    return res;
+  },
 };

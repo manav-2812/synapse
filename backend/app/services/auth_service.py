@@ -13,6 +13,7 @@ from app.core.exceptions import BadRequestError, ConflictError, ForbiddenError, 
 from app.core.logger import get_logger
 from app.core.security import (
     ACCESS_TOKEN_TYPE,
+    DUMMY_PASSWORD_HASH,
     REFRESH_TOKEN_TYPE,
     RESET_TOKEN_TYPE,
     VERIFICATION_TOKEN_TYPE,
@@ -161,7 +162,11 @@ class AuthService:
                 user.failed_login_count = 0
                 await self.repo.update(user)
 
-        if not user or not verify_password(payload.password, user.password_hash):
+        # Always run bcrypt verify_password against real or dummy hash to prevent user enumeration timing attacks
+        target_hash = user.password_hash if user else DUMMY_PASSWORD_HASH
+        password_valid = verify_password(payload.password, target_hash)
+
+        if not user or not password_valid:
             # Increment failure counter if the user exists
             if user:
                 user.failed_login_count = (user.failed_login_count or 0) + 1

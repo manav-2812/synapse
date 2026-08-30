@@ -13,7 +13,13 @@ from app.ai.study.prompts import (
 )
 from app.core.constants import Difficulty, NoteType, QuestionType
 from app.core.config import settings
-from app.core.exceptions import NotFoundError, ProcessingError, ValidationError
+from app.core.exceptions import (
+    NotFoundError,
+    ProcessingError,
+    ValidationError,
+    parse_optional_uuid,
+    parse_uuid,
+)
 from app.core.logger import get_logger
 from app.models.study import Flashcard, GeneratedNote, Question, Quiz
 from app.repositories.study_activity_repository import StudyActivityRepository
@@ -131,7 +137,7 @@ class StudyService:
             raise ValidationError("Model did not return any flashcards.")
         # Only link to a specific document when the scope is exactly one document;
         # with multiple documents in scope there's no correct single document_id.
-        doc_id = uuid.UUID(scope[0]) if scope and len(scope) == 1 else None
+        doc_id = parse_optional_uuid(scope[0], "document_scope") if scope and len(scope) == 1 else None
         from app.ai.study.sm2 import DEFAULT_EASE_FACTOR, due_date_from
 
         cards = [
@@ -178,7 +184,10 @@ class StudyService:
         from app.models.study import Flashcard
 
         res = await self.session.execute(
-            select(Flashcard).where(Flashcard.id == uuid.UUID(card_id), Flashcard.user_id == user_id)
+            select(Flashcard).where(
+                Flashcard.id == parse_uuid(card_id, "card_id"),
+                Flashcard.user_id == user_id,
+            )
         )
         card = res.scalar_one_or_none()
         if card is None:
@@ -202,7 +211,7 @@ class StudyService:
 
     # --- Quiz scoring ---
     async def submit_quiz(self, user_id: uuid.UUID, quiz_id: str, answers: list[str]):
-        quiz = await self.repo.get_quiz(uuid.UUID(quiz_id), user_id)
+        quiz = await self.repo.get_quiz(parse_uuid(quiz_id, "quiz_id"), user_id)
         if quiz is None:
             raise NotFoundError("Quiz not found.")
         questions = quiz.questions
@@ -245,7 +254,7 @@ class StudyService:
         return await self.repo.list_notes(user_id)
 
     async def get_note(self, note_id: str, user_id: uuid.UUID) -> GeneratedNote:
-        note = await self.repo.get_note(uuid.UUID(note_id), user_id)
+        note = await self.repo.get_note(parse_uuid(note_id, "note_id"), user_id)
         if note is None:
             raise NotFoundError("Note not found.")
         return note
@@ -254,7 +263,7 @@ class StudyService:
         return await self.repo.list_quizzes(user_id)
 
     async def get_quiz(self, quiz_id: str, user_id: uuid.UUID):
-        quiz = await self.repo.get_quiz(uuid.UUID(quiz_id), user_id)
+        quiz = await self.repo.get_quiz(parse_uuid(quiz_id, "quiz_id"), user_id)
         if quiz is None:
             raise NotFoundError("Quiz not found.")
         return quiz
@@ -263,7 +272,7 @@ class StudyService:
         return await self.repo.list_flashcards(user_id)
 
     async def delete_note(self, note_id: str, user_id: uuid.UUID) -> None:
-        note = await self.repo.get_note(uuid.UUID(note_id), user_id)
+        note = await self.repo.get_note(parse_uuid(note_id, "note_id"), user_id)
         if note is None:
             raise NotFoundError("Note not found.")
         await self.repo.delete_note(note)
@@ -272,20 +281,20 @@ class StudyService:
     async def update_note(
         self, note_id: str, user_id: uuid.UUID, title: str | None, content: str | None
     ) -> GeneratedNote:
-        note = await self.repo.get_note(uuid.UUID(note_id), user_id)
+        note = await self.repo.get_note(parse_uuid(note_id, "note_id"), user_id)
         if note is None:
             raise NotFoundError("Note not found.")
         return await self.repo.update_note(note, title, content)
 
     async def delete_quiz(self, quiz_id: str, user_id: uuid.UUID) -> None:
-        quiz = await self.repo.get_quiz(uuid.UUID(quiz_id), user_id)
+        quiz = await self.repo.get_quiz(parse_uuid(quiz_id, "quiz_id"), user_id)
         if quiz is None:
             raise NotFoundError("Quiz not found.")
         await self.repo.delete_quiz(quiz)
         await self.session.commit()
 
     async def update_quiz(self, quiz_id: str, user_id: uuid.UUID, title: str | None) -> Quiz:
-        quiz = await self.repo.get_quiz(uuid.UUID(quiz_id), user_id)
+        quiz = await self.repo.get_quiz(parse_uuid(quiz_id, "quiz_id"), user_id)
         if quiz is None:
             raise NotFoundError("Quiz not found.")
         return await self.repo.update_quiz(quiz, title)
@@ -296,7 +305,10 @@ class StudyService:
         from app.models.study import Flashcard
 
         res = await self.session.execute(
-            select(Flashcard).where(Flashcard.id == uuid.UUID(card_id), Flashcard.user_id == user_id)
+            select(Flashcard).where(
+                Flashcard.id == parse_uuid(card_id, "card_id"),
+                Flashcard.user_id == user_id,
+            )
         )
         card = res.scalar_one_or_none()
         if card is None:
@@ -312,7 +324,10 @@ class StudyService:
         from app.models.study import Flashcard
 
         res = await self.session.execute(
-            select(Flashcard).where(Flashcard.id == uuid.UUID(card_id), Flashcard.user_id == user_id)
+            select(Flashcard).where(
+                Flashcard.id == parse_uuid(card_id, "card_id"),
+                Flashcard.user_id == user_id,
+            )
         )
         card = res.scalar_one_or_none()
         if card is None:

@@ -272,3 +272,52 @@ async def test_signup_requires_email_verification_before_login(client):
     assert "access_token" in r_login.json()
 
 
+async def test_invalid_uuid_returns_400_clean_error(client, registered_user):
+    """Passing an invalid UUID returns a clean 400 Bad Request instead of unhandled 500."""
+    headers = registered_user["headers"]
+
+    r_chat = await client.get("/api/v1/chat/conversations/not-a-uuid", headers=headers)
+    assert r_chat.status_code == 400, r_chat.text
+    body_chat = r_chat.json()
+    assert "error" in body_chat
+    assert body_chat["error"]["code"] == "bad_request"
+    assert "Invalid UUID" in body_chat["error"]["message"]
+
+    r_doc = await client.get("/api/v1/documents/not-a-uuid", headers=headers)
+    assert r_doc.status_code == 400, r_doc.text
+    body_doc = r_doc.json()
+    assert "error" in body_doc
+    assert body_doc["error"]["code"] == "bad_request"
+    assert "Invalid UUID" in body_doc["error"]["message"]
+
+
+async def test_gdpr_export_and_account_deletion(client, registered_user):
+    """GET /users/me/export downloads GDPR archive, DELETE /users/me permanently deletes user."""
+    headers = registered_user["headers"]
+
+    # 1. Test GDPR export
+    r_export = await client.get("/api/v1/users/me/export", headers=headers)
+    assert r_export.status_code == 200, r_export.text
+    data = r_export.json()
+    assert data["format"] == "synapse-gdpr-export-v1"
+    assert "user" in data
+    assert data["user"]["email"] == registered_user["email"]
+    assert "folders" in data
+    assert "documents" in data
+    assert "conversations" in data
+    assert "study_notes" in data
+    assert "quizzes" in data
+    assert "flashcards" in data
+
+    # 2. Test Right to Erasure / Account Deletion
+    r_del = await client.delete("/api/v1/users/me", headers=headers)
+    assert r_del.status_code == 200, r_del.text
+    assert r_del.json().get("deleted") is True
+
+    # 3. Subsequent authenticated requests fail
+    r_me = await client.get("/api/v1/users/me", headers=headers)
+    assert r_me.status_code == 401
+
+
+
+

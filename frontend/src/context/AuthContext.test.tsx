@@ -19,12 +19,13 @@ vi.mock("../api/auth", () => ({
 import { authApi } from "../api/auth";
 
 function Probe() {
-  const { user, loading, login } = useAuth();
+  const { user, loading, login, logout } = useAuth();
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="user">{user ? user.email : "none"}</span>
       <button onClick={() => login("a@b.com", "pw")}>login</button>
+      <button onClick={() => logout()}>logout</button>
     </div>
   );
 }
@@ -72,5 +73,38 @@ describe("AuthContext / useAuth", () => {
     );
     expect(authApi.login).toHaveBeenCalledWith({ email: "a@b.com", password: "pw" });
     expect(authApi.me).toHaveBeenCalled();
+  });
+
+  it("logout() clears user state even when authApi.logout() fails or throws network error", async () => {
+    (authApi.login as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      access_token: "a",
+      refresh_token: "r",
+    });
+    (authApi.me as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "u1",
+      email: "a@b.com",
+    });
+    (authApi.logout as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("Network Error / Server Offline")
+    );
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("login"));
+    await waitFor(() =>
+      expect(screen.getByTestId("user").textContent).toBe("a@b.com"),
+    );
+
+    fireEvent.click(screen.getByText("logout"));
+    await waitFor(() =>
+      expect(screen.getByTestId("user").textContent).toBe("none"),
+    );
+    expect(authApi.logout).toHaveBeenCalled();
   });
 });

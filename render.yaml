@@ -30,6 +30,12 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false          # Optional 3rd LLM fallback tier
+      - key: TAVILY_API_KEY
+        sync: false          # Web search fallback key
+      - key: APP_BASE_URL
+        value: https://synapse-api.onrender.com  # Update if using a custom domain or different service name
       - key: FRONTEND_BASE_URL
         value: https://synapse.vercel.app
       - key: ALLOWED_ORIGINS

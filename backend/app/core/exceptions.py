@@ -1,7 +1,11 @@
 """Custom application exceptions and FastAPI error handlers."""
+import uuid
+from typing import Any
+
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logger import get_logger
 
@@ -44,6 +48,30 @@ def _error_body(message: str, code: str) -> dict:
     return {"error": {"message": message, "code": code}}
 
 
+def parse_uuid(val: Any, name: str = "id") -> uuid.UUID:
+    """Parse a string to uuid.UUID or raise BadRequestError with a clean message."""
+    if not val:
+        raise BadRequestError(f"Missing required identifier '{name}'.")
+    if isinstance(val, uuid.UUID):
+        return val
+    try:
+        return uuid.UUID(str(val))
+    except (ValueError, TypeError, AttributeError):
+        raise BadRequestError(f"Invalid UUID format for '{name}': '{val}'.")
+
+
+def parse_optional_uuid(val: Any, name: str = "id") -> uuid.UUID | None:
+    """Parse an optional string to uuid.UUID or raise BadRequestError if provided and invalid."""
+    if not val:
+        return None
+    if isinstance(val, uuid.UUID):
+        return val
+    try:
+        return uuid.UUID(str(val))
+    except (ValueError, TypeError, AttributeError):
+        raise BadRequestError(f"Invalid UUID format for '{name}': '{val}'.")
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Attach global handlers so raw tracebacks never reach the client."""
 
@@ -68,9 +96,9 @@ def register_exception_handlers(app: FastAPI) -> None:
             )
         if isinstance(exc, BadRequestError):
             return JSONResponse(
-                 status_code=status.HTTP_400_BAD_REQUEST,
-                 content=_error_body(str(exc) or "Bad request", "bad_request"),
-             )
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=_error_body(str(exc) or "Bad request", "bad_request"),
+            )
         if isinstance(exc, UnauthorizedError):
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -103,4 +131,20 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=_error_body("Invalid request payload", "validation_error"),
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def handle_http_exception(_: Request, exc: StarletteHTTPException):
+        code = "not_found" if exc.status_code == status.HTTP_404_NOT_FOUND else "http_error"
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_error_body(exc.detail if exc.detail else "HTTP Error", code),
+        )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected(_: Request, exc: Exception):
+        log.error("unhandled_exception", error=str(exc), exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=_error_body("An unexpected internal error occurred.", "internal_server_error"),
         )

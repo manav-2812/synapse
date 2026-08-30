@@ -91,6 +91,7 @@ async def verify_email(
 
 
 @router.post("/resend-verification", status_code=status.HTTP_200_OK)
+@router.post("/resend-code", status_code=status.HTTP_200_OK, include_in_schema=False)
 @limiter.limit("3/minute")
 async def resend_verification(
     request: Request,

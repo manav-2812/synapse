@@ -5,6 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, Up
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.exceptions import parse_optional_uuid, parse_uuid
 from app.core.limiter import limiter
 from app.schemas.document_schema import (
     DocumentResponse,
@@ -27,7 +28,9 @@ async def upload_document(
     session: AsyncSession = Depends(get_db),
 ):
     svc = DocumentService(session)
-    doc = await svc.upload(file, current_user.id, uuid.UUID(folder_id) if folder_id else None, background)
+    doc = await svc.upload(
+        file, current_user.id, parse_optional_uuid(folder_id, "folder_id"), background
+    )
     await session.commit()
     return doc
 
@@ -39,7 +42,9 @@ async def list_documents(
     session: AsyncSession = Depends(get_db),
 ):
     svc = DocumentService(session)
-    return await svc.list_documents(current_user.id, uuid.UUID(folder_id) if folder_id else None)
+    return await svc.list_documents(
+        current_user.id, parse_optional_uuid(folder_id, "folder_id")
+    )
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
@@ -49,7 +54,7 @@ async def get_document(
     session: AsyncSession = Depends(get_db),
 ):
     svc = DocumentService(session)
-    return await svc.get_document(uuid.UUID(document_id), current_user.id)
+    return await svc.get_document(parse_uuid(document_id, "document_id"), current_user.id)
 
 
 @router.get("/{document_id}/status", response_model=DocumentStatusResponse)
@@ -59,7 +64,7 @@ async def get_status(
     session: AsyncSession = Depends(get_db),
 ):
     svc = DocumentService(session)
-    res = await svc.get_status(uuid.UUID(document_id), current_user.id)
+    res = await svc.get_status(parse_uuid(document_id, "document_id"), current_user.id)
     doc = res["document"]
     return DocumentStatusResponse(
         id=str(doc.id),
@@ -81,9 +86,9 @@ async def update_document(
 ):
     svc = DocumentService(session)
     return await svc.update_document(
-        uuid.UUID(document_id),
+        parse_uuid(document_id, "document_id"),
         current_user.id,
-        uuid.UUID(payload.folder_id) if payload.folder_id else None,
+        parse_optional_uuid(payload.folder_id, "folder_id"),
         payload.original_filename,
     )
 
@@ -95,5 +100,5 @@ async def delete_document(
     session: AsyncSession = Depends(get_db),
 ):
     svc = DocumentService(session)
-    await svc.delete_document(uuid.UUID(document_id), current_user.id)
+    await svc.delete_document(parse_uuid(document_id, "document_id"), current_user.id)
     return {"message": "Document deleted."}

@@ -86,18 +86,34 @@ export function setUnauthorizedHandler(cb: () => void): void {
   unauthorizedHandler = cb;
 }
 
+// Single-flight promise so concurrent 401s share a single /auth/refresh request
+// and never trigger conflicting rotation or premature session wipeouts.
+let refreshPromise: Promise<string> | null = null;
+
 async function refreshTokens(): Promise<string> {
-  const refresh = getRefresh();
-  if (!refresh) throw new Error("No refresh token");
-  const res = await fetch(`${BASE}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refresh }),
-  });
-  if (!res.ok) throw new Error("Refresh failed");
-  const data = (await res.json()) as { access_token: string; refresh_token?: string };
-  setTokens(data.access_token, data.refresh_token || refresh);
-  return data.access_token;
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const refresh = getRefresh();
+      if (!refresh) throw new Error("No refresh token");
+      const res = await fetch(`${BASE}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refresh }),
+      });
+      if (!res.ok) throw new Error("Refresh failed");
+      const data = (await res.json()) as { access_token: string; refresh_token?: string };
+      setTokens(data.access_token, data.refresh_token || refresh);
+      return data.access_token;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 export { refreshTokens };

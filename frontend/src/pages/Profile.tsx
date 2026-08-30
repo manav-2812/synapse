@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, type ChangeEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../hooks/useTheme";
 import { authApi } from "../api/auth";
@@ -10,6 +11,7 @@ import { Input } from "../components/ui/Input";
 import { Icon } from "../components/ui/Icon";
 import { LogoutConfirmModal } from "../components/LogoutConfirmModal";
 import { ExportDataModal } from "../components/ExportDataModal";
+import { DeleteAccountModal } from "../components/DeleteAccountModal";
 
 const GOAL_PRESETS = [15, 30, 45, 60, 90, 120];
 const SLIDER_TICKS = [0, 30, 60, 90, 120, 180];
@@ -19,9 +21,13 @@ export default function Profile() {
   const { theme, toggle: toggleTheme } = useTheme();
   const { toast } = useToast();
 
+  const navigate = useNavigate();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportBackupBusy, setExportBackupBusy] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
 
   async function handleLogout() {
     setLogoutBusy(true);
@@ -30,6 +36,39 @@ export default function Profile() {
     } finally {
       setLogoutBusy(false);
       setLogoutOpen(false);
+    }
+  }
+
+  async function handleExportBackup() {
+    setExportBackupBusy(true);
+    try {
+      const data = await authApi.exportData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `synapse-gdpr-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast("success", "GDPR Archive Exported", "Complete workspace dataset downloaded successfully.");
+    } catch (err: any) {
+      toast("error", "Export failed", err?.message || "Could not generate GDPR archive.");
+    } finally {
+      setExportBackupBusy(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteAccountBusy(true);
+    try {
+      await authApi.deleteAccount();
+      toast("success", "Account deleted", "Your account and all associated data have been permanently erased.");
+      navigate("/signup");
+    } catch (err: any) {
+      toast("error", "Deletion failed", err?.message || "Could not delete account.");
+    } finally {
+      setDeleteAccountBusy(false);
+      setDeleteAccountOpen(false);
     }
   }
 
@@ -934,36 +973,91 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="profile-card-footer">
+            <div className="profile-card-footer" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <Button
                 variant="secondary"
                 className="btn-sm"
-                onClick={() => {
-                  const blob = new Blob(
-                    [
-                      JSON.stringify(
-                        {
-                          user: { name: user?.full_name, email: user?.email },
-                          exportDate: new Date().toISOString(),
-                          stats: { docs: 18, vectorChunks: 1420, flashcards: 84 },
-                        },
-                        null,
-                        2
-                      ),
-                    ],
-                    { type: "application/json" }
-                  );
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `synapse-workspace-backup-${new Date().toISOString().slice(0, 10)}.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
+                onClick={() => void handleExportBackup()}
+                loading={exportBackupBusy}
               >
                 <Icon name="download" size={14} />
-                <span>Export Workspace Backup</span>
+                <span>Export Full GDPR Archive</span>
               </Button>
+              <Button
+                variant="secondary"
+                className="btn-sm"
+                onClick={() => setExportModalOpen(true)}
+              >
+                <Icon name="layers" size={14} />
+                <span>Custom Study Materials Export</span>
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 6: Danger Zone (GDPR / CCPA Right to Erasure) ── */}
+        <section className="profile-section" aria-labelledby="heading-danger">
+          <div className="profile-section-header">
+            <div className="profile-section-icon" style={{ background: "var(--danger-bg, rgba(224, 62, 62, 0.12))", color: "var(--danger, #dc2626)", border: "1px solid rgba(224, 62, 62, 0.25)" }}>
+              <Icon name="trash" size={18} />
+            </div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <h2 className="profile-section-title" id="heading-danger" style={{ color: "var(--danger, #dc2626)", margin: 0 }}>
+                  Danger Zone
+                </h2>
+                <span className="danger-badge-pill">
+                  <Icon name="shield" size={11} />
+                  GDPR Article 17
+                </span>
+              </div>
+              <p className="profile-section-desc">
+                Irreversible account deletion, permanent physical data shredding, and vector erasure.
+              </p>
+            </div>
+          </div>
+
+          <div className="danger-zone-card">
+            <div className="danger-zone-inner">
+              <div className="danger-zone-details">
+                <div className="danger-zone-header-line">
+                  <h3 className="danger-zone-heading">
+                    Permanently Delete Account &amp; Workspace Data
+                  </h3>
+                </div>
+                <p className="danger-zone-description">
+                  Permanently destroys your user profile, uploaded files on disk, ChromaDB vector collections, generated study notes, quizzes, flashcards, and encrypted chat messages.
+                </p>
+                <div className="danger-tag-list">
+                  <span className="danger-tag-item">
+                    <Icon name="file" size={12} />
+                    Uploaded Documents
+                  </span>
+                  <span className="danger-tag-item">
+                    <Icon name="database" size={12} />
+                    ChromaDB Vector Index
+                  </span>
+                  <span className="danger-tag-item">
+                    <Icon name="layers" size={12} />
+                    Flashcards &amp; Quizzes
+                  </span>
+                  <span className="danger-tag-item">
+                    <Icon name="message" size={12} />
+                    Chat History
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  className="danger-btn-premium"
+                  onClick={() => setDeleteAccountOpen(true)}
+                >
+                  <Icon name="trash" size={15} />
+                  <span>Delete Account</span>
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -983,6 +1077,14 @@ export default function Profile() {
           loading={logoutBusy}
           onConfirm={() => void handleLogout()}
           onCancel={() => setLogoutOpen(false)}
+        />
+      )}
+
+      {deleteAccountOpen && (
+        <DeleteAccountModal
+          loading={deleteAccountBusy}
+          onConfirm={() => void handleDeleteAccount()}
+          onCancel={() => setDeleteAccountOpen(false)}
         />
       )}
     </div>

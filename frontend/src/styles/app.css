@@ -23590,6 +23590,164 @@ body {
   line-height: 1.45;
 }
 
+/* ============================================================
+   Profile Danger Zone (GDPR / CCPA Right to Erasure)
+   ============================================================ */
+.danger-zone-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid rgba(224, 62, 62, 0.28);
+  border-radius: var(--radius-xl, 14px);
+  padding: 24px 28px;
+  box-shadow: 0 4px 20px -2px rgba(224, 62, 62, 0.08), 0 0 0 1px rgba(224, 62, 62, 0.1);
+  transition: all var(--t-base, 180ms) var(--ease);
+}
+
+:root[data-theme="dark"] .danger-zone-card,
+[data-theme="dark"] .danger-zone-card {
+  background: radial-gradient(120% 120% at 0% 0%, rgba(224, 62, 62, 0.12) 0%, rgba(20, 20, 24, 0.85) 100%);
+  border-color: rgba(239, 68, 68, 0.28);
+  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(239, 68, 68, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:root:not([data-theme="dark"]) .danger-zone-card,
+[data-theme="light"] .danger-zone-card {
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.75) 0%, #ffffff 100%);
+  border-color: rgba(224, 62, 62, 0.32);
+  box-shadow: 0 4px 18px -2px rgba(224, 62, 62, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.danger-zone-card:hover {
+  border-color: rgba(224, 62, 62, 0.45);
+  box-shadow: 0 8px 28px -4px rgba(224, 62, 62, 0.14);
+}
+
+.danger-zone-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.danger-zone-details {
+  flex: 1 1 420px;
+}
+
+.danger-zone-header-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.danger-zone-heading {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-h);
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.danger-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 999px;
+  background: rgba(224, 62, 62, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(224, 62, 62, 0.25);
+}
+
+:root[data-theme="dark"] .danger-badge-pill,
+[data-theme="dark"] .danger-badge-pill {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.danger-zone-description {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0 0 16px 0;
+  max-width: 600px;
+  opacity: 0.9;
+}
+
+.danger-tag-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.danger-tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: var(--radius, 6px);
+  transition: all var(--t-fast) var(--ease);
+}
+
+:root:not([data-theme="dark"]) .danger-tag-item,
+[data-theme="light"] .danger-tag-item {
+  background: rgba(254, 242, 242, 0.9);
+  border-color: rgba(224, 62, 62, 0.16);
+  color: #991b1b;
+}
+
+:root[data-theme="dark"] .danger-tag-item,
+[data-theme="dark"] .danger-tag-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.09);
+  color: #cbd5e1;
+}
+
+.danger-btn-premium {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: var(--radius-lg, 10px);
+  border: 1px solid #dc2626 !important;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #ffffff !important;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+  transition: all 0.2s var(--ease);
+}
+
+.danger-btn-premium:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  border-color: #b91c1c !important;
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+  transform: translateY(-1px);
+}
+
+.danger-btn-premium:active {
+  transform: translateY(0px) scale(0.98);
+}
+
+
 
 
 

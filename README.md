@@ -24,7 +24,7 @@
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16-336791.svg" alt="PostgreSQL 16" /></a>
   <a href="https://www.trychroma.com/"><img src="https://img.shields.io/badge/ChromaDB-0.6.3-ff6b6b.svg" alt="ChromaDB 0.6.3" /></a>
   <a href="#quality--performance"><img src="https://img.shields.io/badge/Lighthouse-desktop%20100%20%7C%20mobile%2095%E2%80%9399-brightgreen.svg" alt="Lighthouse scores" /></a>
-  <a href="#testing"><img src="https://img.shields.io/badge/tests-59%20backend%20%2B%2049%20unit%20%2B%2010%20e2e-brightgreen.svg" alt="Test count" /></a>
+  <a href="#testing"><img src="https://img.shields.io/badge/tests-62%20backend%20%2B%2051%20unit%20%2B%2010%20e2e-brightgreen.svg" alt="Test count" /></a>
   <a href="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml"><img src="https://github.com/manav-2812/Synapse/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://img.shields.io/github/last-commit/manav-2812/Synapse"><img src="https://img.shields.io/github/last-commit/manav-2812/Synapse.svg" alt="Last Commit" /></a>
   <a href="#getting-started"><img src="https://img.shields.io/badge/status-production%20ready-blue.svg" alt="Status" /></a>
@@ -376,7 +376,7 @@ Synapse/
 │   │   │   ├── folder_routes.py      #   hierarchical folder CRUD & organization
 │   │   │   ├── passkey_routes.py     #   WebAuthn passkey registration & authentication
 │   │   │   ├── study_routes.py       #   notes, adaptive quiz, SM-2 flashcard review
-│   │   │   └── user_routes.py        #   profile reading, preferences, avatar upload, GDPR data export
+│   │   │   └── user_routes.py        #   GET/PATCH /me, avatar upload, GET /me/export (GDPR), DELETE /me
 │   │   ├── services/                 # business logic & domain orchestrators:
 │   │   │   ├── analytics_service.py  #   dashboard aggregates, token cost accounting
 │   │   │   ├── auth_service.py       #   JWT token lifecycle, OAuth token exchange, passkey auth
@@ -389,7 +389,7 @@ Synapse/
 │   │   │   ├── query_correction.py   #   pre-compiled fuzzy proper noun normalization
 │   │   │   ├── study_service.py      #   SM-2 scheduling, quiz scoring, note generation
 │   │   │   ├── upload_service.py     #   file validation, size guards, UUID disk persistence
-│   │   │   ├── user_service.py       #   profile editing, avatar processing, data export
+│   │   │   ├── user_service.py       #   profile editing, avatar, GDPR export + cascading account deletion
 │   │   │   └── web_search_service.py #   Tavily live internet search client
 │   │   ├── repositories/             # SQLAlchemy DB access (strict user_id filtering)
 │   │   ├── ai/                       # AI & machine learning subsystems:
@@ -406,7 +406,7 @@ Synapse/
 │   │   ├── eval/                     # dynamic dataset builder, metrics (MRR, NDCG, Precision@k)
 │   │   └── main.py                   # FastAPI application factory, CORS, error middleware
 │   ├── alembic/                      # database migrations (12 revisions applied in sequence)
-│   ├── tests/                        # pytest test suite (59 passed in ~26s):
+│   ├── tests/                        # pytest test suite (62 passed):
 │   │   ├── test_answer_grounding.py  #   RAG citation provenance & grounding verification
 │   │   ├── test_api_contract.py      #   FastAPI endpoint contracts & status codes
 │   │   ├── test_auth.py              #   authentication, tokens, and passkey flows
@@ -428,18 +428,29 @@ Synapse/
 │   │   │   ├── dashboard/            #   DashboardMemoryRadar, StudyHeatmap, BentoCards
 │   │   │   ├── layout/               #   Sidebar, Header, NotificationPanel, MobileDrawer
 │   │   │   ├── ui/                   #   Button, Input, Modal, Skeleton, StatusBadge, EmptyState
+│   │   │   ├── ChatComposer.tsx      #   voice overlay + text input + source/model toolbar
+│   │   │   ├── ChatMessageList.tsx   #   scrollable message thread with citation rendering
 │   │   │   ├── CitationChip.tsx      #   grounded document passage popup
 │   │   │   ├── CommandPalette.tsx    #   keyboard-driven ⌘K omnibar
+│   │   │   ├── DeleteAccountModal.tsx#  GDPR right-to-erasure confirmation modal
 │   │   │   ├── DocumentScopePicker.tsx#  smart collision-aware document scope picker
 │   │   │   ├── ExportDataModal.tsx   #   GDPR JSON data export modal
 │   │   │   ├── MessageActionToolbar.tsx# message retry, copy, voice synthesis actions
 │   │   │   ├── VoiceWaveform.tsx     #   interactive audio visualizer
 │   │   │   └── WebCitationChip.tsx   #   live web source link pill
-│   │   ├── context/                  # AuthContext, TipsContext
-│   │   ├── hooks/                    # useTheme, useToast, useDocumentPolling, useDebounce
+│   │   ├── context/                  # AuthContext (logout fire-and-forget fix), TipsContext
+│   │   ├── hooks/                    # custom React hooks:
+│   │   │   ├── useChatStream.ts      #   SSE send loop + busy state (extracted from Chat.tsx)
+│   │   │   ├── useMessageEditing.ts  #   per-message edit/delete/regenerate state
+│   │   │   ├── useDocumentPolling.ts #   exponential-backoff ingestion status polling
+│   │   │   ├── useVoiceInput.ts      #   Web Speech API + MediaStream waveform hook
+│   │   │   ├── useToast.tsx          #   toast notification queue
+│   │   │   ├── useTheme.ts           #   dark/light preference persistence
+│   │   │   ├── useShortcuts.ts       #   global keyboard shortcut registry
+│   │   │   └── useCountUp.ts         #   animated counter for dashboard metrics
 │   │   ├── pages/                    # application route views:
 │   │   │   ├── Analytics.tsx         #   2x2 executive metrics, token costs, cache rates
-│   │   │   ├── Chat.tsx              #   SSE streaming conversation with citations & web mode
+│   │   │   ├── Chat.tsx              #   SSE streaming conversation orchestrator (1,334 lines)
 │   │   │   ├── Dashboard.tsx         #   bento metrics, memory decay radar, upcoming reviews
 │   │   │   ├── Documents.tsx         #   drag-drop upload, folder organization, status capsules
 │   │   │   ├── EvalDashboard.tsx     #   retrieval quality metrics, dataset generator, trend chart
@@ -447,14 +458,14 @@ Synapse/
 │   │   │   ├── Legal.tsx             #   Terms of Service & Privacy Policy
 │   │   │   ├── NoteReader.tsx        #   distraction-free study note viewer & Markdown renderer
 │   │   │   ├── Notes.tsx             #   note generation & document scope filter
-│   │   │   ├── Profile.tsx           #   account preferences, passkey management, avatar upload
+│   │   │   ├── Profile.tsx           #   account preferences, danger zone, passkey management
 │   │   │   ├── Quiz.tsx              #   interactive timed quiz, MCQ selector, instant feedback
 │   │   │   ├── Search.tsx            #   global multi-category workspace search
 │   │   │   ├── WarmupPreview.tsx     #   cold-start server wake-up banner
 │   │   │   └── auth/                 #   Login, Signup, VerifyEmail, Forgot/ResetPassword, OAuth
 │   │   ├── utils/                    # decay.ts (Ebbinghaus), timeBlock.ts, oauth.ts
-│   │   ├── styles/                   # app.css (components), auth.css, mobile.css, index.css (tokens)
-│   │   └── types/                    # api.ts (TypeScript interfaces mirroring Pydantic)
+│   │   ├── styles/                   # app.css (components + danger zone), auth.css, mobile.css, index.css (tokens)
+│   │   └── types/                    # api.ts (Pydantic mirrors), chat.ts (ChatMessage interface)
 │   ├── e2e/                          # Playwright end-to-end test suite (10 passed)
 │   ├── public/                       # favicon.svg, robots.txt, sitemap.xml, llms.txt
 │   └── package.json                  # React 19, Vite 8, Lucide icons, KaTeX, Framer Motion
@@ -680,7 +691,7 @@ The API is versioned under `/api/v1`. **Interactive docs:** Swagger UI at
 |---|---|---|
 | POST | `/auth/signup` | Register email + password account & dispatch verification OTP |
 | POST | `/auth/verify-email` | Verify 6-digit email OTP |
-| POST | `/auth/resend-code` | Re-dispatch email verification code |
+| POST | `/auth/resend-verification` | Re-dispatch email verification link (alias: `/auth/resend-code`) |
 | POST | `/auth/forgot-password` | Request password reset email |
 | POST | `/auth/reset-password` | Complete password reset with token |
 | POST | `/auth/login` | Email + password login |
@@ -844,16 +855,16 @@ and pull request targeting `main`. It covers:
 
 ```bash
 # Backend — pytest (real Postgres + real Chroma + real embeddings)
-cd backend && .venv\Scripts\python -m pytest   # 59 passed in ~26s
+cd backend && .venv\Scripts\python -m pytest   # 62 passed
 
-# Frontend — Vitest unit/component (api client, hooks, UI primitives)
-cd frontend && npm test                        # 49 passed across 14 test files
+# Frontend — Vitest unit/component (api client, hooks, UI primitives, auth context)
+cd frontend && npm test -- --run               # 51 passed across 14 test files
 
 # Frontend — Playwright e2e (signup → upload → chat citation → flashcard → quiz → analytics)
 cd frontend && npm run test:e2e                # 10 passed (against the real stack + live LLM)
 
 # Frontend — Lint & Production Build Verification
-cd frontend && npm run lint && npm run build   # 0 warnings/errors, builds in <1.1s
+cd frontend && npm run lint && npm run build   # 0 warnings, 0 errors; builds in <1.2s
 ```
 
 ---

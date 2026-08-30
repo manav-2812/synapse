@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Icon } from "./ui/Icon";
 import { Button } from "./ui/Button";
 import { studyApi } from "../api/study";
+import { authApi } from "../api/auth";
 import { useToast } from "../hooks/useToast";
 
 interface Props {
@@ -40,39 +41,34 @@ export function ExportDataModal({ userName, userEmail, onClose }: Props) {
 
     setLoading(true);
     try {
-      const [flashcardsRes, quizzesRes, notesRes] = await Promise.allSettled([
-        includeFlashcards ? studyApi.listFlashcards() : Promise.resolve([]),
-        includeQuizzes ? studyApi.listQuizzes() : Promise.resolve([]),
-        includeNotes ? studyApi.listNotes() : Promise.resolve([]),
-      ]);
-
-      const flashcards = flashcardsRes.status === "fulfilled" ? flashcardsRes.value : [];
-      const quizzes = quizzesRes.status === "fulfilled" ? quizzesRes.value : [];
-      const notes = notesRes.status === "fulfilled" ? notesRes.value : [];
-
       const timestamp = new Date().toISOString();
       const dateStr = timestamp.slice(0, 10);
 
       if (format === "json") {
-        const payload: Record<string, any> = {
-          app: "Synapse AI Workspace",
-          exportDate: timestamp,
-          user: { name: userName, email: userEmail },
-        };
-
-        if (includeFlashcards) payload.flashcards = flashcards;
-        if (includeQuizzes) payload.quizzes = quizzes;
-        if (includeNotes) payload.notes = notes;
-        if (includeChats) payload.chats = [{ note: "Saved study conversations and chat threads." }];
+        const fullServerExport = await authApi.exportData();
+        const payload: Record<string, any> = { ...fullServerExport };
+        if (!includeFlashcards) delete payload.flashcards;
+        if (!includeQuizzes) delete payload.quizzes;
+        if (!includeNotes) delete payload.study_notes;
+        if (!includeChats) delete payload.conversations;
 
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `synapse-study-export-${dateStr}.json`;
+        a.download = `synapse-gdpr-export-${dateStr}.json`;
         a.click();
         URL.revokeObjectURL(url);
       } else {
+        const [flashcardsRes, quizzesRes, notesRes] = await Promise.allSettled([
+          includeFlashcards ? studyApi.listFlashcards() : Promise.resolve([]),
+          includeQuizzes ? studyApi.listQuizzes() : Promise.resolve([]),
+          includeNotes ? studyApi.listNotes() : Promise.resolve([]),
+        ]);
+
+        const flashcards = flashcardsRes.status === "fulfilled" ? flashcardsRes.value : [];
+        const quizzes = quizzesRes.status === "fulfilled" ? quizzesRes.value : [];
+        const notes = notesRes.status === "fulfilled" ? notesRes.value : [];
         // Markdown format
         let md = `# Synapse Workspace Study Export\n\n`;
         md += `*Exported on: ${new Date().toLocaleDateString()} for ${userName || "User"} (${userEmail || ""})*\n\n---\n\n`;

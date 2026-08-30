@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.exceptions import parse_uuid
 from app.schemas.document_schema import (
     FolderCreateRequest,
     FolderResponse,
@@ -42,5 +43,5 @@ async def delete_folder(
     session: AsyncSession = Depends(get_db),
 ):
     svc = FolderService(session)
-    await svc.delete(uuid.UUID(folder_id), current_user.id)
+    await svc.delete(parse_uuid(folder_id, "folder_id"), current_user.id)
     return {"message": "Folder deleted."}

@@ -5,12 +5,12 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useVoiceInput } from "../hooks/useVoiceInput";
-import { VoiceWaveform } from "../components/VoiceWaveform";
+import { useChatStream } from "../hooks/useChatStream";
+import { useMessageEditing } from "../hooks/useMessageEditing";
 import { chatApi } from "../api/chat";
 import { documentsApi } from "../api/documents";
 import { analyticsApi } from "../api/analytics";
@@ -24,11 +24,9 @@ import { Modal } from "../components/ui/Modal";
 import { Tip } from "../components/Tip";
 import { TIP } from "../components/tips";
 import { Skeleton } from "../components/ui/Skeleton";
-import { DocumentScopePicker } from "../components/DocumentScopePicker";
-import { MarkdownContent } from "../components/ui/MarkdownContent";
-import { CitationChip } from "../components/CitationChip";
-import { MessageActionToolbar } from "../components/MessageActionToolbar";
-import { WebCitationChip } from "../components/WebCitationChip";
+import { ChatComposer } from "../components/ChatComposer";
+import { ChatMessageList } from "../components/ChatMessageList";
+import type { ChatMessage } from "../types/chat";
 import {
   getTimeBlockConfig,
   extractFirstName,
@@ -40,16 +38,7 @@ import type {
   DocumentResponse,
   DashboardResponse,
   FlashcardResponse,
-  QueryCorrectionPayload,
 } from "../types/api";
-
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  sources: SourceResponse[];
-  correction?: QueryCorrectionPayload;
-}
 
 export default function Chat() {
   const { user } = useAuth();
@@ -102,7 +91,6 @@ export default function Chat() {
     }
     return [];
   });
-  const [busy, setBusy] = useState(false);
   const [loadingConv, setLoadingConv] = useState(true);
 
   useEffect(() => {
@@ -126,8 +114,6 @@ export default function Chat() {
 
   const [renamingConv, setRenamingConv] = useState<string | null>(null);
   const [convDraft, setConvDraft] = useState("");
-  const [editingMsg, setEditingMsg] = useState<string | null>(null);
-  const [msgDraft, setMsgDraft] = useState("");
   const [deleteConv, setDeleteConv] = useState<ConversationListItem | null>(null);
   const [convSearch, setConvSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -507,6 +493,39 @@ export default function Chat() {
     }
   }, [toast, unreadIds]);
 
+  // ── Streaming + busy state ────────────────────────────────────────────────
+  const { send, busy } = useChatStream({
+    activeId,
+    setActiveId,
+    scopeIds,
+    webMode,
+    insightMode,
+    input,
+    setInput,
+    setMessages,
+    setConversations,
+    loadConversations,
+    shouldFollowLatestRef,
+  });
+
+  // ── Message editing ───────────────────────────────────────────────────────
+  const {
+    editingMsg,
+    msgDraft,
+    setEditingMsg,
+    setMsgDraft,
+    commitEditMsg,
+    removeMsg,
+    regenerateAssistantMessage,
+  } = useMessageEditing({
+    activeId,
+    messages,
+    setMessages,
+    busy,
+    send,
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
@@ -692,179 +711,6 @@ export default function Chat() {
     }
   }
 
-  async function send(overrideText?: string) {
-    const text = (overrideText ?? input).trim();
-    if (!text || busy) return;
-
-    const docScope = scopeIds;
-    const currentWebMode = webMode;
-    const currentInsightMode = insightMode;
-    const isNew = !activeId;
-    const tempId = `temp-${Date.now()}`;
-    const optimisticTitle = text.slice(0, 50) || "New Chat";
-    const nowIso = new Date().toISOString();
-
-    const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
-      role: "user",
-      content: text,
-      sources: [],
-    };
-    const assistantId = `a-${Date.now()}`;
-    const assistantMsg: ChatMessage = {
-      id: assistantId,
-      role: "assistant",
-      content: "",
-      sources: [],
-    };
-
-    // Sending is an intentional request for the newest response, so resume
-    // following. A subsequent manual scroll immediately opts back out.
-    shouldFollowLatestRef.current = true;
-    setMessages((prev) => [...prev, userMsg, assistantMsg]);
-    if (!overrideText) setInput("");
-    setBusy(true);
-
-    if (isNew) {
-      setConversations((prev) => [
-        {
-          id: tempId,
-          title: optimisticTitle,
-          created_at: nowIso,
-          updated_at: nowIso,
-          message_count: 1,
-        },
-        ...prev.filter((c) => !c.id.startsWith("temp-")),
-      ]);
-    }
-
-    const patchAssistant = (patch: Partial<ChatMessage>) => {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)),
-      );
-    };
-
-    let confirmedId = activeId;
-
-    try {
-      await chatApi.sendMessage(
-        {
-          message: text,
-          conversation_id: activeId || undefined,
-          document_scope: docScope.length ? docScope : undefined,
-          web_mode: currentWebMode,
-          insight_mode: currentInsightMode,
-        },
-        {
-          onConversation: (convPayload) => {
-            if (convPayload.conversation_id) {
-              const newId = convPayload.conversation_id;
-              confirmedId = newId;
-              setActiveId(newId);
-              setConversations((prev) => {
-                const hasItem = prev.some(
-                  (c) => c.id === newId || c.id === tempId || c.id.startsWith("temp-"),
-                );
-                if (hasItem) {
-                  return prev.map((c) =>
-                    c.id === tempId || c.id === newId || c.id.startsWith("temp-")
-                      ? {
-                          ...c,
-                          id: newId,
-                          title: convPayload.title || c.title,
-                          updated_at: convPayload.updated_at || c.updated_at,
-                        }
-                      : c,
-                  );
-                }
-                return [
-                  {
-                    id: newId,
-                    title: convPayload.title || optimisticTitle,
-                    created_at: convPayload.created_at || nowIso,
-                    updated_at: convPayload.updated_at || nowIso,
-                    message_count: 1,
-                  },
-                  ...prev,
-                ];
-              });
-            }
-          },
-          onSources: (s: SourceResponse[]) => patchAssistant({ sources: s }),
-          onCorrection: (c: QueryCorrectionPayload) => patchAssistant({ correction: c }),
-          onToken: (t: string) =>
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId ? { ...m, content: m.content + t } : m,
-              ),
-            ),
-          onDone: (payload) => {
-            if (payload?.conversation_id) {
-              const finalId = payload.conversation_id;
-              setActiveId(finalId);
-              void loadConversations();
-            }
-          },
-          onError: (e: Error) => {
-            toast("error", "Chat error", e.message);
-            patchAssistant({ content: `⚠️ ${e.message}` });
-            if (isNew && !confirmedId) {
-              setConversations((prev) => prev.filter((c) => c.id !== tempId));
-            }
-          },
-        },
-      );
-    } catch {
-      if (isNew && !confirmedId) {
-        setConversations((prev) => prev.filter((c) => c.id !== tempId));
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-
-  async function commitEditMsg(m: ChatMessage) {
-    if (!m.id || !activeId) return;
-    const content = msgDraft.trim();
-    if (!content || content === m.content) return;
-    setEditingMsg(null);
-    setMessages((prev) =>
-      prev.map((x) => (x.id === m.id ? { ...x, content } : x)),
-    );
-    try {
-      await chatApi.updateMessage(activeId, m.id, content);
-    } catch (err) {
-      toast(
-        "error",
-        "Failed to edit message",
-        err instanceof ApiError ? err.message : "Please try again.",
-      );
-    }
-  }
-
-  async function removeMsg(m: ChatMessage) {
-    setMessages((prev) => prev.filter((x) => x.id !== m.id));
-    if (m.id.startsWith("temp-") || !activeId) return;
-    try {
-      await chatApi.deleteMessage(activeId, m.id);
-    } catch (err) {
-      toast(
-        "error",
-        "Failed to delete message",
-        err instanceof ApiError ? err.message : "Please try again.",
-      );
-    }
-  }
-
-  function regenerateAssistantMessage(asstIdx: number) {
-    if (busy || asstIdx < 1) return;
-    const userMsg = messages[asstIdx - 1];
-    if (!userMsg || userMsg.role !== "user") return;
-    setMessages((prev) => prev.slice(0, asstIdx));
-    void send(userMsg.content);
-  }
-
   function populatePrompt(text: string) {
     setInput(text);
     setTimeout(() => {
@@ -882,224 +728,6 @@ export default function Chat() {
       void send();
     }
   }
-
-  const renderComposerContent = () => (
-    <>
-      {isListening ? (
-        <div className="voice-dictation-card" role="region" aria-label="Voice input active">
-          <div className="voice-dictation-top">
-            <span className="voice-dictation-label">Listening...</span>
-          </div>
-          <div className="voice-dictation-body">
-            <div className="voice-waveform-wrap">
-              <VoiceWaveform audioStream={audioStream} isListening={isListening} />
-            </div>
-            <div className="voice-dictation-actions">
-              <button
-                type="button"
-                className="voice-cancel-btn"
-                onClick={handleVoiceCancel}
-                title="Cancel voice input (Esc)"
-                aria-label="Cancel voice input"
-              >
-                <Icon name="close" size={17} />
-              </button>
-              <button
-                type="button"
-                className="voice-confirm-btn"
-                onClick={handleVoiceConfirm}
-                title="Confirm voice input (Enter)"
-                aria-label="Confirm voice input"
-              >
-                <Icon name="check" size={17} />
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="composer">
-          <textarea
-            ref={textareaRef}
-            placeholder="How can I help you today?"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKey}
-            rows={1}
-            className="composer-textarea"
-          />
-
-          <div className="composer-bottom-bar">
-            {/* ── Left Side: Segmented Source Toggle Switch (Insight vs Web) ── */}
-            <div className="composer-bottom-left">
-              <div className="composer-source-segmented" role="radiogroup" aria-label="Knowledge source switch">
-                <button
-                  type="button"
-                  className={`composer-source-seg-btn${insightMode ? " active" : ""}`}
-                  title="Insight Source — answers strictly from your uploaded documents"
-                  aria-checked={insightMode}
-                  role="radio"
-                  onClick={() => {
-                    setInsightMode(true);
-                    setWebMode(false);
-                  }}
-                >
-                  <Icon name="search" size={13} className="source-seg-icon" />
-                  <span>Insight Source</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`composer-source-seg-btn${webMode ? " active" : ""}`}
-                  title="Web Source — answers from live web search"
-                  aria-checked={webMode}
-                  role="radio"
-                  onClick={() => {
-                    setWebMode(true);
-                    setInsightMode(false);
-                  }}
-                >
-                  <Icon name="globe" size={13} className="source-seg-icon" />
-                  <span>Web Source</span>
-                </button>
-              </div>
-            </div>
-
-            {/* ── Right Side: Document Picker -> Model -> Mic -> Send ── */}
-            <div className="composer-bottom-right">
-              {/* Select Document (styled same as model selector pill) */}
-              <div className="composer-scope-wrapper">
-                <DocumentScopePicker
-                  value={scopeIds}
-                  onChange={setScopeIds}
-                  allowUpload
-                  popupDirection="up"
-                  size="sm"
-                  minimal
-                />
-              </div>
-
-              {/* Model Selector Pill */}
-              <div ref={modelMenuRef} className="composer-model-dropdown-wrap">
-                <button
-                  type="button"
-                  className="composer-model-pill"
-                  onClick={() => setShowModelMenu(!showModelMenu)}
-                  title="Select AI Model / Pipeline"
-                >
-                  <span>{selectedModel}</span>
-                  <Icon name="chevronDown" size={13} />
-                </button>
-
-                {showModelMenu && (
-                  <div className="composer-model-menu">
-                    {[
-                      {
-                        id: "synapse-hybrid",
-                        name: "Synapse Hybrid RAG",
-                        desc: "Dense Vector + BM25 keyword retrieval",
-                      },
-                      {
-                        id: "custom-models",
-                        name: "Custom Models (Coming Soon)",
-                        desc: "Fine-tuned domain models",
-                        disabled: true,
-                      },
-                    ].map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        disabled={m.disabled}
-                        className={`cm-item ${selectedModel === m.name ? "active" : ""} ${m.disabled ? "disabled" : ""}`}
-                        onClick={() => {
-                          if (!m.disabled) {
-                            setSelectedModel(m.name);
-                            setShowModelMenu(false);
-                          }
-                        }}
-                      >
-                        <div className="cm-item-text">
-                          <span className="cm-item-title">{m.name}</span>
-                          <span className="cm-item-desc">{m.desc}</span>
-                        </div>
-                        {selectedModel === m.name && <Icon name="check" size={12} />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Microphone Voice Button */}
-              <button
-                type="button"
-                className={`composer-voice-btn${!voiceSupported ? " is-disabled" : ""}`}
-                title={
-                  !voiceSupported
-                    ? "Voice input isn't supported in this browser — try Chrome or Edge."
-                    : "Start voice input"
-                }
-                aria-label="Start voice input"
-                disabled={!voiceSupported}
-                onClick={handleVoiceToggle}
-              >
-                <Icon name="mic" size={17} />
-              </button>
-
-              {/* Send Button */}
-              {input.trim() && (
-                <button
-                  type="button"
-                  className="composer-send-btn"
-                  onClick={() => void send()}
-                  disabled={busy || !input.trim()}
-                  title="Send (Enter)"
-                  aria-label="Send message"
-                >
-                  {busy ? (
-                    <span className="spinner spinner-sm" />
-                  ) : (
-                    <Icon name="send" size={14} />
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Voice error feedback ── */}
-      {voiceError === "permission-denied" && (
-        <div className="voice-status-row voice-status-error" role="alert">
-          <Icon name="mic" size={13} />
-          <span>
-            Microphone access was blocked. Enable it in your browser&rsquo;s site
-            settings and try again.
-          </span>
-          <button
-            type="button"
-            className="voice-status-dismiss"
-            aria-label="Dismiss"
-            onClick={clearVoiceError}
-          >
-            <Icon name="close" size={12} />
-          </button>
-        </div>
-      )}
-      {voiceError === "recognition-error" && (
-        <div className="voice-status-row voice-status-error" role="alert">
-          <Icon name="mic" size={13} />
-          <span>Voice input failed — please try again or type your question.</span>
-          <button
-            type="button"
-            className="voice-status-dismiss"
-            aria-label="Dismiss"
-            onClick={clearVoiceError}
-          >
-            <Icon name="close" size={12} />
-          </button>
-        </div>
-      )}
-    </>
-  );
 
   return (
     <>
@@ -1508,7 +1136,33 @@ export default function Chat() {
 
                 {/* Search in Middle */}
                 <div className="chat-empty-composer-wrap">
-                  {renderComposerContent()}
+                  <ChatComposer
+                    isListening={isListening}
+                    audioStream={audioStream}
+                    handleVoiceCancel={handleVoiceCancel}
+                    handleVoiceConfirm={handleVoiceConfirm}
+                    voiceSupported={voiceSupported}
+                    handleVoiceToggle={handleVoiceToggle}
+                    voiceError={voiceError}
+                    clearVoiceError={clearVoiceError}
+                    input={input}
+                    setInput={setInput}
+                    onKey={onKey}
+                    textareaRef={textareaRef}
+                    insightMode={insightMode}
+                    setInsightMode={setInsightMode}
+                    webMode={webMode}
+                    setWebMode={setWebMode}
+                    scopeIds={scopeIds}
+                    setScopeIds={setScopeIds}
+                    modelMenuRef={modelMenuRef}
+                    selectedModel={selectedModel}
+                    setSelectedModel={setSelectedModel}
+                    showModelMenu={showModelMenu}
+                    setShowModelMenu={setShowModelMenu}
+                    busy={busy}
+                    send={send}
+                  />
                 </div>
 
                 {/* Suggested Action Cards Down Below Search */}
@@ -1554,125 +1208,21 @@ export default function Chat() {
             </div>
           ) : (
             <>
-              <div className="thread" ref={threadRef} onScroll={handleThreadScroll}>
-                {messages.map((m, idx) => {
-                  const isStreamingThis = busy && idx === messages.length - 1 && m.role === "assistant";
-
-                  return (
-                    <div
-                      key={m.id}
-                      className={`msg msg-${m.role}${isStreamingThis ? " msg-streaming" : ""}`}
-                      style={{ "--i": idx } as CSSProperties}
-                    >
-                      <div className="msg-body">
-                        <div className="msg-header">
-                          <span className="msg-sender-label">
-                            {m.role === "user" ? "You" : "Synapse"}
-                          </span>
-                          {m.role === "assistant" &&
-                            m.sources.length > 0 &&
-                            m.sources[0]?.source_type === "web" && (
-                              <span className="web-answer-badge" title="Answer sourced from the web, not your uploaded documents">
-                                <Icon name="externalLink" size={11} />
-                                Web
-                              </span>
-                            )}
-                        </div>
-                        {editingMsg === m.id ? (
-                          <div className="msg-edit">
-                            <textarea
-                              className="input"
-                              autoFocus
-                              value={msgDraft}
-                              onChange={(e) => setMsgDraft(e.target.value)}
-                              rows={Math.min(12, Math.max(2, msgDraft.split("\n").length))}
-                            />
-                            <div className="row" style={{ gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
-                              <Button variant="ghost" className="btn-sm" onClick={() => setEditingMsg(null)}>
-                                Cancel
-                              </Button>
-                              <Button className="btn-sm" onClick={() => void commitEditMsg(m)}>
-                                Save
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            {m.role === "assistant" && m.correction && m.correction.corrections.length > 0 && (
-                              <div className="msg-correction-notice" aria-live="polite">
-                                <Icon name="search" size={12} className="mcn-icon" />
-                                <span>
-                                  Searched for{" "}
-                                  {m.correction.corrections.map((c, i, arr) => (
-                                    <span key={i}>
-                                      <strong>&lsquo;{c.corrected}&rsquo;</strong>
-                                      {c.original.toLowerCase() !== c.corrected.toLowerCase() ? (
-                                        <> instead of &lsquo;{c.original}&rsquo;</>
-                                      ) : null}
-                                      {i < arr.length - 1 ? ", " : ""}
-                                    </span>
-                                  ))}
-                                </span>
-                              </div>
-                            )}
-                            <div className="msg-bubble">
-                              {m.content ? (
-                                m.role === "assistant" ? (
-                                  <MarkdownContent
-                                    isStreaming={isStreamingThis}
-                                    sources={m.sources}
-                                    onCitationClick={setActiveSource}
-                                  >
-                                    {m.content}
-                                  </MarkdownContent>
-                                ) : (
-                                  m.content
-                                )
-                              ) : busy ? (
-                                <span className="typing" aria-label="Generating response">
-                                  <span className="dot" />
-                                  <span className="dot" />
-                                  <span className="dot" />
-                                </span>
-                              ) : (
-                                ""
-                              )}
-                            </div>
-                            {m.sources.length > 0 && (
-                              <div className="source-chips">
-                                {m.sources.map((src, i) =>
-                                  src.source_type === "web" ? (
-                                    <WebCitationChip
-                                      key={i}
-                                      source={src}
-                                      index={i + 1}
-                                    />
-                                  ) : (
-                                    <CitationChip
-                                      key={i}
-                                      source={src}
-                                      onClick={() => setActiveSource(src)}
-                                    />
-                                  )
-                                )}
-                              </div>
-                            )}
-                          </>
-                        )}
-                        {editingMsg !== m.id && (
-                          <MessageActionToolbar
-                            role={m.role}
-                            content={m.content}
-                            scopeIds={scopeIds}
-                            onDelete={() => void removeMsg(m)}
-                            onRegenerate={m.role === "assistant" ? () => regenerateAssistantMessage(idx) : undefined}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <ChatMessageList
+                messages={messages}
+                busy={busy}
+                editingMsg={editingMsg}
+                msgDraft={msgDraft}
+                setEditingMsg={setEditingMsg}
+                setMsgDraft={setMsgDraft}
+                commitEditMsg={commitEditMsg}
+                removeMsg={removeMsg}
+                regenerateAssistantMessage={regenerateAssistantMessage}
+                setActiveSource={setActiveSource}
+                scopeIds={scopeIds}
+                threadRef={threadRef}
+                onScroll={handleThreadScroll}
+              />
 
               <div className="composer-container">
                 {showScrollBottom && (
@@ -1686,7 +1236,33 @@ export default function Chat() {
                     <Icon name="arrowDown" size={15} />
                   </button>
                 )}
-                {renderComposerContent()}
+                <ChatComposer
+                  isListening={isListening}
+                  audioStream={audioStream}
+                  handleVoiceCancel={handleVoiceCancel}
+                  handleVoiceConfirm={handleVoiceConfirm}
+                  voiceSupported={voiceSupported}
+                  handleVoiceToggle={handleVoiceToggle}
+                  voiceError={voiceError}
+                  clearVoiceError={clearVoiceError}
+                  input={input}
+                  setInput={setInput}
+                  onKey={onKey}
+                  textareaRef={textareaRef}
+                  insightMode={insightMode}
+                  setInsightMode={setInsightMode}
+                  webMode={webMode}
+                  setWebMode={setWebMode}
+                  scopeIds={scopeIds}
+                  setScopeIds={setScopeIds}
+                  modelMenuRef={modelMenuRef}
+                  selectedModel={selectedModel}
+                  setSelectedModel={setSelectedModel}
+                  showModelMenu={showModelMenu}
+                  setShowModelMenu={setShowModelMenu}
+                  busy={busy}
+                  send={send}
+                />
               </div>
             </>
           )}

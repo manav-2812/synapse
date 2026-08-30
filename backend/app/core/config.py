@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # JWT / Auth
     jwt_secret_key: str = "change_me_in_production"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 20
+    access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 7
 
     # Google OAuth 2.0
